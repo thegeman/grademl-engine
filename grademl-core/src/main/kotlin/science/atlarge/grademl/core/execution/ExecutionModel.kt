@@ -3,8 +3,11 @@ package science.atlarge.grademl.core.execution
 class ExecutionModel {
 
     private val phases = mutableSetOf<ExecutionPhase>()
+    // Parent-child relationships
     private val phaseParents = mutableMapOf<ExecutionPhase, ExecutionPhase>()
     private val phaseChildren = mutableMapOf<ExecutionPhase, MutableSet<ExecutionPhase>>()
+    // Dataflow relationships
+    private val phaseOutFlows = mutableMapOf<ExecutionPhase, MutableSet<ExecutionPhase>>()
 
     internal fun addPhase(phase: ExecutionPhase) {
         require(phase.model === this) { "Cannot add phase from a different ExecutionModel" }
@@ -29,6 +32,15 @@ class ExecutionModel {
         return children.any { child -> isPhaseInSubtree(phase, child) }
     }
 
+    internal fun addDataflowRelationship(source: ExecutionPhase, sink: ExecutionPhase) {
+        require(source != sink) { "Cannot add dataflow between phase and itself" }
+        require(source in phases && sink in phases) {
+            "Cannot add relationship to phase(s) not part of this ExecutionModel"
+        }
+
+        phaseOutFlows.getOrPut(source) { mutableSetOf() }.add(sink)
+    }
+
 }
 
 class ExecutionPhase(
@@ -44,6 +56,10 @@ class ExecutionPhase(
 
     fun addChild(phase: ExecutionPhase) {
         model.addParentRelationship(this, phase)
+    }
+
+    fun addOutgoingDataflow(sink: ExecutionPhase) {
+        model.addDataflowRelationship(this, sink)
     }
 
 }
