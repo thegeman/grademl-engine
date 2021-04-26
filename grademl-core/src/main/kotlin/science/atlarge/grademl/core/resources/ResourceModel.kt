@@ -57,6 +57,12 @@ class Resource(
     private val model: ResourceModel
 ) {
 
+    val identifier = if (tags.isEmpty()) {
+        name
+    } else {
+        "$name[${tags.entries.sortedBy { it.key }.joinToString(separator = ", ") { "${it.key}=${it.value}" }}]"
+    }
+
     private val _metrics = mutableMapOf<String, Metric>()
     val metrics: Map<String, Metric>
         get() = _metrics
