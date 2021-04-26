@@ -17,9 +17,14 @@ class ExecutionModel {
     fun getOutFlowsOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseOutFlows[phase] ?: emptySet()
     fun getInFlowsOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseInFlows[phase] ?: emptySet()
 
-    internal fun addPhase(phase: ExecutionPhase) {
-        require(phase.model === this) { "Cannot add phase from a different ExecutionModel" }
+    fun addPhase(
+        name: String,
+        tags: Map<String, String> = emptyMap(),
+        description: String? = null
+    ): ExecutionPhase {
+        val phase = ExecutionPhase(name, tags, description, this)
         phases.add(phase)
+        return phase
     }
 
     internal fun addParentRelationship(parentPhase: ExecutionPhase, childPhase: ExecutionPhase) {
@@ -68,7 +73,7 @@ class ExecutionModel {
 
 }
 
-class ExecutionPhase(
+class ExecutionPhase internal constructor(
     val name: String,
     val tags: Map<String, String> = emptyMap(),
     val description: String? = null,
@@ -83,10 +88,6 @@ class ExecutionPhase(
         get() = model.getOutFlowsOf(this)
     val inFlows: Set<ExecutionPhase>
         get() = model.getInFlowsOf(this)
-
-    init {
-        model.addPhase(this)
-    }
 
     fun addChild(phase: ExecutionPhase) {
         model.addParentRelationship(this, phase)
