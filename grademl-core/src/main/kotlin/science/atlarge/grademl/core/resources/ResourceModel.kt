@@ -18,12 +18,13 @@ class ResourceModel {
         name: String,
         tags: Map<String, String> = emptyMap(),
         description: String? = null,
-        metric: Metric? = null,
+        metrics: Iterable<Metric> = emptyList(),
         parent: Resource? = null
     ): Resource {
-        val resource = Resource(name, tags, description, metric, this)
+        val resource = Resource(name, tags, description, this)
         _resources.add(resource)
         if (parent != null) addParentRelationship(parent, resource)
+        for (metric in metrics) resource.addMetric(metric)
         return resource
     }
 
@@ -53,20 +54,25 @@ class Resource(
     val name: String,
     val tags: Map<String, String>,
     val description: String?,
-    val metric: Metric?,
     private val model: ResourceModel
 ) {
+
+    private val _metrics = mutableMapOf<String, Metric>()
+    val metrics: Map<String, Metric>
+        get() = _metrics
 
     val parent: Resource?
         get() = model.getParentOf(this)
     val children: Set<Resource>
         get() = model.getChildrenOf(this)
 
-    val hasMetric: Boolean
-        get() = metric != null
-
     fun addChild(resource: Resource) {
         model.addParentRelationship(this, resource)
+    }
+
+    fun addMetric(metric: Metric) {
+        require(metric.name !in _metrics) { "Cannot add multiple metrics with the same name" }
+        _metrics[metric.name] = metric
     }
 
 }
