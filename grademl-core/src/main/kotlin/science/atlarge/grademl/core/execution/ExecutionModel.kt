@@ -25,9 +25,11 @@ class ExecutionModel {
     fun addPhase(
         name: String,
         tags: Map<String, String> = emptyMap(),
-        description: String? = null
+        description: String? = null,
+        startTime: Long,
+        endTime: Long
     ): ExecutionPhase {
-        val phase = ExecutionPhase(name, tags, description, this)
+        val phase = ExecutionPhase(name, tags, description, startTime, endTime, this)
         _phases.add(phase)
         return phase
     }
@@ -82,6 +84,8 @@ class ExecutionPhase internal constructor(
     val name: String,
     val tags: Map<String, String> = emptyMap(),
     val description: String? = null,
+    val startTime: Long,
+    val endTime: Long,
     private val model: ExecutionModel
 ) {
 
@@ -90,6 +94,9 @@ class ExecutionPhase internal constructor(
     } else {
         "$name[${tags.entries.sortedBy { it.key }.joinToString(separator = ", ") { "${it.key}=${it.value}" }}]"
     }
+
+    val duration: Long
+        get() = if (startTime < endTime) endTime - startTime else 0
 
     val parent: ExecutionPhase?
         get() = model.getParentOf(this)

@@ -21,10 +21,12 @@ object Airflow {
         val executionModel = unifiedExecutionModel ?: ExecutionModel()
         val dagPhase = executionModel.addPhase(
             name = airflowLog.dagName,
-            tags = mapOf("run_id" to airflowLog.runId)
+            tags = mapOf("run_id" to airflowLog.runId),
+            startTime = 0,
+            endTime = 0
         )
         val taskPhases = airflowLog.taskNames.associateWith { taskName ->
-            executionModel.addPhase(name = taskName)
+            executionModel.addPhase(name = taskName, startTime = 0, endTime = 0)
         }
         // Add parent-child relationships between DAG and tasks
         for (taskPhase in taskPhases.values) {
