@@ -10,10 +10,12 @@ class ExecutionModel {
     private val phaseChildren = mutableMapOf<ExecutionPhase, MutableSet<ExecutionPhase>>()
     // Dataflow relationships
     private val phaseOutFlows = mutableMapOf<ExecutionPhase, MutableSet<ExecutionPhase>>()
+    private val phaseInFlows = mutableMapOf<ExecutionPhase, MutableSet<ExecutionPhase>>()
 
     fun getParentOf(phase: ExecutionPhase): ExecutionPhase? = phaseParents[phase]
     fun getChildrenOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseChildren[phase] ?: emptySet()
     fun getOutFlowsOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseOutFlows[phase] ?: emptySet()
+    fun getInFlowsOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseInFlows[phase] ?: emptySet()
 
     internal fun addPhase(phase: ExecutionPhase) {
         require(phase.model === this) { "Cannot add phase from a different ExecutionModel" }
@@ -49,6 +51,7 @@ class ExecutionModel {
         require(!dataflowPathExists(sink, source)) { "Cannot introduce cycles in dataflow relationships" }
 
         phaseOutFlows.getOrPut(source) { mutableSetOf() }.add(sink)
+        phaseInFlows.getOrPut(sink) { mutableSetOf() }.add(source)
     }
 
     private fun dataflowPathExists(source: ExecutionPhase, sink: ExecutionPhase): Boolean {
@@ -78,6 +81,8 @@ class ExecutionPhase(
         get() = model.getChildrenOf(this)
     val outFlows: Set<ExecutionPhase>
         get() = model.getOutFlowsOf(this)
+    val inFlows: Set<ExecutionPhase>
+        get() = model.getInFlowsOf(this)
 
     init {
         model.addPhase(this)
