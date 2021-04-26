@@ -17,9 +17,10 @@ class ResourceModel {
     fun addResource(
         name: String,
         tags: Map<String, String> = emptyMap(),
-        description: String? = null
+        description: String? = null,
+        metric: Metric? = null
     ): Resource {
-        val resource = Resource(name, tags, description, this)
+        val resource = Resource(name, tags, description, metric, this)
         _resources.add(resource)
         return resource
     }
@@ -50,6 +51,7 @@ class Resource(
     val name: String,
     val tags: Map<String, String>,
     val description: String?,
+    val metric: Metric?,
     private val model: ResourceModel
 ) {
 
@@ -57,6 +59,9 @@ class Resource(
         get() = model.getParentOf(this)
     val children: Set<Resource>
         get() = model.getChildrenOf(this)
+
+    val hasMetric: Boolean
+        get() = metric != null
 
     fun addChild(resource: Resource) {
         model.addParentRelationship(this, resource)
