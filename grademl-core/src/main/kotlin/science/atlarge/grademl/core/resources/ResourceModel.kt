@@ -18,10 +18,12 @@ class ResourceModel {
         name: String,
         tags: Map<String, String> = emptyMap(),
         description: String? = null,
-        metric: Metric? = null
+        metric: Metric? = null,
+        parent: Resource? = null
     ): Resource {
         val resource = Resource(name, tags, description, metric, this)
         _resources.add(resource)
+        if (parent != null) addParentRelationship(parent, resource)
         return resource
     }
 
