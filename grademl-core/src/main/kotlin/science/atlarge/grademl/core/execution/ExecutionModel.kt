@@ -37,6 +37,9 @@ class ExecutionModel {
         require(source in phases && sink in phases) {
             "Cannot add relationship to phase(s) not part of this ExecutionModel"
         }
+        require(phaseParents[source] === phaseParents[sink]) {
+            "Cannot add relationship to phases with different parents"
+        }
 
         phaseOutFlows.getOrPut(source) { mutableSetOf() }.add(sink)
     }
