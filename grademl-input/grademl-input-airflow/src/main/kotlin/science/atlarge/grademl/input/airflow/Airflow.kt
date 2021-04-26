@@ -13,7 +13,7 @@ object Airflow {
         unifiedExecutionModel: ExecutionModel? = null
     ): ExecutionModel {
         // Parse Airflow logs
-        val airflowLogDirectory = jobLogDirectory.resolve("logs").resolve("airflow-logs")
+        val airflowLogDirectory = jobLogDirectory.resolve("logs").resolve("airflow")
         require(airflowLogDirectory.toFile().isDirectory) { "Cannot find Airflow logs in $jobLogDirectory" }
         val airflowLog = AirflowLogParser.parseFromDirectory(airflowLogDirectory)
 
