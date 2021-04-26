@@ -1,9 +1,7 @@
 package science.atlarge.grademl.input.airflow
 
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.*
-import kotlin.system.exitProcess
 
 class AirflowLogParser private constructor(
     private val airflowLogDirectory: Path
@@ -89,25 +87,3 @@ data class AirflowLog(
     val taskNames: Set<String>,
     val taskDownstreamNames: Map<String, Set<String>>
 )
-
-// Wrapper for testing the log parser
-fun main(args: Array<String>) {
-    if (args.size != 1 || args[0] == "--help") {
-        println("Arguments: <airflowLogDirectory>")
-        exitProcess(if (args.size != 1) -1 else 0)
-    }
-
-    val log = AirflowLogParser.parseFromDirectory(Paths.get(args[0]))
-    println("Output of Airflow log parsing:")
-    println("  Run ID:         ${log.runId}")
-    println("  DAG name:       ${log.dagName}")
-    println("  Tasks names:    ${log.taskNames.sorted().joinToString(", ")}")
-    println("  Task order constraints:")
-    if (log.taskDownstreamNames.isNotEmpty()) {
-        log.taskDownstreamNames.entries.sortedBy { it.key }.forEach { (upstream, downstreams) ->
-            println("    $upstream -> [${downstreams.joinToString(", ")}]")
-        }
-    } else {
-        println("    (none)")
-    }
-}
