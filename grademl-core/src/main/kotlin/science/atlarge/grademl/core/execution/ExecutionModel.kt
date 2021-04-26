@@ -3,9 +3,23 @@ package science.atlarge.grademl.core.execution
 class ExecutionModel {
 
     private val phases = mutableSetOf<ExecutionPhase>()
+    private val phaseParents = mutableMapOf<ExecutionPhase, ExecutionPhase>()
+    private val phaseChildren = mutableMapOf<ExecutionPhase, MutableSet<ExecutionPhase>>()
 
     internal fun addPhase(phase: ExecutionPhase) {
+        require(phase.model === this) { "Cannot add phase from a different ExecutionModel" }
         phases.add(phase)
+    }
+
+    internal fun addParentRelationship(parentPhase: ExecutionPhase, childPhase: ExecutionPhase) {
+        require(parentPhase != childPhase) { "Cannot set phase as its own parent" }
+        require(parentPhase in phases && childPhase in phases) {
+            "Cannot add relationship to phase(s) not part of this ExecutionModel"
+        }
+        require(childPhase !in phaseParents) { "Cannot add more than one parent to a phase" }
+
+        phaseParents[childPhase] = parentPhase
+        phaseChildren.getOrPut(parentPhase) { mutableSetOf() }.add(childPhase)
     }
 
 }
@@ -14,11 +28,15 @@ class ExecutionPhase(
     val name: String,
     val tags: Map<String, String> = emptyMap(),
     val description: String? = null,
-    private val model: ExecutionModel
+    internal val model: ExecutionModel
 ) {
 
     init {
         model.addPhase(this)
+    }
+
+    fun addChild(phase: ExecutionPhase) {
+        model.addParentRelationship(this, phase)
     }
 
 }
