@@ -22,11 +22,15 @@ object Airflow {
         val dagPhase = executionModel.addPhase(
             name = airflowLog.dagName,
             tags = mapOf("run_id" to airflowLog.runId),
-            startTime = 0,
-            endTime = 0
+            startTime = airflowLog.taskStartTimes.values.minOrNull() ?: 0L,
+            endTime = airflowLog.taskEndTimes.values.maxOrNull() ?: 0L
         )
         val taskPhases = airflowLog.taskNames.associateWith { taskName ->
-            executionModel.addPhase(name = taskName, startTime = 0, endTime = 0)
+            executionModel.addPhase(
+                name = taskName,
+                startTime = airflowLog.taskStartTimes[taskName]!!,
+                endTime = airflowLog.taskEndTimes[taskName]!!
+            )
         }
         // Add parent-child relationships between DAG and tasks
         for (taskPhase in taskPhases.values) {
@@ -58,17 +62,21 @@ fun main(args: Array<String>) {
 
     fun printPhase(phase: ExecutionPhase, indent: String) {
         val outFlows = phase.outFlows.sortedBy { it.identifier }
-        print("$indent/${phase.identifier}")
-        if (outFlows.isNotEmpty()) {
-            print("  ->  (${outFlows.joinToString(", ") { it.identifier }})")
-        }
-        println()
+        println("$indent/${phase.identifier}")
+        println(
+            "$indent      Start time:          %d.%09d"
+                .format(phase.startTime / 1_000_000_000, phase.startTime % 1_000_000_000)
+        )
+        println(
+            "$indent      End time:            %d.%09d"
+                .format(phase.endTime / 1_000_000_000, phase.endTime % 1_000_000_000)
+        )
+        println("$indent      Outgoing dataflows:  (${outFlows.joinToString(", ") { it.identifier }})")
         for (childPhase in phase.children.sortedBy { it.identifier }) {
             printPhase(childPhase, "$indent  ")
         }
     }
-    println("  Phases and dataflows:")
     for (rootPhase in executionModel.rootPhases.sortedBy { it.identifier }) {
-        printPhase(rootPhase, "    ")
+        printPhase(rootPhase, "  ")
     }
 }

@@ -1,6 +1,9 @@
 package science.atlarge.grademl.input.airflow
 
 import java.nio.file.Path
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 class AirflowLogParser private constructor(
@@ -10,6 +13,8 @@ class AirflowLogParser private constructor(
     private lateinit var runId: String
     private lateinit var dagName: String
     private val taskNames = mutableSetOf<String>()
+    private val taskStartTimes = mutableMapOf<String, Long>()
+    private val taskEndTimes = mutableMapOf<String, Long>()
     private val taskDownstreamNames = mutableMapOf<String, MutableSet<String>>()
 
     // Expected directory structure:
@@ -22,7 +27,8 @@ class AirflowLogParser private constructor(
         parseRunId()
         findDagName()
         parseDagStructure()
-        return AirflowLog(runId, dagName, taskNames, taskDownstreamNames)
+        parseTaskInformation()
+        return AirflowLog(runId, dagName, taskNames, taskStartTimes, taskEndTimes, taskDownstreamNames)
     }
 
     private fun parseRunId() {
@@ -71,6 +77,42 @@ class AirflowLogParser private constructor(
         }
     }
 
+    private fun parseTaskInformation() {
+        // Find and enumerate task log files
+        val taskDirectories = airflowLogDirectory.toFile()
+            .walkTopDown()
+            .maxDepth(1)
+            .filter { it.isDirectory }
+        val taskLogsPerDirectory = taskDirectories
+            .associate { dir ->
+                dir.name to dir.walk().filter { it.isFile && it.extension == "log" }.first()
+            }
+        // Parse the log files of every task
+        for ((taskName, taskLogFile) in taskLogsPerDirectory) {
+            val logLines = taskLogFile.readLines()
+
+            // Find records of the start and end time of the task
+            val startTimeLine = logLines.first { "INFO - Executing <Task" in it }
+            val endTimeLine = logLines.last { "INFO - Marking task" in it }
+
+            // TODO: Log Airflow task start and end times in Unix format to avoid timezone issues
+            // Parse dates and times (assuming local time)
+            fun parseDateTime(dateTime: String): Long {
+                val instant = LocalDateTime
+                    .parse(dateTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss,SSS"))
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+                return instant.epochSecond * 1_000_000_000L + instant.nano
+            }
+
+            val startTime = parseDateTime(startTimeLine.substring(1, startTimeLine.indexOf(']')))
+            val endTime = parseDateTime(endTimeLine.substring(1, endTimeLine.indexOf(']')))
+
+            taskStartTimes[taskName] = startTime
+            taskEndTimes[taskName] = endTime
+        }
+    }
+
     companion object {
 
         fun parseFromDirectory(airflowLogDirectory: Path): AirflowLog {
@@ -85,5 +127,7 @@ data class AirflowLog(
     val runId: String,
     val dagName: String,
     val taskNames: Set<String>,
+    val taskStartTimes: Map<String, Long>,
+    val taskEndTimes: Map<String, Long>,
     val taskDownstreamNames: Map<String, Set<String>>
 )
