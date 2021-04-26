@@ -11,6 +11,10 @@ class ExecutionModel {
     // Dataflow relationships
     private val phaseOutFlows = mutableMapOf<ExecutionPhase, MutableSet<ExecutionPhase>>()
 
+    fun getParentOf(phase: ExecutionPhase): ExecutionPhase? = phaseParents[phase]
+    fun getChildrenOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseChildren[phase] ?: emptySet()
+    fun getOutFlowsOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseOutFlows[phase] ?: emptySet()
+
     internal fun addPhase(phase: ExecutionPhase) {
         require(phase.model === this) { "Cannot add phase from a different ExecutionModel" }
         phases.add(phase)
@@ -67,6 +71,13 @@ class ExecutionPhase(
     val description: String? = null,
     internal val model: ExecutionModel
 ) {
+
+    val parent: ExecutionPhase?
+        get() = model.getParentOf(this)
+    val children: Set<ExecutionPhase>
+        get() = model.getChildrenOf(this)
+    val outFlows: Set<ExecutionPhase>
+        get() = model.getOutFlowsOf(this)
 
     init {
         model.addPhase(this)
