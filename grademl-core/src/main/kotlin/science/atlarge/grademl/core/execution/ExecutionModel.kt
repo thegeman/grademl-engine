@@ -1,5 +1,7 @@
 package science.atlarge.grademl.core.execution
 
+import java.util.*
+
 class ExecutionModel {
 
     private val phases = mutableSetOf<ExecutionPhase>()
@@ -40,8 +42,21 @@ class ExecutionModel {
         require(phaseParents[source] === phaseParents[sink]) {
             "Cannot add relationship to phases with different parents"
         }
+        require(!dataflowPathExists(sink, source)) { "Cannot introduce cycles in dataflow relationships" }
 
         phaseOutFlows.getOrPut(source) { mutableSetOf() }.add(sink)
+    }
+
+    private fun dataflowPathExists(source: ExecutionPhase, sink: ExecutionPhase): Boolean {
+        val phasesToCheck = LinkedList<ExecutionPhase>()
+        phasesToCheck.add(source)
+        while (phasesToCheck.isNotEmpty()) {
+            val phase = phasesToCheck.pop()
+            val nextPhases = phaseOutFlows[phase] ?: continue
+            if (sink in nextPhases) return true
+            phasesToCheck.addAll(nextPhases)
+        }
+        return false
     }
 
 }
