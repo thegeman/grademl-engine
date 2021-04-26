@@ -4,13 +4,18 @@ import java.util.*
 
 class ExecutionModel {
 
-    private val phases = mutableSetOf<ExecutionPhase>()
+    private val _phases = mutableSetOf<ExecutionPhase>()
     // Parent-child relationships
     private val phaseParents = mutableMapOf<ExecutionPhase, ExecutionPhase>()
     private val phaseChildren = mutableMapOf<ExecutionPhase, MutableSet<ExecutionPhase>>()
     // Dataflow relationships
     private val phaseOutFlows = mutableMapOf<ExecutionPhase, MutableSet<ExecutionPhase>>()
     private val phaseInFlows = mutableMapOf<ExecutionPhase, MutableSet<ExecutionPhase>>()
+
+    val phases: Set<ExecutionPhase>
+        get() = _phases
+    val rootPhases: Set<ExecutionPhase>
+        get() = _phases - phaseParents.keys
 
     fun getParentOf(phase: ExecutionPhase): ExecutionPhase? = phaseParents[phase]
     fun getChildrenOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseChildren[phase] ?: emptySet()
@@ -23,13 +28,13 @@ class ExecutionModel {
         description: String? = null
     ): ExecutionPhase {
         val phase = ExecutionPhase(name, tags, description, this)
-        phases.add(phase)
+        _phases.add(phase)
         return phase
     }
 
     internal fun addParentRelationship(parentPhase: ExecutionPhase, childPhase: ExecutionPhase) {
         require(parentPhase != childPhase) { "Cannot set phase as its own parent" }
-        require(parentPhase in phases && childPhase in phases) {
+        require(parentPhase in _phases && childPhase in _phases) {
             "Cannot add relationship to phase(s) not part of this ExecutionModel"
         }
         require(childPhase !in phaseParents) { "Cannot add more than one parent to a phase" }
@@ -47,7 +52,7 @@ class ExecutionModel {
 
     internal fun addDataflowRelationship(source: ExecutionPhase, sink: ExecutionPhase) {
         require(source != sink) { "Cannot add dataflow between phase and itself" }
-        require(source in phases && sink in phases) {
+        require(source in _phases && sink in _phases) {
             "Cannot add relationship to phase(s) not part of this ExecutionModel"
         }
         require(phaseParents[source] === phaseParents[sink]) {
