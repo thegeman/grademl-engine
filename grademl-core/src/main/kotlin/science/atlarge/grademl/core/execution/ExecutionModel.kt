@@ -82,7 +82,7 @@ class ExecutionPhase internal constructor(
     val name: String,
     val tags: Map<String, String> = emptyMap(),
     val description: String? = null,
-    internal val model: ExecutionModel
+    private val model: ExecutionModel
 ) {
 
     val identifier = if (tags.isEmpty()) {
