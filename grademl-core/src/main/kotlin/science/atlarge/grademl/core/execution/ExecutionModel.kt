@@ -17,9 +17,16 @@ class ExecutionModel {
             "Cannot add relationship to phase(s) not part of this ExecutionModel"
         }
         require(childPhase !in phaseParents) { "Cannot add more than one parent to a phase" }
+        require(!isPhaseInSubtree(parentPhase, childPhase)) { "Cannot introduce cycles in parent-child relationships" }
 
         phaseParents[childPhase] = parentPhase
         phaseChildren.getOrPut(parentPhase) { mutableSetOf() }.add(childPhase)
+    }
+
+    private fun isPhaseInSubtree(phase: ExecutionPhase, subtreeRoot: ExecutionPhase): Boolean {
+        if (phase === subtreeRoot) return true
+        val children = phaseChildren[subtreeRoot] ?: return false
+        return children.any { child -> isPhaseInSubtree(phase, child) }
     }
 
 }
