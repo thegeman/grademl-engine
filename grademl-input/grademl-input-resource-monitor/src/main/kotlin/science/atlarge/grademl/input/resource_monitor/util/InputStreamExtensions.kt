@@ -1,5 +1,6 @@
 package science.atlarge.grademl.input.resource_monitor.util
 
+import java.io.IOException
 import java.io.InputStream
 
 fun InputStream.tryReadLELong(): Long? {
@@ -15,7 +16,7 @@ fun InputStream.tryReadLELong(): Long? {
 
 fun InputStream.readLELong(): Long {
     return tryReadLELong()
-            ?: throw IllegalStateException("Reached end-of-stream before reaching the end of the Long value")
+            ?: throw IOException("Reached end-of-stream before reaching the end of the Long value")
 }
 
 fun InputStream.readLEB128Int(): Int {
@@ -25,7 +26,7 @@ fun InputStream.readLEB128Int(): Int {
     do {
         nextByte = read()
         if (nextByte < 0)
-            throw IllegalStateException("Reached end-of-stream before reaching the end of the Long value")
+            throw IOException("Reached end-of-stream before reaching the end of the Long value")
         value = value or ((nextByte and 0x7F) shl index)
         index += 7
     } while ((nextByte and 0x80) != 0)
@@ -39,7 +40,7 @@ fun InputStream.readLEB128Long(): Long {
     do {
         nextByte = read()
         if (nextByte < 0)
-            throw IllegalStateException("Reached end-of-stream before reaching the end of the Long value")
+            throw IOException("Reached end-of-stream before reaching the end of the Long value")
         value = value or ((nextByte.toLong() and 0x7F) shl index)
         index += 7
     } while ((nextByte and 0x80) != 0)
