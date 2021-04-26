@@ -1,5 +1,6 @@
 package science.atlarge.grademl.input.airflow
 
+import science.atlarge.grademl.core.TimestampNs
 import java.nio.file.Path
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -13,8 +14,8 @@ class AirflowLogParser private constructor(
     private lateinit var runId: String
     private lateinit var dagName: String
     private val taskNames = mutableSetOf<String>()
-    private val taskStartTimes = mutableMapOf<String, Long>()
-    private val taskEndTimes = mutableMapOf<String, Long>()
+    private val taskStartTimes = mutableMapOf<String, TimestampNs>()
+    private val taskEndTimes = mutableMapOf<String, TimestampNs>()
     private val taskDownstreamNames = mutableMapOf<String, MutableSet<String>>()
 
     // Expected directory structure:
@@ -127,7 +128,7 @@ data class AirflowLog(
     val runId: String,
     val dagName: String,
     val taskNames: Set<String>,
-    val taskStartTimes: Map<String, Long>,
-    val taskEndTimes: Map<String, Long>,
+    val taskStartTimes: Map<String, TimestampNs>,
+    val taskEndTimes: Map<String, TimestampNs>,
     val taskDownstreamNames: Map<String, Set<String>>
 )

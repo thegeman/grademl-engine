@@ -1,5 +1,7 @@
 package science.atlarge.grademl.core.execution
 
+import science.atlarge.grademl.core.DurationNs
+import science.atlarge.grademl.core.TimestampNs
 import java.util.*
 
 class ExecutionModel {
@@ -26,8 +28,8 @@ class ExecutionModel {
         name: String,
         tags: Map<String, String> = emptyMap(),
         description: String? = null,
-        startTime: Long,
-        endTime: Long
+        startTime: TimestampNs,
+        endTime: TimestampNs
     ): ExecutionPhase {
         val phase = ExecutionPhase(name, tags, description, startTime, endTime, this)
         _phases.add(phase)
@@ -84,8 +86,8 @@ class ExecutionPhase internal constructor(
     val name: String,
     val tags: Map<String, String> = emptyMap(),
     val description: String? = null,
-    val startTime: Long,
-    val endTime: Long,
+    val startTime: TimestampNs,
+    val endTime: TimestampNs,
     private val model: ExecutionModel
 ) {
 
@@ -95,7 +97,7 @@ class ExecutionPhase internal constructor(
         "$name[${tags.entries.sortedBy { it.key }.joinToString(separator = ", ") { "${it.key}=${it.value}" }}]"
     }
 
-    val duration: Long
+    val duration: DurationNs
         get() = if (startTime < endTime) endTime - startTime else 0
 
     val parent: ExecutionPhase?
