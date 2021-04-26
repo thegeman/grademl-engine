@@ -85,6 +85,12 @@ class ExecutionPhase internal constructor(
     internal val model: ExecutionModel
 ) {
 
+    val identifier = if (tags.isEmpty()) {
+        name
+    } else {
+        "$name[${tags.entries.sortedBy { it.key }.joinToString(separator = ", ") { "${it.key}=${it.value}" }}]"
+    }
+
     val parent: ExecutionPhase?
         get() = model.getParentOf(this)
     val children: Set<ExecutionPhase>
