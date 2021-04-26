@@ -7,7 +7,7 @@ import java.io.IOException
 
 class ProcDiskstatsParser {
 
-    fun parse(logFile: File): DisksUtilizationData {
+    fun parse(logFile: File): DiskUtilizationData {
         return logFile.inputStream().buffered().use { inStream ->
             // Read first message to determine number and names of disks
             val initialTimestamp = inStream.readLELong()
@@ -74,7 +74,7 @@ class ProcDiskstatsParser {
             val disks = diskNames.mapIndexed { i, diskId ->
                 val totalTimeSpentArr = totalTimeSpentFractionMetric[i].toArray()
                 val totalTimeSpentValid = totalTimeSpentArr.any { it > 0.0 }
-                DiskUtilizationData(
+                SingleDiskUtilizationData(
                     diskId,
                     timestampArray,
                     bytesReadMetric[i].toArray(),
@@ -85,19 +85,19 @@ class ProcDiskstatsParser {
                 )
             }
 
-            DisksUtilizationData(disks)
+            DiskUtilizationData(disks)
         }
     }
 
 }
 
-class DisksUtilizationData(diskData: Iterable<DiskUtilizationData>) {
+class DiskUtilizationData(diskData: Iterable<SingleDiskUtilizationData>) {
 
-    val disks = diskData.associateBy(DiskUtilizationData::diskId)
+    val disks = diskData.associateBy(SingleDiskUtilizationData::diskId)
 
 }
 
-class DiskUtilizationData(
+class SingleDiskUtilizationData(
     val diskId: String,
     val timestamps: TimestampNsArray,
     val bytesRead: DoubleArray,
