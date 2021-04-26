@@ -10,6 +10,8 @@ class ResourceModel {
 
     val resources: Set<Resource>
         get() = _resources
+    val rootResources: Set<Resource>
+        get() = _resources - resourceParents.keys
 
     fun getParentOf(resource: Resource): Resource? = resourceParents[resource]
     fun getChildrenOf(resource: Resource): Set<Resource> = resourceChildren[resource] ?: emptySet()
