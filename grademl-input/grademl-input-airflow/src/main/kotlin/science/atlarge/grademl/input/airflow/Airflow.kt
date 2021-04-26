@@ -1,6 +1,7 @@
 package science.atlarge.grademl.input.airflow
 
 import science.atlarge.grademl.core.execution.ExecutionModel
+import science.atlarge.grademl.core.execution.ExecutionPhase
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.system.exitProcess
@@ -41,4 +42,31 @@ object Airflow {
         return executionModel
     }
 
+}
+
+// Wrapper for testing the log parser
+fun main(args: Array<String>) {
+    if (args.size != 1 || args[0] == "--help") {
+        println("Arguments: <jobLogDirectory>")
+        exitProcess(if (args.size != 1) -1 else 0)
+    }
+
+    val executionModel = Airflow.parseJobLogs(Paths.get(args[0]))
+    println("Execution model extracted from Airflow logs:")
+
+    fun printPhase(phase: ExecutionPhase, indent: String) {
+        val outFlows = phase.outFlows.sortedBy { it.identifier }
+        print("$indent/${phase.identifier}")
+        if (outFlows.isNotEmpty()) {
+            print("  ->  (${outFlows.joinToString(", ") { it.identifier }})")
+        }
+        println()
+        for (childPhase in phase.children.sortedBy { it.identifier }) {
+            printPhase(childPhase, "$indent  ")
+        }
+    }
+    println("  Phases and dataflows:")
+    for (rootPhase in executionModel.rootPhases.sortedBy { it.identifier }) {
+        printPhase(rootPhase, "    ")
+    }
 }
