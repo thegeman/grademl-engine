@@ -6,6 +6,7 @@ import org.jline.reader.impl.DefaultParser
 import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
 import science.atlarge.grademl.cli.util.PhaseList
+import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.execution.ExecutionModel
 import science.atlarge.grademl.core.resources.ResourceModel
 import science.atlarge.grademl.input.airflow.Airflow
@@ -105,5 +106,14 @@ class CliState(
 ) {
 
     val phaseList = PhaseList.fromExecutionModel(executionModel)
+
+    private val earliestTimestamp: TimestampNs = minOf(
+        executionModel.phases.map { it.startTime }.minOrNull() ?: Long.MAX_VALUE,
+        resourceModel.resources.flatMap { it.metrics.values }
+            .mapNotNull { it.timestamps.firstOrNull() }.minOrNull() ?: Long.MAX_VALUE
+    )
+
+    fun normalizeTimestamp(plainTimestamp: TimestampNs): Long = plainTimestamp - earliestTimestamp
+    fun denormalizeTimestamp(normalizedTimestamp: Long): TimestampNs = normalizedTimestamp + earliestTimestamp
 
 }
