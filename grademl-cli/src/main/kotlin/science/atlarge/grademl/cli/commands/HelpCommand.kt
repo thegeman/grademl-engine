@@ -2,19 +2,27 @@ package science.atlarge.grademl.cli.commands
 
 import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.CommandRegistry
+import science.atlarge.grademl.cli.util.Argument
+import science.atlarge.grademl.cli.util.ParsedCommand
 
-object HelpCommand : Command {
+object HelpCommand : Command(
+    name = "help",
+    shortHelpMessage = "display this message",
+    longHelpMessage = "Use \"help\" for a list of available commands, " +
+            "or \"help [command]\" for detailed information about a particular command.",
+    supportedArguments = listOf(
+        Argument(
+            name = "command",
+            isOptional = true,
+            description = "name of command to display detailed information for"
+        )
+    )
+) {
 
-    override val name: String
-        get() = "help"
-    override val shortHelpMessage: String
-        get() = "display this message"
-    override val longHelpMessage: String
-        get() = ""
-
-    override fun process(arguments: List<String>, cliState: CliState) {
-        if (arguments.isEmpty()) displayShortHelp()
-        else displayLongHelp(arguments)
+    override fun process(parsedCommand: ParsedCommand, cliState: CliState) {
+        val commandArg = parsedCommand.getArgumentValue("command")
+        if (commandArg == null) displayShortHelp()
+        else displayLongHelp(commandArg)
     }
 
     private fun displayShortHelp() {
@@ -29,14 +37,7 @@ object HelpCommand : Command {
         println("Use \"help [command]\" to get additional information about a command.")
     }
 
-    private fun displayLongHelp(arguments: List<String>) {
-        if (arguments.size != 1) {
-            println("Incorrect number of arguments to the \"help\" command: ${arguments.size}.")
-            println("Correct usage: help [command]")
-            return
-        }
-
-        val commandName = arguments[0]
+    private fun displayLongHelp(commandName: String) {
         val command = CommandRegistry[commandName]
         if (command == null) {
             println("Cannot display help message for unknown command: \"$commandName\".")

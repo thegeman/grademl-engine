@@ -1,18 +1,17 @@
 package science.atlarge.grademl.cli.commands
 
 import science.atlarge.grademl.cli.CliState
+import science.atlarge.grademl.cli.util.ParsedCommand
 import science.atlarge.grademl.core.execution.ExecutionPhase
 
-object DisplayExecutionModelCommand : Command {
+object DisplayExecutionModelCommand : Command(
+    name = "display-execution-model",
+    shortHelpMessage = "display detailed information about a job's execution model",
+    longHelpMessage = "Displays information about a job's execution model. By default outputs a tree of execution phases,\n" +
+            "and for each execution phase its start time, end time, and a list of outgoing dataflows."
+) {
 
-    override val name: String
-        get() = "display-execution-model"
-    override val shortHelpMessage: String
-        get() = "display detailed information about a job's execution model"
-    override val longHelpMessage: String
-        get() = ""
-
-    override fun process(arguments: List<String>, cliState: CliState) {
+    override fun process(parsedCommand: ParsedCommand, cliState: CliState) {
         println("Execution model extracted from job logs:")
 
         fun printPhase(phase: ExecutionPhase, indent: String) {
