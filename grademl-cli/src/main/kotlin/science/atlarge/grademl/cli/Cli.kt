@@ -1,9 +1,15 @@
 package science.atlarge.grademl.cli
 
+import org.jline.builtins.Completers
+import org.jline.reader.LineReaderBuilder
+import org.jline.reader.impl.DefaultParser
+import org.jline.reader.impl.history.DefaultHistory
+import org.jline.terminal.TerminalBuilder
 import science.atlarge.grademl.core.execution.ExecutionModel
 import science.atlarge.grademl.core.resources.ResourceModel
 import science.atlarge.grademl.input.airflow.Airflow
 import science.atlarge.grademl.input.resource_monitor.ResourceMonitor
+import java.io.IOError
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.system.exitProcess
@@ -43,7 +49,37 @@ object Cli {
     }
 
     private fun runCli(executionModel: ExecutionModel, resourceModel: ResourceModel) {
-        TODO()
+        // Set up the terminal and CLI parsing library
+        val terminal = TerminalBuilder.builder()
+            .jansi(true)
+            .build()
+        val completer = Completers.AnyCompleter.INSTANCE
+        val parser = DefaultParser()
+        val lineReader = LineReaderBuilder.builder()
+            .appName("GradeML")
+            .terminal(terminal)
+            .completer(completer)
+            .parser(parser)
+            .history(DefaultHistory())
+            .build()
+
+        // Repeatedly read, parse, and execute commands until the users quits the application
+        while (true) {
+            // Read the next line
+            val line = try {
+                lineReader.readLine("> ")
+            } catch (e: Exception) {
+                when (e) {
+                    // End the CLI when the line reader is aborted
+                    is IOError -> break
+                    else -> throw e
+                }
+            }
+
+            // For now, just echo back the parsed line
+            val parsedLine = lineReader.parser.parse(line, 0)
+            terminal.writer().println("Got words [${parsedLine.words().joinToString()}]")
+        }
     }
 
 }
