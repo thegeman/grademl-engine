@@ -1,6 +1,7 @@
 package science.atlarge.grademl.cli.commands
 
 import science.atlarge.grademl.cli.CliState
+import science.atlarge.grademl.cli.data.MetricDataWriter
 import science.atlarge.grademl.cli.data.MetricListWriter
 import science.atlarge.grademl.cli.data.PhaseListWriter
 import science.atlarge.grademl.cli.util.ParsedCommand
@@ -37,6 +38,13 @@ object PlotOverviewCommand : Command(
             dataOutputPath
         )
 
+        // Write all metric data as time series to a file
+        writeMetricData(
+            cliState.resourceModel.resources.flatMap { it.metrics },
+            cliState,
+            dataOutputPath
+        )
+
         // Plot the overview using R
         TODO()
     }
@@ -60,6 +68,16 @@ object PlotOverviewCommand : Command(
         val outputFile = dataOutputPath.resolve(MetricListWriter.FILENAME).toFile()
         println("Writing list of metrics to \"${outputFile.absolutePath}\".")
         MetricListWriter.output(outputFile, selectedMetrics, cliState)
+    }
+
+    private fun writeMetricData(
+        selectedMetrics: Iterable<Metric>,
+        cliState: CliState,
+        dataOutputPath: Path
+    ) {
+        val outputFile = dataOutputPath.resolve(MetricDataWriter.FILENAME).toFile()
+        println("Writing metric data to \"${outputFile.absolutePath}\".")
+        MetricDataWriter.output(outputFile, selectedMetrics, cliState)
     }
 
 }
