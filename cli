@@ -1,0 +1,19 @@
+#!/usr/bin/bash
+
+# Get path of GradeML repository
+GRADEML_ROOT="$(readlink -f "$(dirname "${BASH_SOURCE[0]}")")"
+
+# Use Gradle :installDist to ensure the CLI binaries are up-to-date
+echo "Compiling GradeML CLI to ensure it is up-to-date."
+gradle_output=$("$GRADEML_ROOT/gradlew" --no-daemon --console=plain :grademl-cli:installDist 2>&1)
+if [[ $? -ne 0 ]]; then
+    echo
+    echo "Gradle compilation failed!" >&2
+    echo
+    echo "$gradle_output"
+    exit 1
+fi
+echo
+
+# Start the GradeML CLI
+"$GRADEML_ROOT/grademl-cli/build/install/grademl-cli/bin/grademl-cli" "$@"

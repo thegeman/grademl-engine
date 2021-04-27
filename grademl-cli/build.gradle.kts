@@ -2,6 +2,11 @@ description = "CLI for GradeML"
 
 plugins {
     kotlin("jvm") version "1.5.0-RC"
+    application
+}
+
+application {
+    mainClass.set("science.atlarge.grademl.cli.Cli")
 }
 
 dependencies {
