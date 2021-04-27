@@ -22,8 +22,8 @@ object Cli {
         println("Welcome to the GradeML CLI!")
         println()
 
-        if (args.size != 1) {
-            println("Usage: grademl-cli <jobLogDirectory>")
+        if (args.size != 2) {
+            println("Usage: grademl-cli <jobLogDirectory> <jobAnalysisDirectory>")
             exitProcess(1)
         }
 
@@ -36,7 +36,7 @@ object Cli {
         println("Enter \"help\" for a list of available commands.")
         println()
 
-        runCli(executionModel, resourceModel)
+        runCli(CliState(executionModel, resourceModel, Paths.get(args[1])))
     }
 
     private fun parseJobLogs(jobLogDirectory: Path): Pair<ExecutionModel, ResourceModel> {
@@ -49,7 +49,7 @@ object Cli {
         return executionModel to resourceModel
     }
 
-    private fun runCli(executionModel: ExecutionModel, resourceModel: ResourceModel) {
+    private fun runCli(cliState: CliState) {
         // Set up the terminal and CLI parsing library
         val terminal = TerminalBuilder.builder()
             .jansi(true)
@@ -63,9 +63,6 @@ object Cli {
             .parser(parser)
             .history(DefaultHistory())
             .build()
-
-        // Set up CLI state to be manipulated by commands
-        val cliState = CliState(executionModel, resourceModel)
 
         // Repeatedly read, parse, and execute commands until the users quits the application
         while (true) {
@@ -103,7 +100,8 @@ object Cli {
 
 class CliState(
     val executionModel: ExecutionModel,
-    val resourceModel: ResourceModel
+    val resourceModel: ResourceModel,
+    val outputPath: Path
 ) {
 
     val phaseList = PhaseList.fromExecutionModel(executionModel)
