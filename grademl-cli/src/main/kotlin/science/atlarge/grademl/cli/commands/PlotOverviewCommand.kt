@@ -1,10 +1,11 @@
 package science.atlarge.grademl.cli.commands
 
 import science.atlarge.grademl.cli.CliState
+import science.atlarge.grademl.cli.data.MetricListWriter
 import science.atlarge.grademl.cli.data.PhaseListWriter
 import science.atlarge.grademl.cli.util.ParsedCommand
-import science.atlarge.grademl.cli.util.PhaseList
 import science.atlarge.grademl.core.execution.ExecutionPhase
+import science.atlarge.grademl.core.resources.Metric
 import java.nio.file.Path
 
 object PlotOverviewCommand : Command(
@@ -30,9 +31,14 @@ object PlotOverviewCommand : Command(
         )
 
         // Select and output all metrics in the resource model
-        TODO()
+        writeMetricList(
+            cliState.resourceModel.resources.flatMap { it.metrics },
+            cliState,
+            dataOutputPath
+        )
 
         // Plot the overview using R
+        TODO()
     }
 
     private fun writePhaseList(
@@ -44,6 +50,16 @@ object PlotOverviewCommand : Command(
         val outputFile = dataOutputPath.resolve(PhaseListWriter.FILENAME).toFile()
         println("Writing list of execution phases to \"${outputFile.absolutePath}\".")
         PhaseListWriter.output(outputFile, rootPhase, selectedPhases, cliState)
+    }
+
+    private fun writeMetricList(
+        selectedMetrics: Iterable<Metric>,
+        cliState: CliState,
+        dataOutputPath: Path
+    ) {
+        val outputFile = dataOutputPath.resolve(MetricListWriter.FILENAME).toFile()
+        println("Writing list of metrics to \"${outputFile.absolutePath}\".")
+        MetricListWriter.output(outputFile, selectedMetrics, cliState)
     }
 
 }
