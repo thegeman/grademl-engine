@@ -1,6 +1,6 @@
 package science.atlarge.grademl.cli.data
 
-import science.atlarge.grademl.cli.util.PhaseList
+import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.core.execution.ExecutionPhase
 import java.io.File
 
@@ -12,7 +12,7 @@ object PhaseListWriter {
         outFile: File,
         rootPhase: ExecutionPhase,
         selectedPhases: Iterable<ExecutionPhase>,
-        phaseList: PhaseList
+        cliState: CliState
     ) {
         val allPhases = selectedPhases.toSet() + rootPhase
         val phaseDepths = allPhases.associateWith { countDepth(it, rootPhase) }
@@ -27,8 +27,12 @@ object PhaseListWriter {
             )
             val phasesInOrder = createCanonicalOrder(rootPhase, allPhases)
             phasesInOrder.forEachIndexed { index, phase ->
-                val phaseId = phaseList.phaseToIdentifier(phase)
-                val parentPhaseId = if (phase === rootPhase) phaseId else phaseList.phaseToIdentifier(phase.parent!!)
+                val phaseId = cliState.phaseList.phaseToIdentifier(phase)
+                val parentPhaseId = if (phase === rootPhase) {
+                    phaseId
+                } else {
+                    cliState.phaseList.phaseToIdentifier(phase.parent!!)
+                }
                 val depth = phaseDepths[phase]!!
                 writer.apply {
                     append(phaseId)
@@ -39,9 +43,9 @@ object PhaseListWriter {
                     append('\t')
                     append(depth.toString())
                     append('\t')
-                    append(phase.startTime.toString())
+                    append(cliState.normalizeTimestamp(phase.startTime).toString())
                     append('\t')
-                    append(phase.endTime.toString())
+                    append(cliState.normalizeTimestamp(phase.endTime).toString())
                     append('\t')
                     appendLine(index.toString())
                 }
