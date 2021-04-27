@@ -87,7 +87,11 @@ sealed class ExecutionPhase(
     }
 
     val path: String by lazy {
-        "${parent?.path ?: ""}/$identifier"
+        when {
+            isRoot -> "/"
+            parent!!.isRoot -> "/$identifier"
+            else -> "${parent!!.path}/$identifier"
+        }
     }
 
     val duration: DurationNs
