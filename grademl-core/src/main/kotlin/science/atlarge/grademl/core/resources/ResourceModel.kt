@@ -69,10 +69,12 @@ sealed class Resource(
     val children: Set<Resource>
         get() = model.getChildrenOf(this)
 
-    open fun addMetric(metric: Metric) {
-        require(metric.name !in _metricsByName) { "Cannot add multiple metrics with the same name" }
-        _metricsByName[metric.name] = metric
+    open fun addMetric(name: String, data: MetricData): Metric {
+        require(name !in _metricsByName) { "Cannot add multiple metrics with the same name" }
+        val metric = MetricImpl(name, data, this)
+        _metricsByName[name] = metric
         _metrics.add(metric)
+        return metric
     }
 
 }
@@ -81,7 +83,7 @@ private class RootResource(
     model: ResourceModel
 ) : Resource("", emptyMap(), null, model) {
 
-    override fun addMetric(metric: Metric) {
+    override fun addMetric(name: String, data: MetricData): Metric {
         throw IllegalArgumentException("Cannot add metrics to the root resource")
     }
 
@@ -93,3 +95,22 @@ private class SubResource(
     description: String?,
     model: ResourceModel
 ) : Resource(name, tags, description, model)
+
+interface Metric {
+    val name: String
+    val path: String
+    val data: MetricData
+    val resource: Resource
+}
+
+private class MetricImpl(
+    override val name: String,
+    override val data: MetricData,
+    override val resource: Resource
+) : Metric {
+
+    override val path: String by lazy {
+        "${resource.path}:$name"
+    }
+
+}

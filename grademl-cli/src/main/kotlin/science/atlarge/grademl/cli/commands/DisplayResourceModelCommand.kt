@@ -42,37 +42,37 @@ object DisplayResourceModelCommand : Command(
 
     private fun printMetric(metric: Metric, indent: String, verbose: Boolean) {
         println("$indent:${metric.name}")
-        if (verbose) printMetricDetails(metric, "$indent    ")
+        if (verbose) printMetricDetails(metric.data, "$indent    ")
     }
 
-    private fun printMetricDetails(metric: Metric, indent: String) {
-        val minTimestamp = metric.timestamps.first().toDisplayString()
-        val maxTimestamp = metric.timestamps.last().toDisplayString()
-        val valueStats = when (metric) {
-            is DoubleMetric -> {
-                if (metric.values.isNotEmpty()) {
-                    val minValue = metric.values.minOrNull()
-                    val avgValue = metric.values.average()
-                    val maxValue = metric.values.maxOrNull()
+    private fun printMetricDetails(metricData: MetricData, indent: String) {
+        val minTimestamp = metricData.timestamps.first().toDisplayString()
+        val maxTimestamp = metricData.timestamps.last().toDisplayString()
+        val valueStats = when (metricData) {
+            is DoubleMetricData -> {
+                if (metricData.values.isNotEmpty()) {
+                    val minValue = metricData.values.minOrNull()
+                    val avgValue = metricData.values.average()
+                    val maxValue = metricData.values.maxOrNull()
                     "$minValue / $avgValue / $maxValue"
                 } else {
                     "(none)"
                 }
             }
-            is LongMetric -> {
-                if (metric.values.isNotEmpty()) {
-                    val minValue = metric.values.minOrNull()
-                    val avgValue = metric.values.average()
-                    val maxValue = metric.values.maxOrNull()
+            is LongMetricData -> {
+                if (metricData.values.isNotEmpty()) {
+                    val minValue = metricData.values.minOrNull()
+                    val avgValue = metricData.values.average()
+                    val maxValue = metricData.values.maxOrNull()
                     "$minValue / $avgValue / $maxValue"
                 } else {
                     "(none)"
                 }
             }
         }
-        val maxValue = when (metric) {
-            is DoubleMetric -> metric.maxValue.toString()
-            is LongMetric -> metric.maxValue.toString()
+        val maxValue = when (metricData) {
+            is DoubleMetricData -> metricData.maxValue.toString()
+            is LongMetricData -> metricData.maxValue.toString()
         }
 
         println("${indent}Timestamps:            [$minTimestamp, $maxTimestamp]")
