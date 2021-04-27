@@ -26,8 +26,8 @@ object DisplayExecutionModelCommand : Command(
 
     private fun printExecutionModel(executionModel: ExecutionModel, verbose: Boolean) {
         println("Execution model extracted from job logs:")
-        for (rootPhase in executionModel.rootPhases.sortedBy { it.identifier }) {
-            printPhase(rootPhase, "  ", verbose)
+        for (topLevelPhase in executionModel.rootPhase.children.sortedBy { it.identifier }) {
+            printPhase(topLevelPhase, "  ", verbose)
         }
     }
 

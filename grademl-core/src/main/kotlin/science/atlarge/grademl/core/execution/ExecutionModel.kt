@@ -6,21 +6,23 @@ import java.util.*
 
 class ExecutionModel {
 
-    private val _phases = mutableSetOf<ExecutionPhase>()
+    // Collection of phases
+    val rootPhase: ExecutionPhase = RootExecutionPhase(this)
+    private val _phases = mutableSetOf<ExecutionPhase>(rootPhase)
+    val phases: Set<ExecutionPhase>
+        get() = _phases
+
     // Parent-child relationships
     private val phaseParents = mutableMapOf<ExecutionPhase, ExecutionPhase>()
     private val phaseChildren = mutableMapOf<ExecutionPhase, MutableSet<ExecutionPhase>>()
+
+    fun getParentOf(phase: ExecutionPhase): ExecutionPhase? = phaseParents[phase]
+    fun getChildrenOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseChildren[phase] ?: emptySet()
+
     // Dataflow relationships
     private val phaseOutFlows = mutableMapOf<ExecutionPhase, MutableSet<ExecutionPhase>>()
     private val phaseInFlows = mutableMapOf<ExecutionPhase, MutableSet<ExecutionPhase>>()
 
-    val phases: Set<ExecutionPhase>
-        get() = _phases
-    val rootPhases: Set<ExecutionPhase>
-        get() = _phases - phaseParents.keys
-
-    fun getParentOf(phase: ExecutionPhase): ExecutionPhase? = phaseParents[phase]
-    fun getChildrenOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseChildren[phase] ?: emptySet()
     fun getOutFlowsOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseOutFlows[phase] ?: emptySet()
     fun getInFlowsOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseInFlows[phase] ?: emptySet()
 
@@ -29,38 +31,24 @@ class ExecutionModel {
         tags: Map<String, String> = emptyMap(),
         description: String? = null,
         startTime: TimestampNs,
-        endTime: TimestampNs
+        endTime: TimestampNs,
+        parent: ExecutionPhase = rootPhase
     ): ExecutionPhase {
-        val phase = ExecutionPhase(name, tags, description, startTime, endTime, this)
+        require(parent in _phases) { "Cannot add phase with parent that is not part of this ExecutionModel" }
+        val phase = SubExecutionPhase(name, tags, description, startTime, endTime, this)
         _phases.add(phase)
+        phaseParents[phase] = parent
+        phaseChildren.getOrPut(parent) { mutableSetOf() }.add(phase)
         return phase
-    }
-
-    internal fun addParentRelationship(parentPhase: ExecutionPhase, childPhase: ExecutionPhase) {
-        require(parentPhase != childPhase) { "Cannot set phase as its own parent" }
-        require(parentPhase in _phases && childPhase in _phases) {
-            "Cannot add relationship to phase(s) not part of this ExecutionModel"
-        }
-        require(childPhase !in phaseParents) { "Cannot add more than one parent to a phase" }
-        require(!isPhaseInSubtree(parentPhase, childPhase)) { "Cannot introduce cycles in parent-child relationships" }
-
-        phaseParents[childPhase] = parentPhase
-        phaseChildren.getOrPut(parentPhase) { mutableSetOf() }.add(childPhase)
-    }
-
-    private fun isPhaseInSubtree(phase: ExecutionPhase, subtreeRoot: ExecutionPhase): Boolean {
-        if (phase === subtreeRoot) return true
-        val children = phaseChildren[subtreeRoot] ?: return false
-        return children.any { child -> isPhaseInSubtree(phase, child) }
     }
 
     internal fun addDataflowRelationship(source: ExecutionPhase, sink: ExecutionPhase) {
         require(source != sink) { "Cannot add dataflow between phase and itself" }
         require(source in _phases && sink in _phases) {
-            "Cannot add relationship to phase(s) not part of this ExecutionModel"
+            "Cannot add dataflow to phase(s) not part of this ExecutionModel"
         }
         require(phaseParents[source] === phaseParents[sink]) {
-            "Cannot add relationship to phases with different parents"
+            "Cannot add dataflow to phases with different parents"
         }
         require(!dataflowPathExists(sink, source)) { "Cannot introduce cycles in dataflow relationships" }
 
@@ -82,24 +70,31 @@ class ExecutionModel {
 
 }
 
-class ExecutionPhase internal constructor(
-    val name: String,
-    val tags: Map<String, String> = emptyMap(),
-    val description: String? = null,
-    val startTime: TimestampNs,
-    val endTime: TimestampNs,
+sealed class ExecutionPhase(
     private val model: ExecutionModel
 ) {
 
-    val identifier = if (tags.isEmpty()) {
-        name
-    } else {
-        "$name[${tags.entries.sortedBy { it.key }.joinToString(separator = ", ") { "${it.key}=${it.value}" }}]"
+    abstract val name: String
+    abstract val tags: Map<String, String>
+    abstract val description: String?
+    abstract val startTime: TimestampNs
+    abstract val endTime: TimestampNs
+
+    val identifier: String by lazy {
+        if (tags.isEmpty()) name
+        else "$name[${tags.entries.sortedBy { it.key }
+            .joinToString(separator = ", ") { "${it.key}=${it.value}" }}]"
+    }
+
+    val path: String by lazy {
+        "${parent?.path ?: ""}/$identifier"
     }
 
     val duration: DurationNs
         get() = if (startTime < endTime) endTime - startTime else 0
 
+    val isRoot: Boolean
+        get() = parent == null
     val parent: ExecutionPhase?
         get() = model.getParentOf(this)
     val children: Set<ExecutionPhase>
@@ -109,12 +104,32 @@ class ExecutionPhase internal constructor(
     val inFlows: Set<ExecutionPhase>
         get() = model.getInFlowsOf(this)
 
-    fun addChild(phase: ExecutionPhase) {
-        model.addParentRelationship(this, phase)
-    }
-
     fun addOutgoingDataflow(sink: ExecutionPhase) {
         model.addDataflowRelationship(this, sink)
     }
 
 }
+
+private class RootExecutionPhase(
+    model: ExecutionModel
+) : ExecutionPhase(model) {
+    override val name: String
+        get() = ""
+    override val tags: Map<String, String>
+        get() = emptyMap()
+    override val description: String?
+        get() = null
+    override val startTime: TimestampNs
+        get() = children.map { it.startTime }.minOrNull() ?: 0L
+    override val endTime: TimestampNs
+        get() = children.map { it.endTime }.maxOrNull() ?: 0L
+}
+
+private class SubExecutionPhase(
+    override val name: String,
+    override val tags: Map<String, String>,
+    override val description: String?,
+    override val startTime: TimestampNs,
+    override val endTime: TimestampNs,
+    model: ExecutionModel
+) : ExecutionPhase(model)

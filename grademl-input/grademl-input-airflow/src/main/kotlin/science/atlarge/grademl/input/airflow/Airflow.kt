@@ -31,12 +31,9 @@ object Airflow {
             executionModel.addPhase(
                 name = taskName,
                 startTime = airflowLog.taskStartTimes[taskName]!!,
-                endTime = airflowLog.taskEndTimes[taskName]!!
+                endTime = airflowLog.taskEndTimes[taskName]!!,
+                parent = dagPhase
             )
-        }
-        // Add parent-child relationships between DAG and tasks
-        for (taskPhase in taskPhases.values) {
-            dagPhase.addChild(taskPhase)
         }
         // Add dataflow relationships between tasks
         for ((upstream, downstreams) in airflowLog.taskDownstreamNames) {
@@ -81,7 +78,7 @@ fun main(args: Array<String>) {
             printPhase(childPhase, "$indent  ")
         }
     }
-    for (rootPhase in executionModel.rootPhases.sortedBy { it.identifier }) {
-        printPhase(rootPhase, "  ")
+    for (topLevelPhase in executionModel.rootPhase.children.sortedBy { it.identifier }) {
+        printPhase(topLevelPhase, "  ")
     }
 }
