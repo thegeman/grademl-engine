@@ -17,3 +17,11 @@ dependencies {
     implementation("org.jline:jline:3.19.0")
     runtimeOnly("org.fusesource.jansi:jansi:2.3.2")
 }
+
+sourceSets {
+    main {
+        resources {
+            srcDir("src/main/R")
+        }
+    }
+}

@@ -5,6 +5,8 @@ import science.atlarge.grademl.cli.data.MetricDataWriter
 import science.atlarge.grademl.cli.data.MetricListWriter
 import science.atlarge.grademl.cli.data.PhaseListWriter
 import science.atlarge.grademl.cli.util.ParsedCommand
+import science.atlarge.grademl.cli.util.instantiateRScript
+import science.atlarge.grademl.cli.util.runRScript
 import science.atlarge.grademl.core.execution.ExecutionPhase
 import science.atlarge.grademl.core.resources.Metric
 import java.nio.file.Path
@@ -15,38 +17,48 @@ object PlotOverviewCommand : Command(
     longHelpMessage = "Plots an overview of the execution and resource model."
 ) {
 
+    private const val PLOT_FILENAME = "overview.pdf"
     private const val SCRIPT_FILENAME = "plot-overview.R"
 
     override fun process(parsedCommand: ParsedCommand, cliState: CliState) {
         // Create output paths for data and scripts
-        val outputPath = cliState.outputPath
-        val dataOutputPath = outputPath.resolve(".data").also { it.toFile().mkdirs() }
-        val rScriptPath = outputPath.resolve(".R").also { it.toFile().mkdirs() }
+        val outputDirectory = cliState.outputPath
+        val dataOutputDirectory = outputDirectory.resolve(".data").also { it.toFile().mkdirs() }
+        val rScriptDirectory = outputDirectory.resolve(".R").also { it.toFile().mkdirs() }
 
         // Select and output all phases in the execution model
         writePhaseList(
             cliState.executionModel.rootPhase,
             cliState.executionModel.phases,
             cliState,
-            dataOutputPath
+            dataOutputDirectory
         )
 
         // Select and output all metrics in the resource model
         writeMetricList(
             cliState.resourceModel.resources.flatMap { it.metrics },
             cliState,
-            dataOutputPath
+            dataOutputDirectory
         )
 
         // Write all metric data as time series to a file
         writeMetricData(
             cliState.resourceModel.resources.flatMap { it.metrics },
             cliState,
-            dataOutputPath
+            dataOutputDirectory
         )
 
+        // Instantiate the plot script template
+        val rScriptFile = rScriptDirectory.resolve(SCRIPT_FILENAME).toFile()
+        val plotOutputFile = dataOutputDirectory.resolve(PLOT_FILENAME).toFile()
+        println("Instantiating R script to \"${rScriptFile.absolutePath}\".")
+        instantiateRScript(rScriptFile, mapOf(
+            "plot_filename" to plotOutputFile.name
+        ))
+
         // Plot the overview using R
-        TODO()
+        println("Generating plot to \"${plotOutputFile.absolutePath}\".")
+        runRScript(rScriptFile)
     }
 
     private fun writePhaseList(
