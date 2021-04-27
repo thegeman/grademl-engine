@@ -78,7 +78,20 @@ object Cli {
 
             // For now, just echo back the parsed line
             val parsedLine = lineReader.parser.parse(line, 0)
-            terminal.writer().println("Got words [${parsedLine.words().joinToString()}]")
+            if (parsedLine.line().isBlank()) {
+                // Skip empty lines
+                continue
+            }
+            // Look up the first word as command
+            val command = CommandRegistry[parsedLine.words()[0]]
+            if (command == null) {
+                println("Command '${parsedLine.words()[0]}' not recognized.")
+                println()
+                continue
+            }
+            // Invoke the command
+            command.process(parsedLine.words().drop(1))
+            println()
         }
     }
 
