@@ -5,6 +5,7 @@ import org.jline.reader.LineReaderBuilder
 import org.jline.reader.impl.DefaultParser
 import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
+import science.atlarge.grademl.cli.util.PhaseList
 import science.atlarge.grademl.core.execution.ExecutionModel
 import science.atlarge.grademl.core.resources.ResourceModel
 import science.atlarge.grademl.input.airflow.Airflow
@@ -103,4 +104,8 @@ object Cli {
 class CliState(
     val executionModel: ExecutionModel,
     val resourceModel: ResourceModel
-)
+) {
+
+    val phaseList = PhaseList.fromExecutionModel(executionModel)
+
+}
