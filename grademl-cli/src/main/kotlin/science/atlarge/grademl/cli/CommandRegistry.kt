@@ -1,6 +1,7 @@
 package science.atlarge.grademl.cli
 
 import science.atlarge.grademl.cli.commands.Command
+import science.atlarge.grademl.cli.commands.HelpCommand
 
 object CommandRegistry {
 
@@ -13,6 +14,18 @@ object CommandRegistry {
 
     fun registerCommand(command: Command) {
         commandMap[command.name] = command
+    }
+
+    fun registerCommands(vararg commands: Command) {
+        for (command in commands) {
+            registerCommand(command)
+        }
+    }
+
+    init {
+        registerCommands(
+            HelpCommand
+        )
     }
 
 }
