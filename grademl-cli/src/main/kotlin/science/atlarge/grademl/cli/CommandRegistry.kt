@@ -2,6 +2,7 @@ package science.atlarge.grademl.cli
 
 import science.atlarge.grademl.cli.commands.Command
 import science.atlarge.grademl.cli.commands.DisplayExecutionModelCommand
+import science.atlarge.grademl.cli.commands.DisplayResourceModelCommand
 import science.atlarge.grademl.cli.commands.HelpCommand
 
 object CommandRegistry {
@@ -26,6 +27,7 @@ object CommandRegistry {
     init {
         registerCommands(
             DisplayExecutionModelCommand,
+            DisplayResourceModelCommand,
             HelpCommand
         )
     }
