@@ -17,43 +17,39 @@ object DisplayExecutionModelCommand : Command(
 ) {
 
     override fun process(parsedCommand: ParsedCommand, cliState: CliState) {
+        printExecutionModel(
+            cliState.executionModel,
+            verbose = !parsedCommand.isOptionProvided("short")
+        )
+    }
+
+    private fun printExecutionModel(executionModel: ExecutionModel, verbose: Boolean) {
         println("Execution model extracted from job logs:")
-        if (parsedCommand.isOptionProvided("short")) printShort(cliState.executionModel)
-        else printLong(cliState.executionModel)
-    }
-
-    private fun printShort(executionModel: ExecutionModel) {
-        fun printPhase(phase: ExecutionPhase, indent: String) {
-            println("$indent/${phase.identifier}")
-            for (childPhase in phase.children.sortedBy { it.identifier }) {
-                printPhase(childPhase, "$indent  ")
-            }
-        }
         for (rootPhase in executionModel.rootPhases.sortedBy { it.identifier }) {
-            printPhase(rootPhase, "  ")
+            printPhase(rootPhase, "  ", verbose)
         }
     }
 
-    private fun printLong(executionModel: ExecutionModel) {
-        fun printPhase(phase: ExecutionPhase, indent: String) {
-            val outFlows = phase.outFlows.sortedBy { it.identifier }
-            println("$indent/${phase.identifier}")
-            println(
-                "$indent      Start time:          %d.%09d"
-                    .format(phase.startTime / 1_000_000_000, phase.startTime % 1_000_000_000)
-            )
-            println(
-                "$indent      End time:            %d.%09d"
-                    .format(phase.endTime / 1_000_000_000, phase.endTime % 1_000_000_000)
-            )
-            println("$indent      Outgoing dataflows:  (${outFlows.joinToString(", ") { it.identifier }})")
-            for (childPhase in phase.children.sortedBy { it.identifier }) {
-                printPhase(childPhase, "$indent  ")
-            }
+    private fun printPhase(phase: ExecutionPhase, indent: String, verbose: Boolean) {
+        println("$indent/${phase.identifier}")
+        if (verbose) printPhaseDetails(phase, "$indent      ")
+        for (childPhase in phase.children.sortedBy { it.identifier }) {
+            printPhase(childPhase, "$indent  ", verbose)
         }
-        for (rootPhase in executionModel.rootPhases.sortedBy { it.identifier }) {
-            printPhase(rootPhase, "  ")
-        }
+    }
+
+    private fun printPhaseDetails(phase: ExecutionPhase, indent: String) {
+        val outFlows = phase.outFlows.sortedBy { it.identifier }
+
+        println(
+            "${indent}Start time:          %d.%09d".format(
+                phase.startTime / 1_000_000_000, phase.startTime % 1_000_000_000)
+        )
+        println(
+            "${indent}End time:            %d.%09d"
+                .format(phase.endTime / 1_000_000_000, phase.endTime % 1_000_000_000)
+        )
+        println("${indent}Outgoing dataflows:  (${outFlows.joinToString(", ") { it.identifier }})")
     }
 
 }
