@@ -63,6 +63,9 @@ object Cli {
             .history(DefaultHistory())
             .build()
 
+        // Set up CLI state to be manipulated by commands
+        val cliState = CliState(executionModel, resourceModel)
+
         // Repeatedly read, parse, and execute commands until the users quits the application
         while (true) {
             // Read the next line
@@ -90,9 +93,14 @@ object Cli {
                 continue
             }
             // Invoke the command
-            command.process(parsedLine.words().drop(1))
+            command.process(parsedLine.words().drop(1), cliState)
             println()
         }
     }
 
 }
+
+class CliState(
+    val executionModel: ExecutionModel,
+    val resourceModel: ResourceModel
+)

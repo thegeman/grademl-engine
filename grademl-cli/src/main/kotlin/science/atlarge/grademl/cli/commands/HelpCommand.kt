@@ -1,5 +1,6 @@
 package science.atlarge.grademl.cli.commands
 
+import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.CommandRegistry
 
 object HelpCommand : Command {
@@ -11,7 +12,7 @@ object HelpCommand : Command {
     override val longHelpMessage: String
         get() = ""
 
-    override fun process(arguments: List<String>) {
+    override fun process(arguments: List<String>, cliState: CliState) {
         if (arguments.isEmpty()) displayShortHelp()
         else displayLongHelp(arguments)
     }
