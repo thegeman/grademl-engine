@@ -262,9 +262,9 @@ data class Option(
 
 data class Argument(
     val name: String,
+    val description: String,
     val isOptional: Boolean = false,
-    val isVararg: Boolean = false,
-    val description: String
+    val isVararg: Boolean = false
 ) {
 
     init {
