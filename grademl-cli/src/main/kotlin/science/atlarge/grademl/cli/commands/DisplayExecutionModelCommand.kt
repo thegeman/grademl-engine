@@ -3,6 +3,7 @@ package science.atlarge.grademl.cli.commands
 import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.util.Option
 import science.atlarge.grademl.cli.util.ParsedCommand
+import science.atlarge.grademl.cli.util.toDisplayString
 import science.atlarge.grademl.core.execution.ExecutionModel
 import science.atlarge.grademl.core.execution.ExecutionPhase
 
@@ -41,14 +42,8 @@ object DisplayExecutionModelCommand : Command(
     private fun printPhaseDetails(phase: ExecutionPhase, indent: String) {
         val outFlows = phase.outFlows.sortedBy { it.identifier }
 
-        println(
-            "${indent}Start time:          %d.%09d".format(
-                phase.startTime / 1_000_000_000, phase.startTime % 1_000_000_000)
-        )
-        println(
-            "${indent}End time:            %d.%09d"
-                .format(phase.endTime / 1_000_000_000, phase.endTime % 1_000_000_000)
-        )
+        println("${indent}Start time:          ${phase.startTime.toDisplayString()}")
+        println("${indent}End time:            ${phase.endTime.toDisplayString()}")
         println("${indent}Outgoing dataflows:  (${outFlows.joinToString(", ") { it.identifier }})")
     }
 

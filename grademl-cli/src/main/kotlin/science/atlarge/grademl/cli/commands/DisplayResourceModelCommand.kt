@@ -3,6 +3,7 @@ package science.atlarge.grademl.cli.commands
 import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.util.Option
 import science.atlarge.grademl.cli.util.ParsedCommand
+import science.atlarge.grademl.cli.util.toDisplayString
 import science.atlarge.grademl.core.resources.*
 
 object DisplayResourceModelCommand : Command(
@@ -45,12 +46,8 @@ object DisplayResourceModelCommand : Command(
     }
 
     private fun printMetricDetails(metric: Metric, indent: String) {
-        val minTimestamp = metric.timestamps.first().let {
-            "%d.%09d".format(it / 1_000_000_000, it % 1_000_000_000)
-        }
-        val maxTimestamp = metric.timestamps.last().let {
-            "%d.%09d".format(it / 1_000_000_000, it % 1_000_000_000)
-        }
+        val minTimestamp = metric.timestamps.first().toDisplayString()
+        val maxTimestamp = metric.timestamps.last().toDisplayString()
         val valueStats = when (metric) {
             is DoubleMetric -> {
                 if (metric.values.isNotEmpty()) {
