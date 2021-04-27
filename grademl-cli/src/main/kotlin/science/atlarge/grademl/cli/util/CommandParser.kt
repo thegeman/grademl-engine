@@ -80,7 +80,7 @@ class CommandParser(
                     repeat(maxLongOptionLength + 2) { sb.append(' ') }
                 }
                 // Print description
-                sb.append("  ")
+                sb.append("    ")
                 sb.append(option.description)
             }
         }
@@ -94,7 +94,7 @@ class CommandParser(
                 sb.appendLine()
                 sb.append("  ")
                 sb.append(argument.name.padEnd(maxArgumentNameLength))
-                sb.append("  ")
+                sb.append("    ")
                 sb.append(argument.description)
             }
         }
