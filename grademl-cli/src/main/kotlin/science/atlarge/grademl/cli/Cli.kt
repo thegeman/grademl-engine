@@ -85,7 +85,7 @@ object Cli {
             // Look up the first word as command
             val command = CommandRegistry[parsedLine.words()[0]]
             if (command == null) {
-                println("Command '${parsedLine.words()[0]}' not recognized.")
+                println("Command \"${parsedLine.words()[0]}\" not recognized.")
                 println()
                 continue
             }
