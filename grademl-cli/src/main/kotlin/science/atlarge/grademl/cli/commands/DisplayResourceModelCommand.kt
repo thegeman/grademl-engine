@@ -25,14 +25,14 @@ object DisplayResourceModelCommand : Command(
 
     private fun printResourceModel(resourceModel: ResourceModel, verbose: Boolean) {
         println("Resource model extracted from job logs:")
-        for (rootResource in resourceModel.rootResources.sortedBy { it.identifier }) {
-            printResource(rootResource, "  ", verbose)
+        for (topLevelResource in resourceModel.rootResource.children.sortedBy { it.identifier }) {
+            printResource(topLevelResource, "  ", verbose)
         }
     }
 
     private fun printResource(resource: Resource, indent: String, verbose: Boolean) {
         println("$indent/${resource.identifier}")
-        for (metric in resource.metrics.values.sortedBy { it.name }) {
+        for (metric in resource.metrics.sortedBy { it.name }) {
             printMetric(metric, "$indent  ", verbose)
         }
         for (childResource in resource.children.sortedBy { it.identifier }) {

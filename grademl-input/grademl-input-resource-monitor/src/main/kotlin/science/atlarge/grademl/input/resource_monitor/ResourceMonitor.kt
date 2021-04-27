@@ -58,9 +58,9 @@ object ResourceMonitor {
             )
             val cpuResource = resourceModel.addResource(
                 name = "cpu",
-                metrics = listOf(cpuMetric),
                 parent = machineResources[hostname]!!
             )
+            cpuResource.addMetric(cpuMetric)
             // Create metrics for each individual CPU core and add them as resources
             for (core in cpuUtilization.cores) {
                 val coreMetric = DoubleMetric(
@@ -72,9 +72,10 @@ object ResourceMonitor {
                 resourceModel.addResource(
                     name = "core",
                     tags = mapOf("id" to core.coreId.toString()),
-                    metrics = listOf(coreMetric),
                     parent = cpuResource
-                )
+                ).also {
+                    it.addMetric(coreMetric)
+                }
             }
         }
     }
@@ -105,9 +106,11 @@ object ResourceMonitor {
                 resourceModel.addResource(
                     name = "network",
                     tags = mapOf("iface" to iface),
-                    metrics = listOf(receivedMetric, sentMetric),
                     parent = machineResources[hostname]!!
-                )
+                ).also {
+                    it.addMetric(receivedMetric)
+                    it.addMetric(sentMetric)
+                }
             }
         }
     }
@@ -169,9 +172,12 @@ object ResourceMonitor {
                 resourceModel.addResource(
                     name = "disk",
                     tags = mapOf("device" to device),
-                    metrics = metrics,
                     parent = machineResources[hostname]!!
-                )
+                ).also {
+                    for (metric in metrics) {
+                        it.addMetric(metric)
+                    }
+                }
             }
         }
     }
@@ -232,14 +238,14 @@ fun main(args: Array<String>) {
 
     fun printResource(resource: Resource, indent: String) {
         println("$indent/${resource.identifier}")
-        for (metric in resource.metrics.values.sortedBy { it.name }) {
+        for (metric in resource.metrics.sortedBy { it.name }) {
             printMetric(metric, "$indent  ")
         }
         for (childResource in resource.children.sortedBy { it.identifier }) {
             printResource(childResource, "$indent  ")
         }
     }
-    for (rootResource in resourceModel.rootResources.sortedBy { it.identifier }) {
-        printResource(rootResource, "  ")
+    for (topLevelResource in resourceModel.rootResource.children.sortedBy { it.identifier }) {
+        printResource(topLevelResource, "  ")
     }
 }

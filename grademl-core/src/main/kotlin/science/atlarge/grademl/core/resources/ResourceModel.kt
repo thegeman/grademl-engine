@@ -2,16 +2,15 @@ package science.atlarge.grademl.core.resources
 
 class ResourceModel {
 
-    private val _resources = mutableSetOf<Resource>()
+    // Collection of resources
+    val rootResource: Resource = RootResource(this)
+    private val _resources = mutableSetOf<Resource>(rootResource)
+    val resources: Set<Resource>
+        get() = _resources
 
     // Parent-child relationships
     private val resourceParents = mutableMapOf<Resource, Resource>()
     private val resourceChildren = mutableMapOf<Resource, MutableSet<Resource>>()
-
-    val resources: Set<Resource>
-        get() = _resources
-    val rootResources: Set<Resource>
-        get() = _resources - resourceParents.keys
 
     fun getParentOf(resource: Resource): Resource? = resourceParents[resource]
     fun getChildrenOf(resource: Resource): Set<Resource> = resourceChildren[resource] ?: emptySet()
@@ -20,67 +19,77 @@ class ResourceModel {
         name: String,
         tags: Map<String, String> = emptyMap(),
         description: String? = null,
-        metrics: Iterable<Metric> = emptyList(),
-        parent: Resource? = null
+        parent: Resource = rootResource
     ): Resource {
-        val resource = Resource(name, tags, description, this)
+        require(parent in _resources) { "Cannot add resource with parent that is not part of this ResourceModel" }
+        val resource = SubResource(name, tags, description, this)
         _resources.add(resource)
-        if (parent != null) addParentRelationship(parent, resource)
-        for (metric in metrics) resource.addMetric(metric)
+        resourceParents[resource] = parent
+        resourceChildren.getOrPut(parent) { mutableSetOf() }.add(resource)
         return resource
-    }
-
-    internal fun addParentRelationship(parentResource: Resource, childResource: Resource) {
-        require(parentResource != childResource) { "Cannot set resource as its own parent" }
-        require(parentResource in _resources && childResource in _resources) {
-            "Cannot add relationship to resource(s) not part of this ResourceModel"
-        }
-        require(childResource !in resourceParents) { "Cannot add more than one parent to a resource" }
-        require(!isResourceInSubtree(parentResource, childResource)) {
-            "Cannot introduce cycles in parent-child relationships"
-        }
-
-        resourceParents[childResource] = parentResource
-        resourceChildren.getOrPut(parentResource) { mutableSetOf() }.add(childResource)
-    }
-
-    private fun isResourceInSubtree(resource: Resource, subtreeRoot: Resource): Boolean {
-        if (resource === subtreeRoot) return true
-        val children = resourceChildren[subtreeRoot] ?: return false
-        return children.any { child -> isResourceInSubtree(resource, child) }
     }
 
 }
 
-class Resource(
+sealed class Resource(
     val name: String,
     val tags: Map<String, String>,
     val description: String?,
     private val model: ResourceModel
 ) {
 
-    val identifier = if (tags.isEmpty()) {
-        name
-    } else {
-        "$name[${tags.entries.sortedBy { it.key }.joinToString(separator = ", ") { "${it.key}=${it.value}" }}]"
-    }
-
-    private val _metrics = mutableMapOf<String, Metric>()
-    val metrics: Map<String, Metric>
+    private val _metrics = mutableSetOf<Metric>()
+    val metrics: Set<Metric>
         get() = _metrics
 
+    private val _metricsByName = mutableMapOf<String, Metric>()
+    val metricsByName: Map<String, Metric>
+        get() = _metricsByName
+
+    val identifier: String by lazy {
+        if (tags.isEmpty()) name
+        else "$name[${
+            tags.entries.sortedBy { it.key }
+                .joinToString(separator = ", ") { "${it.key}=${it.value}" }
+        }]"
+    }
+
+    val path: String by lazy {
+        when {
+            isRoot -> "/"
+            parent!!.isRoot -> "/$identifier"
+            else -> "${parent!!.path}/$identifier"
+        }
+    }
+
+    val isRoot: Boolean
+        get() = parent == null
     val parent: Resource?
         get() = model.getParentOf(this)
     val children: Set<Resource>
         get() = model.getChildrenOf(this)
 
-    fun addChild(resource: Resource) {
-        model.addParentRelationship(this, resource)
-    }
-
-    fun addMetric(metric: Metric) {
-        require(metric.name !in _metrics) { "Cannot add multiple metrics with the same name" }
-        _metrics[metric.name] = metric
+    open fun addMetric(metric: Metric) {
+        require(metric.name !in _metricsByName) { "Cannot add multiple metrics with the same name" }
+        _metricsByName[metric.name] = metric
+        _metrics.add(metric)
     }
 
 }
+
+private class RootResource(
+    model: ResourceModel
+) : Resource("", emptyMap(), null, model) {
+
+    override fun addMetric(metric: Metric) {
+        throw IllegalArgumentException("Cannot add metrics to the root resource")
+    }
+
+}
+
+private class SubResource(
+    name: String,
+    tags: Map<String, String>,
+    description: String?,
+    model: ResourceModel
+) : Resource(name, tags, description, model)
