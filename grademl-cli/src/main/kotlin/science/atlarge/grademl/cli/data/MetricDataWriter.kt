@@ -27,19 +27,41 @@ object MetricDataWriter {
                     }
                 }
 
+                // Skip metrics without data points
+                if (metric.data.timestamps.size < 2) {
+                    continue
+                }
+
                 val timestamps = metric.data.timestamps
+                printLine(timestamps[0], "0")
                 when (val data = metric.data) {
                     is DoubleMetricData -> {
                         val values = data.values
-                        for (index in timestamps.indices) {
-                            printLine(timestamps[index], if (index == 0) "0" else values[index - 1].toString())
+                        var lastValue = 0.0
+                        for (index in values.indices) {
+                            val newValue = values[index]
+                            if (newValue != lastValue) {
+                                // Only output a data point whenever the metric's value changes
+                                if (index != 0) printLine(timestamps[index], lastValue.toString())
+                                lastValue = newValue
+                            }
                         }
+                        // Always output a data point at the end of a time series
+                        printLine(timestamps.last(), lastValue.toString())
                     }
                     is LongMetricData -> {
                         val values = data.values
-                        for (index in timestamps.indices) {
-                            printLine(timestamps[index], if (index == 0) "0" else values[index - 1].toString())
+                        var lastValue = 0L
+                        for (index in values.indices) {
+                            val newValue = values[index]
+                            if (newValue != lastValue) {
+                                // Only output a data point whenever the metric's value changes
+                                if (index != 0) printLine(timestamps[index], lastValue.toString())
+                                lastValue = newValue
+                            }
                         }
+                        // Always output a data point at the end of a time series
+                        printLine(timestamps.last(), lastValue.toString())
                     }
                 }
             }
