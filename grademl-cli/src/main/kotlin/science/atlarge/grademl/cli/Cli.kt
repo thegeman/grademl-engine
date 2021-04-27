@@ -107,11 +107,7 @@ class CliState(
 
     val phaseList = PhaseList.fromExecutionModel(executionModel)
 
-    private val earliestTimestamp: TimestampNs = minOf(
-        executionModel.phases.map { it.startTime }.minOrNull() ?: Long.MAX_VALUE,
-        resourceModel.resources.flatMap { it.metrics.values }
-            .mapNotNull { it.timestamps.firstOrNull() }.minOrNull() ?: Long.MAX_VALUE
-    )
+    private val earliestTimestamp = executionModel.rootPhase.startTime
 
     fun normalizeTimestamp(plainTimestamp: TimestampNs): Long = plainTimestamp - earliestTimestamp
     fun denormalizeTimestamp(normalizedTimestamp: Long): TimestampNs = normalizedTimestamp + earliestTimestamp
