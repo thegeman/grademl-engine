@@ -13,11 +13,11 @@ object ResourceMonitor {
     fun parseJobLogs(
         jobLogDirectory: Path,
         unifiedResourceModel: ResourceModel? = null
-    ): ResourceModel {
+    ): ResourceModel? {
         // Parse Resource Monitor metrics
         val resourceMonitorLogDirectory = jobLogDirectory.resolve("metrics").resolve("resource-monitor")
-        require(resourceMonitorLogDirectory.toFile().isDirectory) {
-            "Cannot find Resource Monitor logs in $jobLogDirectory"
+        if (!resourceMonitorLogDirectory.toFile().isDirectory) {
+            return null
         }
         val resourceMonitorMetrics = ResourceMonitorParser.parseFromDirectory(resourceMonitorLogDirectory)
 
@@ -186,6 +186,9 @@ fun main(args: Array<String>) {
     }
 
     val resourceModel = ResourceMonitor.parseJobLogs(Paths.get(args[0]))
+    requireNotNull(resourceModel) {
+        "Cannot find Resource Monitor logs in ${args[0]}"
+    }
     println("Resource model extracted from Resource Monitor logs:")
 
     fun printMetric(metric: Metric, indent: String) {

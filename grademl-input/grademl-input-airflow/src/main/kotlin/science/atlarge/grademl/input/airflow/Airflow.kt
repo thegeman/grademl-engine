@@ -11,10 +11,12 @@ object Airflow {
     fun parseJobLogs(
         jobLogDirectory: Path,
         unifiedExecutionModel: ExecutionModel? = null
-    ): ExecutionModel {
+    ): ExecutionModel? {
         // Parse Airflow logs
         val airflowLogDirectory = jobLogDirectory.resolve("logs").resolve("airflow")
-        require(airflowLogDirectory.toFile().isDirectory) { "Cannot find Airflow logs in $jobLogDirectory" }
+        if (!airflowLogDirectory.toFile().isDirectory) {
+            return null
+        }
         val airflowLog = AirflowLogParser.parseFromDirectory(airflowLogDirectory)
 
         // Add a phase for the DAG and for each task
@@ -58,6 +60,9 @@ fun main(args: Array<String>) {
     }
 
     val executionModel = Airflow.parseJobLogs(Paths.get(args[0]))
+    requireNotNull(executionModel) {
+        "Cannot find Airflow logs in ${args[0]}"
+    }
     println("Execution model extracted from Airflow logs:")
 
     fun printPhase(phase: ExecutionPhase, indent: String) {
