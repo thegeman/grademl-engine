@@ -26,6 +26,7 @@ object CommandRegistry {
             DisplayExecutionModelCommand,
             DisplayResourceModelCommand,
             FilterResourcesCommand,
+            FilterMetricsCommand,
             HelpCommand,
             PlotOverviewCommand
         )
