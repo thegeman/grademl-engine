@@ -1,6 +1,6 @@
 package science.atlarge.grademl.core.resources
 
-import science.atlarge.grademl.core.Path
+import science.atlarge.grademl.core.*
 
 class ResourceModel {
 
@@ -29,6 +29,37 @@ class ResourceModel {
         resourceParents[resource] = parent
         resourceChildren.getOrPut(parent) { mutableSetOf() }.add(resource)
         return resource
+    }
+
+    private val pathMatcher = PathMatcher(
+        rootNode = rootResource,
+        namesOfNode = { resource -> listOf(resource.name, resource.identifier) },
+        parentOfNode = { resource -> getParentOf(resource) },
+        childrenOfNode = { resource -> getChildrenOf(resource) }
+    )
+
+    fun resolvePath(
+        path: ResourcePath,
+        relativeToResource: Resource = rootResource
+    ): PathMatchResult<Resource> {
+        require(relativeToResource in _resources) {
+            "Cannot resolve path relative to resource not in this ResourceModel"
+        }
+        return pathMatcher.match(path, relativeToResource)
+    }
+
+    fun resolvePath(
+        path: MetricPath,
+        relativeToResource: Resource = rootResource
+    ): PathMatchResult<Metric> {
+        require(relativeToResource in _resources) {
+            "Cannot resolve path relative to resource not in this ResourceModel"
+        }
+        return when (val matches = pathMatcher.match(path.resourcePath, relativeToResource)) {
+            is PathMatches -> PathMatches(matches.matches.mapNotNull { it.metricsByName[path.metricName] })
+            is InvalidPathExpression -> matches
+            is PathNotFound -> matches
+        }
     }
 
 }
