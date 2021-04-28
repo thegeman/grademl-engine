@@ -121,9 +121,8 @@ class CliState(
 
     // Accessors for non-excluded resources (default) and all resources
     val selectedResources: Set<Resource>
-        get() = resourceModel.resources - excludedResources
-    val allResources: Set<Resource>
-        get() = resourceModel.resources
+        get() = allResources - excludedResources
+    val allResources: Set<Resource> = resourceModel.resources - resourceModel.rootResource
 
     fun excludeResources(exclusions: Set<Resource>) {
         require(exclusions.all { it in resourceModel.resources }) {
@@ -140,7 +139,7 @@ class CliState(
             allExclusions.addAll(newExclusions)
             exclusionsToCheck.addAll(newExclusions)
         }
-        excludedResources.addAll(allExclusions)
+        excludedResources.addAll(allExclusions.filter { !it.isRoot })
     }
 
     fun includeResources(inclusions: Set<Resource>) {

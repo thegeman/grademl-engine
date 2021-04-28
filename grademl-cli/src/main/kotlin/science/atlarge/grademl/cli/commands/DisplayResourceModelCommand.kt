@@ -20,17 +20,23 @@ object DisplayResourceModelCommand : Command(
         printResourceModel(
             cliState.resourceModel,
             cliState.selectedResources,
+            cliState.allResources,
             verbose = !parsedCommand.isOptionProvided("short")
         )
     }
 
-    private fun printResourceModel(resourceModel: ResourceModel, selectedResources: Set<Resource>, verbose: Boolean) {
+    private fun printResourceModel(
+        resourceModel: ResourceModel,
+        selectedResources: Set<Resource>,
+        allResources: Set<Resource>,
+        verbose: Boolean
+    ) {
         print("Resource model extracted from job logs")
-        if (selectedResources.size != resourceModel.resources.size) {
-            print(" (${selectedResources.size}/${resourceModel.resources.size} resources selected)")
+        if (selectedResources.size != allResources.size) {
+            print(" (${selectedResources.size}/${allResources.size} resources selected)")
         }
         println(":")
-        if (resourceModel.rootResource !in selectedResources) {
+        if (selectedResources.isEmpty()) {
             println("  (empty)")
         } else {
             for (topLevelResource in resourceModel.rootResource.children.sortedBy { it.identifier }) {
