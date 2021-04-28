@@ -9,6 +9,7 @@ import science.atlarge.grademl.cli.util.MetricList
 import science.atlarge.grademl.cli.util.PhaseList
 import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.execution.ExecutionModel
+import science.atlarge.grademl.core.execution.ExecutionPhase
 import science.atlarge.grademl.core.resources.Metric
 import science.atlarge.grademl.core.resources.Resource
 import science.atlarge.grademl.core.resources.ResourceModel
@@ -115,6 +116,14 @@ class CliState(
 
     fun normalizeTimestamp(plainTimestamp: TimestampNs): Long = plainTimestamp - earliestTimestamp
     fun denormalizeTimestamp(normalizedTimestamp: Long): TimestampNs = normalizedTimestamp + earliestTimestamp
+
+    private val rootPhaseOutputPath = outputPath.resolve("root_phase")
+    fun outputPathForPhase(phase: ExecutionPhase) =
+        if (phase.isRoot) {
+            rootPhaseOutputPath
+        } else {
+            phase.path.pathComponents.fold(rootPhaseOutputPath) { acc, pathComponent -> acc.resolve(pathComponent) }
+        }
 
     // Exclusion list for resources
     private val excludedResources = mutableSetOf<Resource>()
