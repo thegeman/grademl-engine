@@ -101,9 +101,11 @@ sealed class ExecutionPhase(
         }]"
     }
 
-    val path: ExecutionPhasePath = when {
-        isRoot -> ExecutionPhasePath.ROOT
-        else -> parent!!.path.resolve(identifier)
+    val path: ExecutionPhasePath by lazy {
+        when {
+            isRoot -> ExecutionPhasePath.ROOT
+            else -> parent!!.path.resolve(identifier)
+        }
     }
 
     val duration: DurationNs

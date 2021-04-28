@@ -86,9 +86,11 @@ sealed class Resource(
         }]"
     }
 
-    val path: ResourcePath = when {
-        isRoot -> ResourcePath.ROOT
-        else -> parent!!.path.resolve(identifier)
+    val path: ResourcePath by lazy {
+        when {
+            isRoot -> ResourcePath.ROOT
+            else -> parent!!.path.resolve(identifier)
+        }
     }
 
     val isRoot: Boolean
