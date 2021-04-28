@@ -12,7 +12,7 @@ object FilterResourcesCommand : Command(
     name = "filter-resources",
     shortHelpMessage = "exclude or include resources in subsequent commands",
     longHelpMessage = "Adds or removes resources to or from an exclusion list. " +
-            "Excluded resources do not appear in the output of most other commands, e.g., for plotting.",
+            "Excluded resources do not appear in the output of most other commands, e.g., plotting.",
     supportedArguments = listOf(
         Argument(
             "exclude|include",
