@@ -219,11 +219,18 @@ class CommandParser(
                 "Unexpected positional argument encountered: \"${argumentsToParse[givenArgumentIndex]}\""
             )
         }
-        // Check if too few arguments were passed
-        if (expectedArgumentIndex < arguments.size && !arguments[expectedArgumentIndex].isOptional) {
-            return ParseException(
-                "Missing mandatory positional argument: \"${arguments[expectedArgumentIndex].name}\""
-            )
+        // Check if too few arguments were passed:
+        // - more arguments could have been parsed
+        // - the next argument is not optional
+        // - the next argument is not vararg OR has not been encountered yet
+        if (expectedArgumentIndex < arguments.size) {
+            val nextArg = arguments[expectedArgumentIndex]
+            val lastArgMatchesNextArg = parsedArguments.lastOrNull()?.first == nextArg
+            if (!nextArg.isOptional && (!nextArg.isVararg || !lastArgMatchesNextArg)) {
+                return ParseException(
+                    "Missing mandatory positional argument: \"${arguments[expectedArgumentIndex].name}\""
+                )
+            }
         }
 
         return ParsedCommand(parsedOptions, parsedArguments)
