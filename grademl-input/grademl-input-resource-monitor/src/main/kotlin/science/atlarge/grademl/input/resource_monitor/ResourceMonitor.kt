@@ -63,21 +63,22 @@ object ResourceMonitor {
                 )
             )
             // Create metrics for each individual CPU core and add them as resources
-            for (core in cpuUtilization.cores) {
-                val coreResource = resourceModel.addResource(
-                    name = "core",
-                    tags = mapOf("id" to core.coreId.toString()),
-                    parent = cpuResource
-                )
-                coreResource.addMetric(
-                    name = "utilization",
-                    data = DoubleMetricData(
-                        core.timestamps,
-                        core.utilization,
-                        1.0
-                    )
-                )
-            }
+            // TODO: Make inclusion of CPU core utilization metrics configurable
+//            for (core in cpuUtilization.cores) {
+//                val coreResource = resourceModel.addResource(
+//                    name = "core",
+//                    tags = mapOf("id" to core.coreId.toString()),
+//                    parent = cpuResource
+//                )
+//                coreResource.addMetric(
+//                    name = "utilization",
+//                    data = DoubleMetricData(
+//                        core.timestamps,
+//                        core.utilization,
+//                        1.0
+//                    )
+//                )
+//            }
         }
     }
 
