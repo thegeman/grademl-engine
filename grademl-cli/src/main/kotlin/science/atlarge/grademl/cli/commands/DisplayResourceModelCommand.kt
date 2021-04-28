@@ -21,6 +21,8 @@ object DisplayResourceModelCommand : Command(
             cliState.resourceModel,
             cliState.selectedResources,
             cliState.allResources,
+            cliState.selectedMetrics,
+            cliState.allMetrics,
             verbose = !parsedCommand.isOptionProvided("short")
         )
     }
@@ -29,37 +31,50 @@ object DisplayResourceModelCommand : Command(
         resourceModel: ResourceModel,
         selectedResources: Set<Resource>,
         allResources: Set<Resource>,
+        selectedMetrics: Set<Metric>,
+        allMetrics: Set<Metric>,
         verbose: Boolean
     ) {
         print("Resource model extracted from job logs")
         if (selectedResources.size != allResources.size) {
             print(" (${selectedResources.size}/${allResources.size} resources selected)")
         }
+        if (selectedMetrics.size != allMetrics.size) {
+            print(" (${selectedMetrics.size}/${allMetrics.size} metrics selected)")
+        }
         println(":")
         if (selectedResources.isEmpty()) {
             println("  (empty)")
         } else {
             for (topLevelResource in resourceModel.rootResource.children.sortedBy { it.identifier }) {
-                printResource(topLevelResource, selectedResources, "  ", verbose)
+                printResource(topLevelResource, selectedResources, selectedMetrics, "  ", verbose)
             }
         }
     }
 
-    private fun printResource(resource: Resource, selectedResources: Set<Resource>, indent: String, verbose: Boolean) {
+    private fun printResource(
+        resource: Resource,
+        selectedResources: Set<Resource>,
+        selectedMetrics: Set<Metric>,
+        indent: String,
+        verbose: Boolean
+    ) {
         if (resource in selectedResources) {
             println("$indent/${resource.identifier}")
             for (metric in resource.metrics.sortedBy { it.name }) {
-                printMetric(metric, "$indent  ", verbose)
+                printMetric(metric, selectedMetrics, "$indent  ", verbose)
             }
             for (childResource in resource.children.sortedBy { it.identifier }) {
-                printResource(childResource, selectedResources, "$indent  ", verbose)
+                printResource(childResource, selectedResources, selectedMetrics, "$indent  ", verbose)
             }
         }
     }
 
-    private fun printMetric(metric: Metric, indent: String, verbose: Boolean) {
-        println("$indent:${metric.name}")
-        if (verbose) printMetricDetails(metric.data, "$indent    ")
+    private fun printMetric(metric: Metric, selectedMetrics: Set<Metric>, indent: String, verbose: Boolean) {
+        if (metric in selectedMetrics) {
+            println("$indent:${metric.name}")
+            if (verbose) printMetricDetails(metric.data, "$indent    ")
+        }
     }
 
     private fun printMetricDetails(metricData: MetricData, indent: String) {
