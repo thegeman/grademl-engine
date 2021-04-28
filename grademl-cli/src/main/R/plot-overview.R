@@ -134,7 +134,7 @@ resource_blanks <- metric_data[, .(
 
 p_resource <- ggplot(stepped_metric_data) +
   geom_line(aes(x = timestamp, y = value)) +
-  geom_blank(data = resource_blanks, aes(x = timestamp, y = value)) +
+  geom_blank(data = resource_blanks, aes(x = timestamp, y = 1)) +
   scale_x_continuous(limits = c(start_time, end_time), expand = c(0, 0)) +
   facet_wrap(~ metric.path, scales = "free_y", nrow = resource_count) +
   theme_bw()
