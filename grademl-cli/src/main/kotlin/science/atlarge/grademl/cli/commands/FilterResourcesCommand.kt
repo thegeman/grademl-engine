@@ -48,8 +48,16 @@ object FilterResourcesCommand : Command(
             }
         }
 
+        val previousSelectionSize = cliState.selectedResources.size
         if (excludeOrInclude == "exclude") cliState.excludeResources(matchedResources)
         else cliState.includeResources(matchedResources)
+        val newSelectionSize = cliState.selectedResources.size
+
+        if (excludeOrInclude == "exclude") {
+            println("Excluded ${previousSelectionSize - newSelectionSize} previously included resource(s).")
+        } else {
+            println("Included ${newSelectionSize - previousSelectionSize} previously excluded resource(s).")
+        }
     }
 
 }
