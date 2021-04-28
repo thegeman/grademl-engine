@@ -9,6 +9,7 @@ import science.atlarge.grademl.cli.util.MetricList
 import science.atlarge.grademl.cli.util.PhaseList
 import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.execution.ExecutionModel
+import science.atlarge.grademl.core.resources.Metric
 import science.atlarge.grademl.core.resources.Resource
 import science.atlarge.grademl.core.resources.ResourceModel
 import science.atlarge.grademl.input.airflow.Airflow
@@ -160,6 +161,31 @@ class CliState(
             }
         }
         excludedResources.removeAll(allInclusions)
+    }
+
+    // Exclusion list for metrics
+    private val excludedMetrics = mutableSetOf<Metric>()
+
+    // Accessors for non-excluded metrics (default) and all metrics
+    val selectedMetrics: Set<Metric>
+        get() = allMetrics - excludedMetrics
+    val allMetrics: Set<Metric> = resourceModel.resources.flatMap { it.metrics }.toSet()
+
+    fun excludeMetrics(exclusions: Set<Metric>) {
+        require(exclusions.all { it in allMetrics }) {
+            "Cannot exclude metrics that are not part of this job's resource model"
+        }
+        // Exclude all given metrics
+        excludedMetrics.addAll(exclusions)
+    }
+
+    fun includeMetrics(inclusions: Set<Metric>) {
+        require(inclusions.all { it in allMetrics }) {
+            "Cannot include metrics that are not part of this job's resource model"
+        }
+        // Include all given metrics and corresponding resources
+        excludedMetrics.removeAll(inclusions)
+        includeResources(inclusions.map { it.resource }.toSet())
     }
 
 }
