@@ -55,10 +55,9 @@ class ResourceModel {
         require(relativeToResource in _resources) {
             "Cannot resolve path relative to resource not in this ResourceModel"
         }
-        return when (val matches = pathMatcher.match(path.resourcePath, relativeToResource)) {
-            is PathMatches -> PathMatches(matches.matches.mapNotNull { it.metricsByName[path.metricName] })
-            is InvalidPathExpression -> matches
-            is PathNotFound -> matches
+        return when (val matchResult = pathMatcher.match(path.resourcePath, relativeToResource)) {
+            is PathMatches -> PathMatches(matchResult.matches.mapNotNull { it.metricsByName[path.metricName] })
+            is PathMatchException -> matchResult
         }
     }
 
