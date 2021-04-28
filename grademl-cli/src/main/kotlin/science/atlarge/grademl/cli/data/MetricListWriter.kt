@@ -18,7 +18,7 @@ object MetricListWriter {
                 writer.apply {
                     append(metricId)
                     append('\t')
-                    append(metric.path)
+                    append(metric.path.toString())
                     append('\t')
                     appendLine(
                         when (val data = metric.data) {

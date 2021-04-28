@@ -1,5 +1,7 @@
 package science.atlarge.grademl.core.resources
 
+import science.atlarge.grademl.core.Path
+
 class ResourceModel {
 
     // Collection of resources
@@ -54,12 +56,9 @@ sealed class Resource(
         }]"
     }
 
-    val path: String by lazy {
-        when {
-            isRoot -> "/"
-            parent!!.isRoot -> "/$identifier"
-            else -> "${parent!!.path}/$identifier"
-        }
+    val path: ResourcePath = when {
+        isRoot -> ResourcePath.ROOT
+        else -> parent!!.path.resolve(identifier)
     }
 
     val isRoot: Boolean
@@ -98,7 +97,7 @@ private class SubResource(
 
 interface Metric {
     val name: String
-    val path: String
+    val path: MetricPath
     val data: MetricData
     val resource: Resource
 }
@@ -109,8 +108,13 @@ private class MetricImpl(
     override val resource: Resource
 ) : Metric {
 
-    override val path: String by lazy {
-        "${resource.path}:$name"
-    }
+    override val path: MetricPath = MetricPath(resource.path, name)
 
+}
+
+typealias ResourcePath = Path
+data class MetricPath(val resourcePath: ResourcePath, val metricName: String) {
+    override fun toString(): String {
+        return "${resourcePath.toCanonicalPath()}:$metricName"
+    }
 }
