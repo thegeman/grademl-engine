@@ -91,21 +91,21 @@ class PathMatcher<T : Any>(
     }
 }
 
-sealed class PathMatchResult<T : Any>
+sealed class PathMatchResult<out T : Any>
 
 data class PathMatches<T : Any>(
     val matches: Iterable<T>
 ) : PathMatchResult<T>()
 
-data class InvalidPathExpression<T : Any>(
+data class InvalidPathExpression(
     val pathExpression: Path,
     val invalidPathComponent: PathComponent
-) : PathMatchResult<T>() {
+) : PathMatchResult<Nothing>() {
     val message = "Could not parse component of path expression: \"$invalidPathComponent\""
 }
 
-data class PathNotFound<T : Any>(
+data class PathNotFound(
     val unresolvedPath: Path
-) : PathMatchResult<T>() {
+) : PathMatchResult<Nothing>() {
     val message = "Found no matches for path: \"$unresolvedPath\""
 }
