@@ -167,7 +167,7 @@ class CliState(
 
     // Accessors for non-excluded metrics (default) and all metrics
     val selectedMetrics: Set<Metric>
-        get() = allMetrics - excludedMetrics
+        get() = allMetrics.filter { it !in excludedMetrics && it.resource !in excludedResources }.toSet()
     val allMetrics: Set<Metric> = resourceModel.resources.flatMap { it.metrics }.toSet()
 
     fun excludeMetrics(exclusions: Set<Metric>) {
