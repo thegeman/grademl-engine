@@ -55,7 +55,7 @@ object PlotOverviewCommand : Command(
         val rScriptFile = rScriptDirectory.resolve(SCRIPT_FILENAME).toFile()
         val plotOutputFile = dataOutputDirectory.resolve(PLOT_FILENAME).toFile()
         println("Instantiating R script to \"${rScriptFile.absolutePath}\".")
-        instantiateRScript(rScriptFile, mapOf("plot_filename" to plotOutputFile.name))
+        instantiateRScript(rScriptFile, mapOf("plot_filename" to "\"${plotOutputFile.name}\""))
 
         // Plot the overview using R
         println("Generating plot to \"${plotOutputFile.absolutePath}\".")
