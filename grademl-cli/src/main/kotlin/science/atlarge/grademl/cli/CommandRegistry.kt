@@ -25,6 +25,7 @@ object CommandRegistry {
         registerCommands(
             DisplayExecutionModelCommand,
             DisplayResourceModelCommand,
+            FilterResourcesCommand,
             HelpCommand,
             PlotOverviewCommand
         )
