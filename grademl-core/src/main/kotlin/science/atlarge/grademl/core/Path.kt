@@ -7,7 +7,7 @@ typealias PathComponent = String
 
 /**
  * Representation of an arbitrary path expression. [Paths][Path] are used to uniquely identify entries in a hierarchical
- * data structure, e.g., phases in an execution systemModel.
+ * data structure, e.g., phases in an execution model.
  *
  * @property[pathComponents] ordered list of [PathComponents][PathComponent] that comprise the path.
  * @property[isRelative] true if the path is relative, false if the path is absolute.
