@@ -7,6 +7,7 @@ import science.atlarge.grademl.cli.data.PhaseListWriter
 import science.atlarge.grademl.cli.util.ParsedCommand
 import science.atlarge.grademl.cli.util.instantiateRScript
 import science.atlarge.grademl.cli.util.runRScript
+import science.atlarge.grademl.core.execution.ExecutionPhase
 
 object PlotOverviewCommand : Command(
     name = "plot-overview",
@@ -18,10 +19,14 @@ object PlotOverviewCommand : Command(
     private const val SCRIPT_FILENAME = "plot-overview.R"
 
     override fun process(parsedCommand: ParsedCommand, cliState: CliState) {
+        plotOverviewForPhase(cliState.executionModel.rootPhase, cliState)
+    }
+
+    private fun plotOverviewForPhase(phase: ExecutionPhase, cliState: CliState) {
         // Create output paths for data and scripts
-        val outputDirectory = cliState.outputPath
-        val dataOutputDirectory = outputDirectory.resolve(".data").also { it.toFile().mkdirs() }
-        val rScriptDirectory = outputDirectory.resolve(".R").also { it.toFile().mkdirs() }
+        val phaseOutputDirectory = cliState.outputPathForPhase(phase)
+        val dataOutputDirectory = phaseOutputDirectory.resolve(".data").also { it.toFile().mkdirs() }
+        val rScriptDirectory = phaseOutputDirectory.resolve(".R").also { it.toFile().mkdirs() }
 
         // Output selected phases in the execution model
         val phaseListFile = dataOutputDirectory.resolve(PhaseListWriter.FILENAME).toFile()
@@ -53,7 +58,7 @@ object PlotOverviewCommand : Command(
 
         // Instantiate the plot script template
         val rScriptFile = rScriptDirectory.resolve(SCRIPT_FILENAME).toFile()
-        val plotOutputFile = dataOutputDirectory.resolve(PLOT_FILENAME).toFile()
+        val plotOutputFile = phaseOutputDirectory.resolve(PLOT_FILENAME).toFile()
         println("Instantiating R script to \"${rScriptFile.absolutePath}\".")
         instantiateRScript(rScriptFile, mapOf("plot_filename" to "\"${plotOutputFile.name}\""))
 
