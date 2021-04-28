@@ -55,8 +55,14 @@ class ResourceModel {
         require(relativeToResource in _resources) {
             "Cannot resolve path relative to resource not in this ResourceModel"
         }
+        // Convert metric name to regex to support '*' in paths
+        val metricNameRegex = path.metricName.split("*")
+            .joinToString(separator = """.*""") { Regex.escape(it) }
+            .toRegex()
         return when (val matchResult = pathMatcher.match(path.resourcePath, relativeToResource)) {
-            is PathMatches -> PathMatches(matchResult.matches.mapNotNull { it.metricsByName[path.metricName] })
+            is PathMatches -> PathMatches(matchResult.matches.flatMap { resource ->
+                resource.metrics.filter { metricNameRegex.matches(it.name) }
+            })
             is PathMatchException -> matchResult
         }
     }
