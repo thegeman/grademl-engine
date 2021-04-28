@@ -1,6 +1,7 @@
 package science.atlarge.grademl.core.execution
 
 import science.atlarge.grademl.core.DurationNs
+import science.atlarge.grademl.core.Path
 import science.atlarge.grademl.core.TimestampNs
 import java.util.*
 
@@ -86,12 +87,9 @@ sealed class ExecutionPhase(
             .joinToString(separator = ", ") { "${it.key}=${it.value}" }}]"
     }
 
-    val path: String by lazy {
-        when {
-            isRoot -> "/"
-            parent!!.isRoot -> "/$identifier"
-            else -> "${parent!!.path}/$identifier"
-        }
+    val path: ExecutionPhasePath = when {
+        isRoot -> ExecutionPhasePath.ROOT
+        else -> parent!!.path.resolve(identifier)
     }
 
     val duration: DurationNs
@@ -137,3 +135,5 @@ private class SubExecutionPhase(
     override val endTime: TimestampNs,
     model: ExecutionModel
 ) : ExecutionPhase(model)
+
+typealias ExecutionPhasePath = Path

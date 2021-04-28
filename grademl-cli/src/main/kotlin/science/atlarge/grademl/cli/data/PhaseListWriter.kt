@@ -37,7 +37,7 @@ object PhaseListWriter {
                 writer.apply {
                     append(phaseId)
                     append('\t')
-                    append(phase.path)
+                    append(phase.path.toCanonicalPath().toString())
                     append('\t')
                     append(parentPhaseId)
                     append('\t')
