@@ -23,9 +23,9 @@ object PlotOverviewCommand : Command(
         val dataOutputDirectory = outputDirectory.resolve(".data").also { it.toFile().mkdirs() }
         val rScriptDirectory = outputDirectory.resolve(".R").also { it.toFile().mkdirs() }
 
-        // Select and output all phases in the execution model
+        // Output selected phases in the execution model
         val phaseListFile = dataOutputDirectory.resolve(PhaseListWriter.FILENAME).toFile()
-        println("Writing list of execution phases to \"${phaseListFile.absolutePath}\".")
+        println("Writing list of selected execution phases to \"${phaseListFile.absolutePath}\".")
         PhaseListWriter.output(
             phaseListFile,
             cliState.executionModel.rootPhase,
@@ -33,12 +33,12 @@ object PlotOverviewCommand : Command(
             cliState
         )
 
-        // Select and output all metrics in the resource model
+        // Output selected metrics in the resource model
         val metricListFile = dataOutputDirectory.resolve(MetricListWriter.FILENAME).toFile()
-        println("Writing list of metrics to \"${metricListFile.absolutePath}\".")
+        println("Writing list of selected metrics to \"${metricListFile.absolutePath}\".")
         MetricListWriter.output(
             metricListFile,
-            cliState.resourceModel.resources.flatMap { it.metrics },
+            cliState.selectedMetrics,
             cliState
         )
 
@@ -47,7 +47,7 @@ object PlotOverviewCommand : Command(
         println("Writing metric data to \"${metricDataFile.absolutePath}\".")
         MetricDataWriter.output(
             metricDataFile,
-            cliState.resourceModel.resources.flatMap { it.metrics },
+            cliState.selectedMetrics,
             cliState
         )
 
