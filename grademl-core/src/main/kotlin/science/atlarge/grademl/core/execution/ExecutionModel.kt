@@ -1,8 +1,6 @@
 package science.atlarge.grademl.core.execution
 
-import science.atlarge.grademl.core.DurationNs
-import science.atlarge.grademl.core.Path
-import science.atlarge.grademl.core.TimestampNs
+import science.atlarge.grademl.core.*
 import java.util.*
 
 class ExecutionModel {
@@ -41,6 +39,21 @@ class ExecutionModel {
         phaseParents[phase] = parent
         phaseChildren.getOrPut(parent) { mutableSetOf() }.add(phase)
         return phase
+    }
+
+    private val pathMatcher = PathMatcher(
+        rootNode = rootPhase,
+        namesOfNode = { phase -> listOf(phase.name, phase.identifier) },
+        parentOfNode = { phase -> getParentOf(phase) },
+        childrenOfNode = { phase -> getChildrenOf(phase) }
+    )
+
+    fun resolvePath(
+        path: ExecutionPhasePath,
+        relativeToPhase: ExecutionPhase = rootPhase
+    ): PathMatchResult<ExecutionPhase> {
+        require(relativeToPhase in _phases) { "Cannot resolve path relative to phase not in this ExecutionModel" }
+        return pathMatcher.match(path, relativeToPhase)
     }
 
     internal fun addDataflowRelationship(source: ExecutionPhase, sink: ExecutionPhase) {
