@@ -6,7 +6,7 @@ class ResourceModel {
 
     // Collection of resources
     val rootResource: Resource = RootResource(this)
-    private val _resources = mutableSetOf<Resource>(rootResource)
+    private val _resources = mutableSetOf(rootResource)
     val resources: Set<Resource>
         get() = _resources
 
@@ -113,6 +113,7 @@ private class MetricImpl(
 }
 
 typealias ResourcePath = Path
+
 data class MetricPath(val resourcePath: ResourcePath, val metricName: String) {
     override fun toString(): String {
         return "${resourcePath.toCanonicalPath()}:$metricName"
