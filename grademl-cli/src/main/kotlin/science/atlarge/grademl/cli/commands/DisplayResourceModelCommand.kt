@@ -19,24 +19,35 @@ object DisplayResourceModelCommand : Command(
     override fun process(parsedCommand: ParsedCommand, cliState: CliState) {
         printResourceModel(
             cliState.resourceModel,
+            cliState.selectedResources,
             verbose = !parsedCommand.isOptionProvided("short")
         )
     }
 
-    private fun printResourceModel(resourceModel: ResourceModel, verbose: Boolean) {
-        println("Resource model extracted from job logs:")
-        for (topLevelResource in resourceModel.rootResource.children.sortedBy { it.identifier }) {
-            printResource(topLevelResource, "  ", verbose)
+    private fun printResourceModel(resourceModel: ResourceModel, selectedResources: Set<Resource>, verbose: Boolean) {
+        print("Resource model extracted from job logs")
+        if (selectedResources.size != resourceModel.resources.size) {
+            print(" (${selectedResources.size}/${resourceModel.resources.size} resources selected)")
+        }
+        println(":")
+        if (resourceModel.rootResource !in selectedResources) {
+            println("  (empty)")
+        } else {
+            for (topLevelResource in resourceModel.rootResource.children.sortedBy { it.identifier }) {
+                printResource(topLevelResource, selectedResources, "  ", verbose)
+            }
         }
     }
 
-    private fun printResource(resource: Resource, indent: String, verbose: Boolean) {
-        println("$indent/${resource.identifier}")
-        for (metric in resource.metrics.sortedBy { it.name }) {
-            printMetric(metric, "$indent  ", verbose)
-        }
-        for (childResource in resource.children.sortedBy { it.identifier }) {
-            printResource(childResource, "$indent  ", verbose)
+    private fun printResource(resource: Resource, selectedResources: Set<Resource>, indent: String, verbose: Boolean) {
+        if (resource in selectedResources) {
+            println("$indent/${resource.identifier}")
+            for (metric in resource.metrics.sortedBy { it.name }) {
+                printMetric(metric, "$indent  ", verbose)
+            }
+            for (childResource in resource.children.sortedBy { it.identifier }) {
+                printResource(childResource, selectedResources, "$indent  ", verbose)
+            }
         }
     }
 
