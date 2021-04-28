@@ -9,7 +9,7 @@ class ExecutionModel {
 
     // Collection of phases
     val rootPhase: ExecutionPhase = RootExecutionPhase(this)
-    private val _phases = mutableSetOf<ExecutionPhase>(rootPhase)
+    private val _phases = mutableSetOf(rootPhase)
     val phases: Set<ExecutionPhase>
         get() = _phases
 
@@ -83,8 +83,9 @@ sealed class ExecutionPhase(
 
     val identifier: String by lazy {
         if (tags.isEmpty()) name
-        else "$name[${tags.entries.sortedBy { it.key }
-            .joinToString(separator = ", ") { "${it.key}=${it.value}" }}]"
+        else "$name[${
+            tags.entries.sortedBy { it.key }.joinToString(separator = ", ") { "${it.key}=${it.value}" }
+        }]"
     }
 
     val path: ExecutionPhasePath = when {
