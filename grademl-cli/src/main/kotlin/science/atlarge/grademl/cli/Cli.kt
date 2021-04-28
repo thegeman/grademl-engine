@@ -9,6 +9,7 @@ import science.atlarge.grademl.cli.util.MetricList
 import science.atlarge.grademl.cli.util.PhaseList
 import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.execution.ExecutionModel
+import science.atlarge.grademl.core.resources.Resource
 import science.atlarge.grademl.core.resources.ResourceModel
 import science.atlarge.grademl.input.airflow.Airflow
 import science.atlarge.grademl.input.resource_monitor.ResourceMonitor
@@ -113,5 +114,52 @@ class CliState(
 
     fun normalizeTimestamp(plainTimestamp: TimestampNs): Long = plainTimestamp - earliestTimestamp
     fun denormalizeTimestamp(normalizedTimestamp: Long): TimestampNs = normalizedTimestamp + earliestTimestamp
+
+    // Exclusion list for resources
+    private val excludedResources = mutableSetOf<Resource>()
+
+    // Accessors for non-excluded resources (default) and all resources
+    val selectedResources: Set<Resource>
+        get() = resourceModel.resources - excludedResources
+    val allResources: Set<Resource>
+        get() = resourceModel.resources
+
+    fun excludeResources(exclusions: Set<Resource>) {
+        require(exclusions.all { it in resourceModel.resources }) {
+            "Cannot exclude resources that are not part of this job's resource model"
+        }
+        // Exclude all given resources and any children
+        val allExclusions = mutableSetOf<Resource>()
+        val exclusionsToCheck = mutableListOf<Resource>()
+        allExclusions.addAll(exclusions)
+        exclusionsToCheck.addAll(exclusions)
+        while (exclusionsToCheck.isNotEmpty()) {
+            val nextToCheck = exclusionsToCheck.removeLast()
+            val newExclusions = nextToCheck.children - allExclusions
+            allExclusions.addAll(newExclusions)
+            exclusionsToCheck.addAll(newExclusions)
+        }
+        excludedResources.addAll(allExclusions)
+    }
+
+    fun includeResources(inclusions: Set<Resource>) {
+        require(inclusions.all { it in resourceModel.resources }) {
+            "Cannot include resources that are not part of this job's resource model"
+        }
+        // Include all given resources and any parents
+        val allInclusions = mutableSetOf<Resource>()
+        val inclusionsToCheck = mutableListOf<Resource>()
+        allInclusions.addAll(inclusions)
+        inclusionsToCheck.addAll(inclusions)
+        while (inclusionsToCheck.isNotEmpty()) {
+            val nextToCheck = inclusionsToCheck.removeLast()
+            val parent = nextToCheck.parent ?: continue
+            if (parent !in allInclusions) {
+                allInclusions.add(parent)
+                inclusionsToCheck.add(parent)
+            }
+        }
+        excludedResources.removeAll(allInclusions)
+    }
 
 }
