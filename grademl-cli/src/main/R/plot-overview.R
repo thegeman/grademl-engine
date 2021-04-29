@@ -103,7 +103,7 @@ phase_rectangles <- phase_list[, .(
 p_phase <- ggplot(phase_rectangles) +
   geom_rect(aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = factor(depth, levels = 0:max_depth)),
             colour = "black") +
-  geom_label(aes(x = (min(phase_rectangles$xmin) + max(phase_rectangles$xmax)) / 2,
+  geom_label(aes(x = (start_time + end_time) / 2,
                  y = phase_rectangles$ycenter, label = phase_rectangles$ylabel),
              label.size = NA, fill = "#FFFFFF80") +
   xlab("Time [s]") +
@@ -140,10 +140,12 @@ p_resource <- ggplot(stepped_metric_data) +
   theme_bw()
 
 # Arrange the phases and metrics in one plot
-p <- ggarrange(p_phase, p_resource, heights = c(1 * phase_count + 3, 4 * resource_count + 3),
+p_phase_height <- 1.4 * phase_count + 1
+p_resource_height <- 4 * resource_count + 1
+p <- ggarrange(p_phase, p_resource, heights = c(p_phase_height, p_resource_height),
                ncol = 1, nrow = 2, align = "v")
 
 # Save the plot
 ggsave(paste0(output_directory, plot_filename), width = 40,
-       height = 1 * phase_count + 3 + 4 * resource_count + 3,
+       height = p_phase_height + p_resource_height,
        units = "cm", limitsize = FALSE, p)
