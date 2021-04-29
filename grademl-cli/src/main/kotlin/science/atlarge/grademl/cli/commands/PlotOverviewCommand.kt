@@ -4,22 +4,38 @@ import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.data.MetricDataWriter
 import science.atlarge.grademl.cli.data.MetricListWriter
 import science.atlarge.grademl.cli.data.PhaseListWriter
-import science.atlarge.grademl.cli.util.ParsedCommand
-import science.atlarge.grademl.cli.util.instantiateRScript
-import science.atlarge.grademl.cli.util.runRScript
+import science.atlarge.grademl.cli.util.*
 import science.atlarge.grademl.core.execution.ExecutionPhase
 
 object PlotOverviewCommand : Command(
     name = "plot-overview",
     shortHelpMessage = "plot a comprehensive overview of the execution and resource model",
-    longHelpMessage = "Plots an overview of the execution and resource model."
+    longHelpMessage = "Plots an overview of the execution and resource model.",
+    supportedArguments = listOf(
+        Argument(
+            "phase_path",
+            "path of phase to plot an overview for (defaults to root phase)",
+            isOptional = true,
+            isVararg = true
+        )
+    )
 ) {
 
     private const val PLOT_FILENAME = "overview.pdf"
     private const val SCRIPT_FILENAME = "plot-overview.R"
 
     override fun process(parsedCommand: ParsedCommand, cliState: CliState) {
-        plotOverviewForPhase(cliState.executionModel.rootPhase, cliState)
+        val phaseExpressions = parsedCommand.getArgumentValues("phase_path").ifEmpty { listOf("/") }
+        val phasePaths = phaseExpressions.map(::parseExecutionPhasePathExpression)
+        val phases = phasePaths.flatMap { path -> tryMatchExecutionPhasePath(path, cliState) ?: return }.toSet()
+
+        var isFirst = true
+        for (phase in phases.sortedBy { cliState.phaseList.phaseToIdentifier(it) }) {
+            if (!isFirst) println()
+            isFirst = false
+            println("Plotting overview for phase: \"${phase.path}\".")
+            plotOverviewForPhase(phase, cliState)
+        }
     }
 
     private fun plotOverviewForPhase(phase: ExecutionPhase, cliState: CliState) {
@@ -33,8 +49,8 @@ object PlotOverviewCommand : Command(
         println("Writing list of selected execution phases to \"${phaseListFile.absolutePath}\".")
         PhaseListWriter.output(
             phaseListFile,
-            cliState.executionModel.rootPhase,
-            cliState.executionModel.phases,
+            phase,
+            phase.phasesInTree,
             cliState
         )
 

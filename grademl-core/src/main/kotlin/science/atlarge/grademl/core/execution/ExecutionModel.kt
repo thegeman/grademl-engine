@@ -122,6 +122,13 @@ sealed class ExecutionPhase(
     val inFlows: Set<ExecutionPhase>
         get() = model.getInFlowsOf(this)
 
+    val phasesInTree: Set<ExecutionPhase>
+        get() {
+            val phaseSet = mutableSetOf(this)
+            for (child in children) phaseSet.addAll(child.phasesInTree)
+            return phaseSet
+        }
+
     fun addOutgoingDataflow(sink: ExecutionPhase) {
         model.addDataflowRelationship(this, sink)
     }
