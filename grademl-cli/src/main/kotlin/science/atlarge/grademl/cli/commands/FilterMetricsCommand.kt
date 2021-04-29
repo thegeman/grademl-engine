@@ -4,9 +4,7 @@ import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.util.Argument
 import science.atlarge.grademl.cli.util.ParsedCommand
 import science.atlarge.grademl.cli.util.parseMetricPathExpression
-import science.atlarge.grademl.core.PathMatchException
-import science.atlarge.grademl.core.PathMatches
-import science.atlarge.grademl.core.resources.Metric
+import science.atlarge.grademl.cli.util.tryMatchMetricPath
 import science.atlarge.grademl.core.resources.MetricPath
 
 object FilterMetricsCommand : Command(
@@ -39,18 +37,7 @@ object FilterMetricsCommand : Command(
         for (pathExpression in pathExpressions) {
             paths.add(parseMetricPathExpression(pathExpression) ?: return)
         }
-
-        val matchedMetrics = mutableSetOf<Metric>()
-        for (path in paths) {
-            when (val matchResult = cliState.resourceModel.resolvePath(path)) {
-                is PathMatches -> matchedMetrics.addAll(matchResult.matches)
-                is PathMatchException -> {
-                    println("Failed to match metric(s) for expression \"$path\":")
-                    println("  ${matchResult.message}")
-                    return
-                }
-            }
-        }
+        val matchedMetrics = paths.flatMap { tryMatchMetricPath(it, cliState) ?: return }.toSet()
 
         val previousSelectionSize = cliState.selectedMetrics.size
         if (excludeOrInclude == "exclude") cliState.excludeMetrics(matchedMetrics)
