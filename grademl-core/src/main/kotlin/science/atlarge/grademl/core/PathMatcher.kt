@@ -79,7 +79,7 @@ class PathMatcher<T : Any>(
                     .split("*")
                     .joinToString(prefix = "\\[", postfix = "]", separator = """[^\[\]]*""") { Regex.escape(it) }
             }
-            parsedComp.groupValues[1].endsWith("*") -> """\[[^\[\]]*]"""
+            parsedComp.groupValues[1].endsWith("*") -> """(\[[^\[\]]*])?"""
             else -> ""
         }
         return (typeRegex + instanceRegex).toRegex()
