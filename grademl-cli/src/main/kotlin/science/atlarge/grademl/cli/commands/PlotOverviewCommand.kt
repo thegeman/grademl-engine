@@ -47,10 +47,11 @@ object PlotOverviewCommand : Command(
         // Output selected phases in the execution model
         val phaseListFile = dataOutputDirectory.resolve(PhaseListWriter.FILENAME).toFile()
         println("Writing list of selected execution phases to \"${phaseListFile.absolutePath}\".")
+        val selectedPhases = phase.phasesInTree
         PhaseListWriter.output(
             phaseListFile,
             phase,
-            phase.phasesInTree,
+            selectedPhases,
             cliState
         )
 
@@ -69,6 +70,7 @@ object PlotOverviewCommand : Command(
         MetricDataWriter.output(
             metricDataFile,
             cliState.selectedMetrics,
+            filterTime = selectedPhases.minOf { it.startTime } .. selectedPhases.maxOf { it.endTime },
             cliState
         )
 

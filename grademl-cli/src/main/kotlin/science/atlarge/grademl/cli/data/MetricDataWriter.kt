@@ -2,6 +2,7 @@ package science.atlarge.grademl.cli.data
 
 import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.core.TimestampNs
+import science.atlarge.grademl.core.TimestampNsRange
 import science.atlarge.grademl.core.resources.DoubleMetricData
 import science.atlarge.grademl.core.resources.LongMetricData
 import science.atlarge.grademl.core.resources.Metric
@@ -11,7 +12,12 @@ object MetricDataWriter {
 
     const val FILENAME = "metric-data.tsv"
 
-    fun output(outFile: File, selectedMetrics: Iterable<Metric>, cliState: CliState) {
+    fun output(
+        outFile: File,
+        selectedMetrics: Iterable<Metric>,
+        filterTime: TimestampNsRange? = null,
+        cliState: CliState
+    ) {
         outFile.bufferedWriter().use { writer ->
             writer.appendLine("metric.id\ttimestamp\tvalue")
             val metricsById = selectedMetrics.map { cliState.metricList.metricToIdentifier(it) to it }
@@ -27,16 +33,22 @@ object MetricDataWriter {
                     }
                 }
 
+                // Get slice of metric data if needed
+                val metricData = metric.data.let {
+                    if (filterTime != null) it.slice(filterTime.first, filterTime.last)
+                    else it
+                }
+
                 // Skip metrics without data points
-                if (metric.data.timestamps.size < 2) {
+                if (metricData.timestamps.size < 2) {
                     continue
                 }
 
-                val timestamps = metric.data.timestamps
+                val timestamps = metricData.timestamps
                 printLine(timestamps[0], "0")
-                when (val data = metric.data) {
+                when (metricData) {
                     is DoubleMetricData -> {
-                        val values = data.values
+                        val values = metricData.values
                         var lastValue = 0.0
                         for (index in values.indices) {
                             val newValue = values[index]
@@ -50,7 +62,7 @@ object MetricDataWriter {
                         printLine(timestamps.last(), lastValue.toString())
                     }
                     is LongMetricData -> {
-                        val values = data.values
+                        val values = metricData.values
                         var lastValue = 0L
                         for (index in values.indices) {
                             val newValue = values[index]
@@ -67,5 +79,4 @@ object MetricDataWriter {
             }
         }
     }
-
 }
