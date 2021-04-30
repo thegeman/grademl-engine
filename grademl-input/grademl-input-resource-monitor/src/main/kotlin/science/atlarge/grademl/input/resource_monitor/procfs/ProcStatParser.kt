@@ -12,6 +12,7 @@ class ProcStatParser {
 
         private val timestamps = LongArrayBuilder()
         private val totalCoreUtilization = DoubleArrayBuilder()
+        private val coresFullyUtilized = LongArrayBuilder()
         private lateinit var coreUtilization: Array<DoubleArrayBuilder>
 
         private var numCpus: Int = 0
@@ -38,7 +39,13 @@ class ProcStatParser {
             val coreUtilizationData = Array(numCpus) { coreId ->
                 CpuCoreUtilizationData(coreId, timestampsArray, coreUtilization[coreId].toArray())
             }
-            return CpuUtilizationData(timestampsArray, totalCoreUtilization.toArray(), numCpus, coreUtilizationData)
+            return CpuUtilizationData(
+                timestampsArray,
+                totalCoreUtilization.toArray(),
+                coresFullyUtilized.toArray(),
+                numCpus,
+                coreUtilizationData
+            )
         }
 
         private fun readFirstMessage() {
@@ -69,6 +76,7 @@ class ProcStatParser {
 
         private fun computeUtilization() {
             var sumUtilization = 0.0
+            var fullCoreCount = 0L
             for (cpuId in 0 until numCpus) {
                 val cpuOffset = cpuId * 10
                 var totalJiffies = 0L
@@ -81,8 +89,12 @@ class ProcStatParser {
                 coreUtilization[cpuId].append(utilization)
 
                 sumUtilization += utilization
+                if (utilization >= FULL_CORE_THRESHOLD) {
+                    fullCoreCount++
+                }
             }
             totalCoreUtilization.append(sumUtilization)
+            coresFullyUtilized.append(fullCoreCount)
         }
 
         override fun close() {
@@ -96,11 +108,16 @@ class ProcStatParser {
         }
     }
 
+    companion object {
+        const val FULL_CORE_THRESHOLD = 0.95
+    }
+
 }
 
 class CpuUtilizationData(
     val timestamps: TimestampNsArray,
     val totalCoreUtilization: DoubleArray,
+    val coresFullyUtilized: LongArray,
     val numCpuCores: Int,
     val cores: Array<CpuCoreUtilizationData>
 ) {

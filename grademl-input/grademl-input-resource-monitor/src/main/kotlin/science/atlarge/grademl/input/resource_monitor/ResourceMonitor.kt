@@ -62,6 +62,14 @@ object ResourceMonitor {
                     cpuUtilization.numCpuCores.toDouble()
                 )
             )
+            cpuResource.addMetric(
+                name = "cores-fully-utilized",
+                data = LongMetricData(
+                    cpuUtilization.timestamps,
+                    cpuUtilization.coresFullyUtilized,
+                    cpuUtilization.numCpuCores.toLong()
+                )
+            )
             // Create metrics for each individual CPU core and add them as resources
             for (core in cpuUtilization.cores) {
                 val coreResource = resourceModel.addResource(
