@@ -51,6 +51,18 @@ object Cli {
         Airflow.parseJobLogs(jobLogDirectory, executionModel)
         ResourceMonitor.parseJobLogs(jobLogDirectory, resourceModel)
 
+        if (executionModel.phases.size == 1 && resourceModel.resources.any { it.metrics.isNotEmpty() }) {
+            println(
+                "Did not find any execution logs. Creating dummy execution model to allow " +
+                        "analysis of the resource model."
+            )
+            executionModel.addPhase(
+                "dummy_phase",
+                startTime = resourceModel.resources.flatMap { it.metrics }.minOf { it.data.timestamps.first() },
+                endTime = resourceModel.resources.flatMap { it.metrics }.maxOf { it.data.timestamps.last() }
+            )
+        }
+
         return executionModel to resourceModel
     }
 
