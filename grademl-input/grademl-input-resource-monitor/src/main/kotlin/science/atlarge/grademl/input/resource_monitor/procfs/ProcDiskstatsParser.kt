@@ -77,11 +77,11 @@ class ProcDiskstatsParser {
                 SingleDiskUtilizationData(
                     diskId,
                     timestampArray,
-                    bytesReadMetric[i].toArray(),
-                    readTimeFractionMetric[i].toArray(),
-                    bytesWrittenMetric[i].toArray(),
-                    writeTimeFractionMetric[i].toArray(),
-                    if (totalTimeSpentValid) totalTimeSpentArr else null
+                    bytesRead = bytesReadMetric[i].toArray(),
+                    bytesWritten = bytesWrittenMetric[i].toArray(),
+                    readTimeFraction = readTimeFractionMetric[i].toArray(),
+                    writeTimeFraction = writeTimeFractionMetric[i].toArray(),
+                    totalTimeSpentFraction = if (totalTimeSpentValid) totalTimeSpentArr else null
                 )
             }
 
