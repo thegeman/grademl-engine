@@ -2,8 +2,8 @@ package science.atlarge.grademl.cli.terminal
 
 data class CommandDefinition(
     val name: String,
-    val usageDescription: String = "",
-    val completionDescription: String = usageDescription,
+    val shortDescription: String = "",
+    val longDescription: String = "",
     val options: List<Option> = emptyList(),
     val arguments: List<Argument> = emptyList()
 ) {
