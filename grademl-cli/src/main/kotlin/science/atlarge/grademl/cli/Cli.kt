@@ -1,11 +1,11 @@
 package science.atlarge.grademl.cli
 
-import org.jline.builtins.Completers
 import org.jline.reader.EndOfFileException
 import org.jline.reader.LineReaderBuilder
 import org.jline.reader.impl.DefaultParser
 import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
+import science.atlarge.grademl.cli.terminal.CommandCompleter
 import science.atlarge.grademl.cli.util.MetricList
 import science.atlarge.grademl.cli.util.PhaseList
 import science.atlarge.grademl.core.TimestampNs
@@ -72,12 +72,11 @@ object Cli {
         val terminal = TerminalBuilder.builder()
             .jansi(true)
             .build()
-        val completer = Completers.AnyCompleter.INSTANCE
         val parser = DefaultParser()
         val lineReader = LineReaderBuilder.builder()
             .appName("GradeML")
             .terminal(terminal)
-            .completer(completer)
+            .completer(CommandCompleter)
             .parser(parser)
             .history(DefaultHistory())
             .build()
