@@ -16,4 +16,5 @@ fi
 echo
 
 # Start the GradeML CLI
+export GRADEML_CLI_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5015"
 "$GRADEML_ROOT/grademl-cli/build/install/grademl-cli/bin/grademl-cli" "$@"
