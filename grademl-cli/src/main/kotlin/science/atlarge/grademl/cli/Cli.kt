@@ -1,6 +1,7 @@
 package science.atlarge.grademl.cli
 
 import org.jline.builtins.Completers
+import org.jline.reader.EndOfFileException
 import org.jline.reader.LineReaderBuilder
 import org.jline.reader.impl.DefaultParser
 import org.jline.reader.impl.history.DefaultHistory
@@ -93,6 +94,7 @@ object Cli {
                 when (e) {
                     // End the CLI when the line reader is aborted
                     is IOError -> break
+                    is EndOfFileException -> break
                     else -> throw e
                 }
             }
