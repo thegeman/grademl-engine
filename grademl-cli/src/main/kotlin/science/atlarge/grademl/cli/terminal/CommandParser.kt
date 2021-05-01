@@ -29,7 +29,7 @@ class CommandParser(
             // Add long option
             if (option.longName != null) sb.append("--").append(option.longName)
             // Add argument name
-            if (option.hasArgument) sb.append(' ').append(option.argumentName)
+            if (option.argument != null) sb.append(' ').append(option.argument.display)
             // Add closing bracket/parenthesis
             if (option.isOptional) sb.append(']')
             else if (option.shortName != null && option.longName != null) sb.append(')')
@@ -123,7 +123,7 @@ class CommandParser(
                     "Unrecognized option: \"--$optionName\""
                 )
                 // Get the option's argument if applicable
-                val argument = if (option.hasArgument) {
+                val argument = if (option.argument != null) {
                     if (index >= commandArguments.size) return ParseException(
                         "Missing mandatory argument to option \"--$optionName\""
                     )
@@ -145,7 +145,7 @@ class CommandParser(
                     "Unrecognized option: \"-$optionName\""
                 )
                 // Get the option's argument if applicable
-                val argument = if (option.hasArgument) {
+                val argument = if (option.argument != null) {
                     if (index >= commandArguments.size) return ParseException(
                         "Missing mandatory argument to option \"-$optionName\""
                     )

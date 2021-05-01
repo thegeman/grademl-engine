@@ -56,8 +56,7 @@ data class Option(
     val shortName: Char?,
     val longName: String?,
     val description: String,
-    val hasArgument: Boolean = false,
-    val argumentName: String? = null,
+    val argument: OptionArgument? = null,
     val isOptional: Boolean = true
 ) {
 
@@ -72,11 +71,18 @@ data class Option(
         require(longName == null || longName.isNotBlank()) {
             "Option's long name must not be blank if specified"
         }
-        if (hasArgument) {
-            require(!argumentName.isNullOrBlank()) { "Option with argument must have an argument name" }
-        } else {
-            require(argumentName == null) { "Option without argument cannot have an argument name" }
-        }
+    }
+
+}
+
+data class OptionArgument(
+    val display: String,
+    val valueConstraint: ArgumentValueConstraint = ArgumentValueConstraint.Any
+) {
+
+    init {
+        // Check the constructor arguments for sanity
+        require(display.isNotBlank()) { "Option argument's display string must not be blank" }
     }
 
 }
@@ -84,6 +90,7 @@ data class Option(
 data class Argument(
     val name: String,
     val description: String,
+    val valueConstraint: ArgumentValueConstraint = ArgumentValueConstraint.Any,
     val isOptional: Boolean = false,
     val isVararg: Boolean = false
 ) {
@@ -93,4 +100,12 @@ data class Argument(
         require(name.isNotBlank()) { "Argument name must not be blank" }
     }
 
+}
+
+sealed class ArgumentValueConstraint {
+    object Any : ArgumentValueConstraint()
+    data class Choice(val options: Set<String>) : ArgumentValueConstraint()
+    object ExecutionPhasePath : ArgumentValueConstraint()
+    object ResourcePath : ArgumentValueConstraint()
+    object MetricPath : ArgumentValueConstraint()
 }
