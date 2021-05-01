@@ -1,22 +1,23 @@
-package science.atlarge.grademl.cli.util
+package science.atlarge.grademl.cli.terminal
 
 class CommandParser(
-    val commandName: String,
-    val commandDescription: String = "",
-    val options: List<Option> = emptyList(),
-    val arguments: List<Argument> = emptyList()
+    val commandDefinition: CommandDefinition
 ) {
 
-    private val shortOptions: Map<Char, Option>
-    private val longOptions: Map<String, Option>
+    private val shortOptions: Map<Char, Option> = commandDefinition.options
+        .filter { it.shortName != null }
+        .associateBy { it.shortName!! }
+    private val longOptions: Map<String, Option> = commandDefinition.options
+        .filter { it.longName != null }
+        .associateBy { it.longName!! }
 
     val usage by lazy {
         // Build usage string
         val sb = StringBuilder()
         // Section 1: Overview of options and arguments
-        sb.append("Usage: ").append(commandName)
+        sb.append("Usage: ").append(commandDefinition.name)
         // Append options
-        for (option in options) {
+        for (option in commandDefinition.options) {
             sb.append(' ')
             // Add opening bracket/parenthesis
             if (option.isOptional) sb.append('[')
@@ -34,7 +35,7 @@ class CommandParser(
             else if (option.shortName != null && option.longName != null) sb.append(')')
         }
         // Append arguments
-        for (argument in arguments) {
+        for (argument in commandDefinition.arguments) {
             sb.append(' ')
             // Add argument name if mandatory
             if (!argument.isOptional) {
@@ -51,18 +52,18 @@ class CommandParser(
             }
         }
         // Section 2: description
-        if (commandDescription.isNotBlank()) {
+        if (commandDefinition.usageDescription.isNotBlank()) {
             sb.appendLine()
-            sb.append(commandDescription.trimEnd())
+            sb.append(commandDefinition.usageDescription.trimEnd())
         }
         // Section 3: options
-        val hasShortOptions = options.any { it.shortName != null }
-        val maxLongOptionLength = options.maxOfOrNull { it.longName?.length ?: 0 } ?: 0
-        if (options.isNotEmpty()) {
+        val hasShortOptions = shortOptions.isNotEmpty()
+        val maxLongOptionLength = longOptions.maxOfOrNull { it.key.length } ?: 0
+        if (commandDefinition.options.isNotEmpty()) {
             sb.appendLine()
             sb.appendLine()
             sb.append("Options:")
-            for (option in options) {
+            for (option in commandDefinition.options) {
                 sb.appendLine()
                 sb.append("  ")
                 // Print short name
@@ -85,12 +86,12 @@ class CommandParser(
             }
         }
         // Section 4: arguments
-        if (arguments.isNotEmpty()) {
+        if (commandDefinition.arguments.isNotEmpty()) {
             sb.appendLine()
             sb.appendLine()
             sb.append("Arguments:")
-            val maxArgumentNameLength = arguments.maxOfOrNull { it.name.length } ?: 0
-            for (argument in arguments) {
+            val maxArgumentNameLength = commandDefinition.arguments.maxOfOrNull { it.name.length } ?: 0
+            for (argument in commandDefinition.arguments) {
                 sb.appendLine()
                 sb.append("  ")
                 sb.append(argument.name.padEnd(maxArgumentNameLength))
@@ -100,50 +101,6 @@ class CommandParser(
         }
         // Return the full usage text
         sb.toString()
-    }
-
-    init {
-        // Check the constructor arguments for sanity
-        require(commandName.isNotBlank()) {
-            "Command name must not be blank"
-        }
-        // Check that no two options share a short or long name
-        val shortOptions = mutableMapOf<Char, Option>()
-        val longOptions = mutableMapOf<String, Option>()
-        for (option in options) {
-            if (option.shortName != null) {
-                require(option.shortName !in shortOptions) {
-                    "Option names must be unique, found duplicate short option: \"-${option.shortName}\""
-                }
-                shortOptions[option.shortName] = option
-            }
-            if (option.longName != null) {
-                require(option.longName !in longOptions) {
-                    "Option names must be unique, found duplicate long option: \"--${option.longName}\""
-                }
-                longOptions[option.longName] = option
-            }
-        }
-        this.shortOptions = shortOptions
-        this.longOptions = longOptions
-        // Check that no two positional arguments share a name
-        val argumentNames = mutableSetOf<String>()
-        for (argument in arguments) {
-            require(argument.name !in argumentNames) {
-                "Argument names must be unique, found duplicate argument: \"${argument.name}\""
-            }
-            argumentNames.add(argument.name)
-        }
-        // Check that no mandatory arguments are positioned after optional arguments
-        val firstOptionalArgumentIndex = arguments.indexOfFirst { it.isOptional }
-        val lastMandatoryArgumentIndex = arguments.indexOfLast { !it.isOptional }
-        require(firstOptionalArgumentIndex == -1 || firstOptionalArgumentIndex > lastMandatoryArgumentIndex) {
-            "CommandParser does not support mandatory arguments placed after optional arguments"
-        }
-        // Check that only the last argument is variable length (if any)
-        require(arguments.dropLast(1).all { !it.isVararg }) {
-            "CommandParser does not support arguments placed after a variable-length argument"
-        }
     }
 
     fun parse(commandArguments: List<String>): ParseResult {
@@ -208,8 +165,8 @@ class CommandParser(
         val parsedArguments = mutableListOf<Pair<Argument, String>>()
         var givenArgumentIndex = 0
         var expectedArgumentIndex = 0
-        while (givenArgumentIndex < argumentsToParse.size && expectedArgumentIndex < arguments.size) {
-            val expectedArgument = arguments[expectedArgumentIndex]
+        while (givenArgumentIndex < argumentsToParse.size && expectedArgumentIndex < commandDefinition.arguments.size) {
+            val expectedArgument = commandDefinition.arguments[expectedArgumentIndex]
             parsedArguments.add(expectedArgument to argumentsToParse[givenArgumentIndex++])
             if (!expectedArgument.isVararg) expectedArgumentIndex++
         }
@@ -223,60 +180,18 @@ class CommandParser(
         // - more arguments could have been parsed
         // - the next argument is not optional
         // - the next argument is not vararg OR has not been encountered yet
-        if (expectedArgumentIndex < arguments.size) {
-            val nextArg = arguments[expectedArgumentIndex]
+        if (expectedArgumentIndex < commandDefinition.arguments.size) {
+            val nextArg = commandDefinition.arguments[expectedArgumentIndex]
             val lastArgMatchesNextArg = parsedArguments.lastOrNull()?.first == nextArg
             if (!nextArg.isOptional && (!nextArg.isVararg || !lastArgMatchesNextArg)) {
                 return ParseException(
-                    "Missing mandatory positional argument: \"${arguments[expectedArgumentIndex].name}\""
+                    "Missing mandatory positional argument: " +
+                            "\"${commandDefinition.arguments[expectedArgumentIndex].name}\""
                 )
             }
         }
 
         return ParsedCommand(parsedOptions, parsedArguments)
-    }
-
-}
-
-data class Option(
-    val shortName: Char?,
-    val longName: String?,
-    val description: String,
-    val hasArgument: Boolean = false,
-    val argumentName: String? = null,
-    val isOptional: Boolean = true
-) {
-
-    init {
-        // Check the constructor arguments for sanity
-        require(shortName != null || longName != null) {
-            "Option requires at least one of short and long name"
-        }
-        require(shortName == null || shortName.isLetterOrDigit()) {
-            "Option's short name must not be a letter or digit"
-        }
-        require(longName == null || longName.isNotBlank()) {
-            "Option's long name must not be blank if specified"
-        }
-        if (hasArgument) {
-            require(!argumentName.isNullOrBlank()) { "Option with argument must have an argument name" }
-        } else {
-            require(argumentName == null) { "Option without argument cannot have an argument name" }
-        }
-    }
-
-}
-
-data class Argument(
-    val name: String,
-    val description: String,
-    val isOptional: Boolean = false,
-    val isVararg: Boolean = false
-) {
-
-    init {
-        // Check the constructor arguments for sanity
-        require(name.isNotBlank()) { "Argument name must not be blank" }
     }
 
 }
@@ -290,37 +205,46 @@ data class ParsedCommand(
 
     fun isOptionProvided(option: Option) =
         passedOptions.any { it.first == option }
+
     fun isOptionProvided(shortName: Char) =
         passedOptions.any { it.first.shortName == shortName }
+
     fun isOptionProvided(longName: String) =
         passedOptions.any { it.first.longName == longName }
 
     fun getOptionValue(option: Option) =
         passedOptions.firstOrNull { it.first == option }?.second
+
     fun getOptionValue(shortName: Char) =
         passedOptions.firstOrNull { it.first.shortName == shortName }?.second
+
     fun getOptionValue(longName: String) =
         passedOptions.firstOrNull { it.first.longName == longName }?.second
 
     fun getOptionValues(option: Option) =
         passedOptions.filter { it.first == option }.mapNotNull { it.second }
+
     fun getOptionValues(shortName: Char) =
         passedOptions.filter { it.first.shortName == shortName }.mapNotNull { it.second }
+
     fun getOptionValues(longName: String) =
         passedOptions.filter { it.first.longName == longName }.mapNotNull { it.second }
 
     fun isArgumentProvided(argument: Argument) =
         passedArguments.any { it.first == argument }
+
     fun isArgumentProvided(name: String) =
         passedArguments.any { it.first.name == name }
 
     fun getArgumentValue(argument: Argument) =
         passedArguments.firstOrNull { it.first == argument }?.second
+
     fun getArgumentValue(name: String) =
         passedArguments.firstOrNull { it.first.name == name }?.second
 
     fun getArgumentValues(argument: Argument) =
         passedArguments.filter { it.first == argument }.map { it.second }
+
     fun getArgumentValues(name: String) =
         passedArguments.filter { it.first.name == name }.map { it.second }
 
