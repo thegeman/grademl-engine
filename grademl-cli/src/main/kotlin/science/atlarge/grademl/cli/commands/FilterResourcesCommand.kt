@@ -1,8 +1,8 @@
 package science.atlarge.grademl.cli.commands
 
 import science.atlarge.grademl.cli.CliState
-import science.atlarge.grademl.cli.util.Argument
-import science.atlarge.grademl.cli.util.ParsedCommand
+import science.atlarge.grademl.cli.terminal.Argument
+import science.atlarge.grademl.cli.terminal.ParsedCommand
 import science.atlarge.grademl.cli.util.parseResourcePathExpression
 import science.atlarge.grademl.cli.util.tryMatchResourcePath
 

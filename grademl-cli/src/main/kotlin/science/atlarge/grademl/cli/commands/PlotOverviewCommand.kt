@@ -4,7 +4,12 @@ import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.data.MetricDataWriter
 import science.atlarge.grademl.cli.data.MetricListWriter
 import science.atlarge.grademl.cli.data.PhaseListWriter
-import science.atlarge.grademl.cli.util.*
+import science.atlarge.grademl.cli.terminal.Argument
+import science.atlarge.grademl.cli.terminal.ParsedCommand
+import science.atlarge.grademl.cli.util.instantiateRScript
+import science.atlarge.grademl.cli.util.parseExecutionPhasePathExpression
+import science.atlarge.grademl.cli.util.runRScript
+import science.atlarge.grademl.cli.util.tryMatchExecutionPhasePath
 import science.atlarge.grademl.core.execution.ExecutionPhase
 
 object PlotOverviewCommand : Command(
@@ -70,7 +75,7 @@ object PlotOverviewCommand : Command(
         MetricDataWriter.output(
             metricDataFile,
             cliState.selectedMetrics,
-            filterTime = selectedPhases.minOf { it.startTime } .. selectedPhases.maxOf { it.endTime },
+            filterTime = selectedPhases.minOf { it.startTime }..selectedPhases.maxOf { it.endTime },
             cliState
         )
 

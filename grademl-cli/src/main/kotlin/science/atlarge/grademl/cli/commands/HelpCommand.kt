@@ -2,8 +2,8 @@ package science.atlarge.grademl.cli.commands
 
 import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.CommandRegistry
-import science.atlarge.grademl.cli.util.Argument
-import science.atlarge.grademl.cli.util.ParsedCommand
+import science.atlarge.grademl.cli.terminal.Argument
+import science.atlarge.grademl.cli.terminal.ParsedCommand
 
 object HelpCommand : Command(
     name = "help",
@@ -31,7 +31,11 @@ object HelpCommand : Command(
         val sortedCommands = CommandRegistry.commands.sortedBy(Command::name)
         val maxCommandLength = sortedCommands.map { it.name.length }.maxOrNull() ?: 0
         for (commandProcessor in sortedCommands) {
-            println("    ${commandProcessor.name.padEnd(maxCommandLength)}    ${commandProcessor.shortHelpMessage}")
+            println(
+                "    ${commandProcessor.name.padEnd(maxCommandLength)}    ${
+                    commandProcessor.definition.shortDescription
+                }"
+            )
         }
 
         println("Use \"help [command]\" to get additional information about a command.")
@@ -44,7 +48,7 @@ object HelpCommand : Command(
             return
         }
 
-        println(command.longHelpMessage)
+        println(command.definition.longDescription)
     }
 
 }

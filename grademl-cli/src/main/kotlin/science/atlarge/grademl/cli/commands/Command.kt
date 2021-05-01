@@ -1,20 +1,28 @@
 package science.atlarge.grademl.cli.commands
 
 import science.atlarge.grademl.cli.CliState
-import science.atlarge.grademl.cli.util.*
+import science.atlarge.grademl.cli.terminal.*
 
 abstract class Command(
-    val name: String,
-    val shortHelpMessage: String,
+    name: String,
+    shortHelpMessage: String,
     longHelpMessage: String,
     supportedOptions: List<Option> = emptyList(),
     supportedArguments: List<Argument> = emptyList()
 ) {
 
-    private val commandParser = CommandParser(name, longHelpMessage, supportedOptions, supportedArguments)
+    val definition = CommandDefinition(
+        name,
+        shortHelpMessage,
+        longHelpMessage,
+        supportedOptions,
+        supportedArguments
+    )
 
-    val longHelpMessage: String
-        get() = commandParser.usage
+    private val commandParser = CommandParser(definition)
+
+    val name: String
+        get() = definition.name
 
     fun process(arguments: List<String>, cliState: CliState) {
         val parseResult = commandParser.parse(arguments)

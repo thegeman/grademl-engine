@@ -1,8 +1,8 @@
 package science.atlarge.grademl.cli.commands
 
 import science.atlarge.grademl.cli.CliState
-import science.atlarge.grademl.cli.util.Option
-import science.atlarge.grademl.cli.util.ParsedCommand
+import science.atlarge.grademl.cli.terminal.Option
+import science.atlarge.grademl.cli.terminal.ParsedCommand
 import science.atlarge.grademl.cli.util.toDisplayString
 import science.atlarge.grademl.core.execution.ExecutionModel
 import science.atlarge.grademl.core.execution.ExecutionPhase
