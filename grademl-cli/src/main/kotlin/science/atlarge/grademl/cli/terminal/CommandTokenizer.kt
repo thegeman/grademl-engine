@@ -1,62 +1,123 @@
 package science.atlarge.grademl.cli.terminal
 
-import java.util.*
-
 object CommandTokenizer {
 
-    fun tokenizeCommand(commandArguments: List<String>): CommandTokenizerResult {
+    fun tokenizeCommand(commandArguments: List<String>): List<CommandToken> {
         // Iterate over "words" to parse options and extract arguments
         val tokens = mutableListOf<CommandToken>()
-        val remainingWords = LinkedList(commandArguments)
-        while (remainingWords.isNotEmpty()) {
+        var nextWordIndex = 0
+        while (nextWordIndex < commandArguments.size) {
             // Interpret the next word
-            val nextWord = remainingWords.pop()
+            val wordIndex = nextWordIndex++
+            val word = commandArguments[wordIndex]
             when {
                 // Check for invalid option format, starting with more than two dashes
-                nextWord.startsWith("---") -> {
-                    return CommandTokenizerException(
-                        "Invalid format for command option: \"$nextWord\""
+                word.startsWith("---") -> {
+                    tokens.add(
+                        InvalidToken(
+                            word,
+                            "Invalid format for command option: \"$word\"",
+                            wordIndex,
+                            0,
+                            word.length
+                        )
                     )
                 }
                 // Check for a marker closing the option list
-                nextWord == "--" -> {
-                    remainingWords.mapTo(tokens, ::ArgumentToken)
-                    remainingWords.clear()
+                word == "--" -> {
+                    tokens.add(EndOfOptionsToken(wordIndex, 0, word.length))
+                    while (nextWordIndex < commandArguments.size) {
+                        val nextWord = commandArguments[nextWordIndex]
+                        tokens.add(ArgumentToken(nextWord, nextWordIndex, 0, nextWord.length))
+                        nextWordIndex++
+                    }
                 }
                 // Check for a long option
-                nextWord.startsWith("--") -> {
-                    val keyValueMatch = nextWord.split('=', limit = 2)
-                    tokens.add(LongOptionToken(keyValueMatch[0].trimStart('-')))
-                    if (keyValueMatch.size > 1) {
-                        tokens.add(ArgumentToken(keyValueMatch[1]))
+                word.startsWith("--") -> {
+                    if ('=' in word) {
+                        val keyValueMatch = word.split('=', limit = 2)
+                        tokens.add(
+                            LongOptionToken(
+                                keyValueMatch[0].trimStart('-'),
+                                wordIndex,
+                                0,
+                                keyValueMatch[0].length
+                            )
+                        )
+                        tokens.add(
+                            ArgumentToken(
+                                keyValueMatch[1],
+                                wordIndex,
+                                keyValueMatch[0].length + 1,
+                                word.length
+                            )
+                        )
+                    } else {
+                        tokens.add(LongOptionToken(word.trimStart('-'), wordIndex, 0, word.length))
                     }
                 }
                 // Check for a short option
-                nextWord.startsWith("-") && nextWord != "-" -> {
-                    if (nextWord.length > 2) {
-                        return CommandTokenizerException("Contraction of short options is not supported: \"$nextWord\"")
+                word.startsWith("-") && word != "-" -> {
+                    if (word.length > 2) {
+                        tokens.add(
+                            InvalidToken(
+                                word,
+                                "Contraction of short options is not supported: \"$word\"",
+                                wordIndex,
+                                0,
+                                word.length
+                            )
+                        )
+                    } else {
+                        tokens.add(ShortOptionToken(word[1], wordIndex, 0, word.length))
                     }
-                    tokens.add(ShortOptionToken(nextWord[1]))
                 }
                 // Treat everything else as an argument token
-                else -> tokens.add(ArgumentToken(nextWord))
+                else -> tokens.add(ArgumentToken(word, wordIndex, 0, word.length))
             }
         }
-        return TokenizedCommand(tokens)
+        return tokens
     }
 
 }
 
-sealed class CommandToken
+sealed class CommandToken {
+    abstract val wordIndex: Int
+    abstract val wordStartOffset: Int
+    abstract val wordEndOffset: Int
+}
 
-data class ShortOptionToken(val option: Char) : CommandToken()
+data class ShortOptionToken(
+    val option: Char,
+    override val wordIndex: Int,
+    override val wordStartOffset: Int,
+    override val wordEndOffset: Int
+) : CommandToken()
 
-data class LongOptionToken(val option: String) : CommandToken()
+data class LongOptionToken(
+    val option: String,
+    override val wordIndex: Int,
+    override val wordStartOffset: Int,
+    override val wordEndOffset: Int
+) : CommandToken()
 
-data class ArgumentToken(val value: String) : CommandToken()
+data class ArgumentToken(
+    val value: String,
+    override val wordIndex: Int,
+    override val wordStartOffset: Int,
+    override val wordEndOffset: Int
+) : CommandToken()
 
-sealed class CommandTokenizerResult
+data class EndOfOptionsToken(
+    override val wordIndex: Int,
+    override val wordStartOffset: Int,
+    override val wordEndOffset: Int
+) : CommandToken()
 
-data class TokenizedCommand(val tokens: List<CommandToken>) : CommandTokenizerResult()
-
-data class CommandTokenizerException(val message: String) : CommandTokenizerResult()
+data class InvalidToken(
+    val word: String,
+    val errorMessage: String,
+    override val wordIndex: Int,
+    override val wordStartOffset: Int,
+    override val wordEndOffset: Int
+) : CommandToken()
