@@ -2,6 +2,7 @@ package science.atlarge.grademl.cli.commands
 
 import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.terminal.Argument
+import science.atlarge.grademl.cli.terminal.ArgumentValueConstraint
 import science.atlarge.grademl.cli.terminal.ParsedCommand
 import science.atlarge.grademl.cli.util.parseResourcePathExpression
 import science.atlarge.grademl.cli.util.tryMatchResourcePath
@@ -14,11 +15,13 @@ object FilterResourcesCommand : Command(
     supportedArguments = listOf(
         Argument(
             "exclude|include",
-            "exclude or include resources in subsequent commands"
+            "exclude or include resources in subsequent commands",
+            ArgumentValueConstraint.Choice(setOf("exclude", "include"))
         ),
         Argument(
             "resource_pattern",
             "regular expression matching the path of one or more resources",
+            ArgumentValueConstraint.ResourcePath,
             isVararg = true
         )
     )

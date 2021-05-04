@@ -5,6 +5,7 @@ import science.atlarge.grademl.cli.data.MetricDataWriter
 import science.atlarge.grademl.cli.data.MetricListWriter
 import science.atlarge.grademl.cli.data.PhaseListWriter
 import science.atlarge.grademl.cli.terminal.Argument
+import science.atlarge.grademl.cli.terminal.ArgumentValueConstraint
 import science.atlarge.grademl.cli.terminal.ParsedCommand
 import science.atlarge.grademl.cli.util.instantiateRScript
 import science.atlarge.grademl.cli.util.parseExecutionPhasePathExpression
@@ -20,6 +21,7 @@ object PlotOverviewCommand : Command(
         Argument(
             "phase_path",
             "path of phase to plot an overview for (defaults to root phase)",
+            ArgumentValueConstraint.ExecutionPhasePath,
             isOptional = true,
             isVararg = true
         )

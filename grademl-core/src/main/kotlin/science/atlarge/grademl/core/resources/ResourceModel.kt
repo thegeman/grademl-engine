@@ -106,6 +106,16 @@ sealed class Resource(
     val children: Set<Resource>
         get() = model.getChildrenOf(this)
 
+    val resourcesInTree: Set<Resource>
+        get() {
+            val resourceSet = mutableSetOf(this)
+            for (child in children) resourceSet.addAll(child.resourcesInTree)
+            return resourceSet
+        }
+
+    val metricsInTree: Set<Metric>
+        get() = resourcesInTree.flatMap { it.metrics }.toSet()
+
     open fun addMetric(name: String, data: MetricData): Metric {
         require(name !in _metricsByName) { "Cannot add multiple metrics with the same name" }
         val metric = MetricImpl(name, data, this)
