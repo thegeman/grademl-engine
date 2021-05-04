@@ -1,5 +1,7 @@
 package science.atlarge.grademl.cli.terminal
 
+import science.atlarge.grademl.cli.CommandRegistry
+
 class CommandParser(
     private val commandDefinition: CommandDefinition
 ) {
@@ -10,6 +12,45 @@ class CommandParser(
     private val longOptions: Map<String, Option> = commandDefinition.options
         .filter { it.longName != null }
         .associateBy { it.longName!! }
+
+    fun nextAcceptedTokens(commandArguments: List<String>): AcceptedCommandTokens {
+        // Tokenize the command arguments
+        val tokens = CommandTokenizer.tokenizeCommand(commandArguments)
+        // Check if a specific option's argument is expected
+        val argument = tokens.lastOrNull()?.let(this::lookupOption)?.argument
+        if (argument != null) {
+            return AcceptedCommandTokens(emptySet(), argument.valueConstraint)
+        }
+        // Otherwise check if options are still allowed
+        val acceptedOptions = if (tokens.any { it is EndOfOptionsToken }) {
+            emptySet()
+        } else {
+            commandDefinition.options.toSet()
+        }
+        // Check which positional argument is next, if any
+        var positionalArgumentsGiven = 0
+        var eatNextArgument = false
+        for (token in tokens) {
+            if (token is ArgumentToken && !eatNextArgument) positionalArgumentsGiven++
+            eatNextArgument = lookupOption(token)?.argument != null
+        }
+        val nextArgument = when {
+            positionalArgumentsGiven < commandDefinition.arguments.lastIndex -> {
+                commandDefinition.arguments[positionalArgumentsGiven]
+            }
+            commandDefinition.arguments.lastOrNull()?.isVararg == true -> {
+                commandDefinition.arguments.last()
+            }
+            else -> null
+        }
+        return AcceptedCommandTokens(acceptedOptions, nextArgument?.valueConstraint)
+    }
+
+    private fun lookupOption(token: CommandToken): Option? {
+        if (token is ShortOptionToken) return shortOptions[token.option]
+        if (token is LongOptionToken) return longOptions[token.option]
+        return null
+    }
 
     fun parse(commandArguments: List<String>): ParseResult {
         // Iterate over "words" to parse options and extract arguments
@@ -102,7 +143,26 @@ class CommandParser(
         return ParsedCommand(parsedOptions, parsedArguments)
     }
 
+    companion object {
+
+        private val parsers = mutableMapOf<String, CommandParser>()
+
+        fun forCommand(commandName: String): CommandParser? {
+            if (commandName !in parsers) {
+                val command = CommandRegistry[commandName] ?: return null
+                parsers[commandName] = CommandParser(command.definition)
+            }
+            return parsers[commandName]
+        }
+
+    }
+
 }
+
+data class AcceptedCommandTokens(
+    val acceptedOptions: Set<Option> = emptySet(),
+    val acceptedArgumentType: ArgumentValueConstraint? = null
+)
 
 sealed class ParseResult
 
