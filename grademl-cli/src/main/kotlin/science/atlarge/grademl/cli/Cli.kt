@@ -76,7 +76,7 @@ object Cli {
         val lineReader = LineReaderBuilder.builder()
             .appName("GradeML")
             .terminal(terminal)
-            .completer(CommandCompleter)
+            .completer(CommandCompleter(cliState))
             .parser(parser)
             .history(DefaultHistory())
             .build()
