@@ -3,7 +3,6 @@ package science.atlarge.grademl.cli.util
 import science.atlarge.grademl.cli.Cli
 import java.io.File
 import java.io.InputStream
-import java.nio.file.Path
 
 fun instantiateRScript(rScriptFile: File, settings: Map<String, String> = emptyMap()) {
     val rScriptStream = Cli.javaClass.getResourceAsStream("/${rScriptFile.name}")!!
@@ -14,17 +13,18 @@ fun instantiateRScript(rScriptFile: File, settings: Map<String, String> = emptyM
 }
 
 fun writeRScript(sourceStream: InputStream, destination: File, settings: Map<String, String> = emptyMap()) {
-    val SETTING_REGEX = """^\s*#+\s*:setting\s+([^\s]+)(?:\s+.*)$""".toRegex()
+    val settingRegex = """^\s*#+\s*:setting\s+([^\s]+)(?:\s+.*)$""".toRegex()
     sourceStream.bufferedReader().useLines { inputLines ->
         destination.bufferedWriter().use { writer ->
             inputLines.forEach { line ->
-                val settingMatch = SETTING_REGEX.matchEntire(line)
+                val settingMatch = settingRegex.matchEntire(line)
                 if (settingMatch == null) {
                     writer.appendLine(line)
                 } else {
                     val settingName = settingMatch.groupValues[1]
                     val settingValue = settings[settingName] ?: throw IllegalArgumentException(
-                            "Missing value for setting $settingName")
+                        "Missing value for setting $settingName"
+                    )
                     writer.appendLine("$settingName <- $settingValue")
                 }
             }
@@ -41,4 +41,14 @@ fun runRScript(rScriptFile: File) {
     pb.redirectErrorStream(true)
     pb.redirectOutput(rScriptDirectory.resolve(rScriptFile.nameWithoutExtension + ".log"))
     pb.start().waitFor()
+}
+
+fun File.asRPathString(): String {
+    var path = canonicalPath
+    if (!path.endsWith('/') && !path.endsWith('\\')) path += File.separator
+    return if ("win" in System.getProperty("os.name").toLowerCase()) {
+        "shortPathName(\"${path.replace("\\", "\\\\")}\")"
+    } else {
+        "\"$path\""
+    }
 }

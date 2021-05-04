@@ -7,10 +7,7 @@ import science.atlarge.grademl.cli.data.PhaseListWriter
 import science.atlarge.grademl.cli.terminal.Argument
 import science.atlarge.grademl.cli.terminal.ArgumentValueConstraint
 import science.atlarge.grademl.cli.terminal.ParsedCommand
-import science.atlarge.grademl.cli.util.instantiateRScript
-import science.atlarge.grademl.cli.util.parseExecutionPhasePathExpression
-import science.atlarge.grademl.cli.util.runRScript
-import science.atlarge.grademl.cli.util.tryMatchExecutionPhasePath
+import science.atlarge.grademl.cli.util.*
 import science.atlarge.grademl.core.execution.ExecutionPhase
 
 object PlotOverviewCommand : Command(
@@ -85,7 +82,13 @@ object PlotOverviewCommand : Command(
         val rScriptFile = rScriptDirectory.resolve(SCRIPT_FILENAME).toFile()
         val plotOutputFile = phaseOutputDirectory.resolve(PLOT_FILENAME).toFile()
         println("Instantiating R script to \"${rScriptFile.absolutePath}\".")
-        instantiateRScript(rScriptFile, mapOf("plot_filename" to "\"${plotOutputFile.name}\""))
+        instantiateRScript(
+            rScriptFile, mapOf(
+                "plot_filename" to "\"${plotOutputFile.name}\"",
+                "output_directory" to phaseOutputDirectory.toFile().asRPathString(),
+                "data_directory" to dataOutputDirectory.toFile().asRPathString()
+            )
+        )
 
         // Plot the overview using R
         println("Generating plot to \"${plotOutputFile.absolutePath}\".")
