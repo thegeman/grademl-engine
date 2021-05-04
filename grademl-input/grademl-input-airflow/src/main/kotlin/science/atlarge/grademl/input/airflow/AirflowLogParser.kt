@@ -11,33 +11,33 @@ class AirflowLogParser private constructor(
     private val airflowLogDirectory: Path
 ) {
 
-    private lateinit var runId: String
+    private lateinit var runIds: Set<String>
     private lateinit var dagName: String
     private val taskNames = mutableSetOf<String>()
-    private val taskStartTimes = mutableMapOf<String, TimestampNs>()
-    private val taskEndTimes = mutableMapOf<String, TimestampNs>()
     private val taskDownstreamNames = mutableMapOf<String, MutableSet<String>>()
+    private val taskStartTimesPerRun = mutableMapOf<String, MutableMap<String, TimestampNs>>()
+    private val taskEndTimesPerRun = mutableMapOf<String, MutableMap<String, TimestampNs>>()
 
     // Expected directory structure:
     // <airflowLogDirectory>/
-    //     run_id - identifier for the DAG run recorded in the given logs
+    //     run_id - identifier(s) for the DAG run(s) recorded in the given logs
     //     <dag_name>.dag - DAG structure, output of "airflow tasks list -t <dag_name>"
     //     <task_name>/ - subdirectory per task
     //         */*.log - log file for task run
     private fun parse(): AirflowLog {
-        parseRunId()
+        parseRunIds()
         findDagName()
         parseDagStructure()
         parseTaskInformation()
-        return AirflowLog(runId, dagName, taskNames, taskStartTimes, taskEndTimes, taskDownstreamNames)
+        return AirflowLog(runIds, dagName, taskNames, taskDownstreamNames, taskStartTimesPerRun, taskEndTimesPerRun)
     }
 
-    private fun parseRunId() {
-        runId = airflowLogDirectory.resolve("run_id")
+    private fun parseRunIds() {
+        runIds = airflowLogDirectory.resolve("run_id")
             .toFile()
             .readLines()
-            .first { it.isNotEmpty() }
-            .trim()
+            .filter { it.isNotEmpty() }
+            .toSet()
     }
 
     private fun findDagName() {
@@ -80,17 +80,17 @@ class AirflowLogParser private constructor(
 
     private fun parseTaskInformation() {
         // Find and enumerate task log files
-        val taskDirectories = airflowLogDirectory.toFile()
-            .walkTopDown()
-            .maxDepth(1)
-            .filter { it.isDirectory }
-        val taskLogsPerDirectory = taskDirectories
-            .associate { dir ->
-                dir.name to dir.walk().filter { it.isFile && it.extension == "log" }.first()
-            }
+        val taskLogs = airflowLogDirectory.toFile()
+            .walk()
+            .filter { it.isFile && it.extension == "log" }
+            .map { it.parentFile.parentFile.name to it }
         // Parse the log files of every task
-        for ((taskName, taskLogFile) in taskLogsPerDirectory) {
+        for ((taskName, taskLogFile) in taskLogs) {
             val logLines = taskLogFile.readLines()
+
+            // Find the run ID for this task
+            val runId = logLines.first { it.startsWith("AIRFLOW_CTX_DAG_RUN_ID=") }
+                .split("=", limit = 2)[1].trim()
 
             // Find records of the start and end time of the task
             val startTimeLine = logLines.first { "INFO - Executing <Task" in it }
@@ -109,8 +109,8 @@ class AirflowLogParser private constructor(
             val startTime = parseDateTime(startTimeLine.substring(1, startTimeLine.indexOf(']')))
             val endTime = parseDateTime(endTimeLine.substring(1, endTimeLine.indexOf(']')))
 
-            taskStartTimes[taskName] = startTime
-            taskEndTimes[taskName] = endTime
+            taskStartTimesPerRun.getOrPut(runId) { mutableMapOf() }[taskName] = startTime
+            taskEndTimesPerRun.getOrPut(runId) { mutableMapOf() }[taskName] = endTime
         }
     }
 
@@ -125,10 +125,10 @@ class AirflowLogParser private constructor(
 }
 
 data class AirflowLog(
-    val runId: String,
+    val runIds: Set<String>,
     val dagName: String,
     val taskNames: Set<String>,
-    val taskStartTimes: Map<String, TimestampNs>,
-    val taskEndTimes: Map<String, TimestampNs>,
-    val taskDownstreamNames: Map<String, Set<String>>
+    val taskDownstreamNames: Map<String, Set<String>>,
+    val taskStartTimesPerRun: Map<String, Map<String, TimestampNs>>,
+    val taskEndTimesPerRun: Map<String, Map<String, TimestampNs>>
 )

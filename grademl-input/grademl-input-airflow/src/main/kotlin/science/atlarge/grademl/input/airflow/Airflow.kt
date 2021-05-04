@@ -19,28 +19,36 @@ object Airflow {
         }
         val airflowLog = AirflowLogParser.parseFromDirectory(airflowLogDirectory)
 
-        // Add a phase for the DAG and for each task
+        // Iterate over DAG runs to build the execution model
         val executionModel = unifiedExecutionModel ?: ExecutionModel()
-        val dagPhase = executionModel.addPhase(
-            name = airflowLog.dagName,
-            tags = mapOf("run_id" to airflowLog.runId),
-            startTime = airflowLog.taskStartTimes.values.minOrNull() ?: 0L,
-            endTime = airflowLog.taskEndTimes.values.maxOrNull() ?: 0L
-        )
-        val taskPhases = airflowLog.taskNames.associateWith { taskName ->
-            executionModel.addPhase(
-                name = taskName,
-                startTime = airflowLog.taskStartTimes[taskName]!!,
-                endTime = airflowLog.taskEndTimes[taskName]!!,
-                parent = dagPhase
+        for (runId in airflowLog.runIds) {
+            // Determine which tasks exist for this run
+            val tasksInRun = airflowLog.taskStartTimesPerRun[runId]?.keys.orEmpty()
+            val dagStartTime = (airflowLog.taskStartTimesPerRun[runId]?.values?.minOrNull()
+                ?: airflowLog.taskStartTimesPerRun.values.flatMap { it.values }.minOrNull() ?: 0L)
+            val dagEndTime = (airflowLog.taskEndTimesPerRun[runId]?.values?.maxOrNull() ?: dagStartTime)
+            // Add a phase for the DAG and for each task
+            val dagPhase = executionModel.addPhase(
+                name = airflowLog.dagName,
+                tags = mapOf("run_id" to runId),
+                startTime = dagStartTime,
+                endTime = dagEndTime
             )
-        }
-        // Add dataflow relationships between tasks
-        for ((upstream, downstreams) in airflowLog.taskDownstreamNames) {
-            val upstreamPhase = taskPhases[upstream]!!
-            for (downstream in downstreams) {
-                val downstreamPhase = taskPhases[downstream]!!
-                upstreamPhase.addOutgoingDataflow(downstreamPhase)
+            val taskPhases = tasksInRun.associateWith { taskName ->
+                executionModel.addPhase(
+                    name = taskName,
+                    startTime = airflowLog.taskStartTimesPerRun[runId]!![taskName]!!,
+                    endTime = airflowLog.taskEndTimesPerRun[runId]!![taskName]!!,
+                    parent = dagPhase
+                )
+            }
+            // Add dataflow relationships between tasks
+            for ((upstream, downstreams) in airflowLog.taskDownstreamNames) {
+                val upstreamPhase = taskPhases[upstream] ?: continue
+                for (downstream in downstreams) {
+                    val downstreamPhase = taskPhases[downstream] ?: continue
+                    upstreamPhase.addOutgoingDataflow(downstreamPhase)
+                }
             }
         }
 
