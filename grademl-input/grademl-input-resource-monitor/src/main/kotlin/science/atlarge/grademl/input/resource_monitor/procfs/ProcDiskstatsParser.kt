@@ -1,6 +1,8 @@
 package science.atlarge.grademl.input.resource_monitor.procfs
 
 import science.atlarge.grademl.core.TimestampNsArray
+import science.atlarge.grademl.core.util.DoubleArrayBuilder
+import science.atlarge.grademl.core.util.LongArrayBuilder
 import science.atlarge.grademl.input.resource_monitor.util.*
 import java.io.File
 import java.io.IOException

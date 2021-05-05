@@ -1,7 +1,11 @@
 package science.atlarge.grademl.input.resource_monitor.procfs
 
 import science.atlarge.grademl.core.TimestampNsArray
-import science.atlarge.grademl.input.resource_monitor.util.*
+import science.atlarge.grademl.core.util.DoubleArrayBuilder
+import science.atlarge.grademl.core.util.LongArrayBuilder
+import science.atlarge.grademl.input.resource_monitor.util.readLEB128Int
+import science.atlarge.grademl.input.resource_monitor.util.readLEB128Long
+import science.atlarge.grademl.input.resource_monitor.util.readLELong
 import java.io.Closeable
 import java.io.File
 

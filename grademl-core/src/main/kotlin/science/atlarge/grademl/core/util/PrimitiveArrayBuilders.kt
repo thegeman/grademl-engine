@@ -1,4 +1,4 @@
-package science.atlarge.grademl.input.resource_monitor.util
+package science.atlarge.grademl.core.util
 
 /*
  * Append-only ArrayLists optimized for primitive types
