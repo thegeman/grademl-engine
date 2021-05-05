@@ -9,6 +9,9 @@ import science.atlarge.grademl.cli.terminal.ArgumentValueConstraint
 import science.atlarge.grademl.cli.terminal.ParsedCommand
 import science.atlarge.grademl.cli.util.*
 import science.atlarge.grademl.core.execution.ExecutionPhase
+import science.atlarge.grademl.core.util.asRPathString
+import science.atlarge.grademl.core.util.instantiateRScript
+import science.atlarge.grademl.core.util.runRScript
 
 object PlotOverviewCommand : Command(
     name = "plot-overview",

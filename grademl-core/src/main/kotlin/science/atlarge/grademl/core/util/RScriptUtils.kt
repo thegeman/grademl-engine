@@ -1,11 +1,11 @@
-package science.atlarge.grademl.cli.util
+package science.atlarge.grademl.core.util
 
-import science.atlarge.grademl.cli.Cli
+import science.atlarge.grademl.core.Path
 import java.io.File
 import java.io.InputStream
 
 fun instantiateRScript(rScriptFile: File, settings: Map<String, String> = emptyMap()) {
-    val rScriptStream = Cli.javaClass.getResourceAsStream("/${rScriptFile.name}")!!
+    val rScriptStream = Path::class.java.getResourceAsStream("/${rScriptFile.name}")!!
     if (rScriptFile.exists()) {
         rScriptFile.delete()
     }

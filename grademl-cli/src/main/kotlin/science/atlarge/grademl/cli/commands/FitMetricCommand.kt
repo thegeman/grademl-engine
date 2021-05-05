@@ -9,6 +9,9 @@ import science.atlarge.grademl.cli.terminal.ArgumentValueConstraint
 import science.atlarge.grademl.cli.terminal.ParsedCommand
 import science.atlarge.grademl.cli.util.*
 import science.atlarge.grademl.core.resources.Metric
+import science.atlarge.grademl.core.util.asRPathString
+import science.atlarge.grademl.core.util.instantiateRScript
+import science.atlarge.grademl.core.util.runRScript
 
 object FitMetricCommand : Command(
     name = "fit-metric",
