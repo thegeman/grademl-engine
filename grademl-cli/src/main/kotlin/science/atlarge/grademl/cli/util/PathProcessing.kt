@@ -19,7 +19,7 @@ fun parseResourcePathExpression(pathExpression: String): ResourcePath {
 }
 
 fun parseMetricPathExpression(pathExpression: String): MetricPath? {
-    if (pathExpression.count {  it == ':' } != 1) {
+    if (pathExpression.count { it == ':' } != 1) {
         println("Invalid metric path expression: \"$pathExpression\".")
         println("A metric path expression must contain exactly one ':' to separate resource path and metric name.")
         return null
@@ -28,9 +28,24 @@ fun parseMetricPathExpression(pathExpression: String): MetricPath? {
     return MetricPath(parseResourcePathExpression(resourcePathExpression), metricName)
 }
 
-fun tryMatchExecutionPhasePath(path: ExecutionPhasePath, cliState: CliState): Set<ExecutionPhase>? {
+fun tryMatchExecutionPhasePath(
+    path: ExecutionPhasePath,
+    cliState: CliState,
+    restrictToSelected: Boolean = true
+): Set<ExecutionPhase>? {
     return when (val matchResult = cliState.executionModel.resolvePath(path)) {
-        is PathMatches -> matchResult.matches.toSet()
+        is PathMatches -> {
+            if (restrictToSelected) {
+                val filteredMatches = matchResult.matches.toSet().intersect(cliState.selectedPhases)
+                filteredMatches.ifEmpty {
+                    println("Failed to match phase(s) for path \"$path\":")
+                    println("  All matching phases are excluded from selection.")
+                    null
+                }
+            } else {
+                matchResult.matches.toSet()
+            }
+        }
         is PathMatchException -> {
             println("Failed to match phase(s) for path \"$path\":")
             println("  ${matchResult.message}")
@@ -39,9 +54,20 @@ fun tryMatchExecutionPhasePath(path: ExecutionPhasePath, cliState: CliState): Se
     }
 }
 
-fun tryMatchResourcePath(path: ResourcePath, cliState: CliState): Set<Resource>? {
+fun tryMatchResourcePath(path: ResourcePath, cliState: CliState, restrictToSelected: Boolean = true): Set<Resource>? {
     return when (val matchResult = cliState.resourceModel.resolvePath(path)) {
-        is PathMatches -> matchResult.matches.toSet()
+        is PathMatches -> {
+            if (restrictToSelected) {
+                val filteredMatches = matchResult.matches.toSet().intersect(cliState.selectedResources)
+                filteredMatches.ifEmpty {
+                    println("Failed to match resource(s) for path \"$path\":")
+                    println("  All matching resources are excluded from selection.")
+                    null
+                }
+            } else {
+                matchResult.matches.toSet()
+            }
+        }
         is PathMatchException -> {
             println("Failed to match resource(s) for path \"$path\":")
             println("  ${matchResult.message}")
@@ -50,9 +76,20 @@ fun tryMatchResourcePath(path: ResourcePath, cliState: CliState): Set<Resource>?
     }
 }
 
-fun tryMatchMetricPath(path: MetricPath, cliState: CliState): Set<Metric>? {
+fun tryMatchMetricPath(path: MetricPath, cliState: CliState, restrictToSelected: Boolean = true): Set<Metric>? {
     return when (val matchResult = cliState.resourceModel.resolvePath(path)) {
-        is PathMatches -> matchResult.matches.toSet()
+        is PathMatches -> {
+            if (restrictToSelected) {
+                val filteredMatches = matchResult.matches.toSet().intersect(cliState.selectedMetrics)
+                filteredMatches.ifEmpty {
+                    println("Failed to match metric(s) for path \"$path\":")
+                    println("  All matching metrics are excluded from selection.")
+                    null
+                }
+            } else {
+                matchResult.matches.toSet()
+            }
+        }
         is PathMatchException -> {
             println("Failed to match metric(s) for path \"$path\":")
             println("  ${matchResult.message}")
