@@ -82,7 +82,9 @@ object Cli {
             .build()
 
         // Set window title
-        terminal.writer().println("\u001B]0;GradeML CLI\u0007")
+        if (terminal.type.startsWith("xterm")) {
+            terminal.writer().println("\u001B]0;GradeML CLI\u0007")
+        }
 
         // Repeatedly read, parse, and execute commands until the users quits the application
         while (true) {
