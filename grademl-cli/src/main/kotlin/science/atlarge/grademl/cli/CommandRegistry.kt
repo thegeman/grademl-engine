@@ -27,6 +27,7 @@ object CommandRegistry {
             DisplayResourceModelCommand,
             FilterResourcesCommand,
             FilterMetricsCommand,
+            FitMetricCommand,
             HelpCommand,
             PlotOverviewCommand
         )
