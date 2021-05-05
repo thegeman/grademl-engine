@@ -141,6 +141,52 @@ class CliState(
             phase.path.pathComponents.fold(rootPhaseOutputPath) { acc, pathComponent -> acc.resolve(pathComponent) }
         }
 
+    // Exclusion list for phases
+    private val excludedPhases = mutableSetOf<ExecutionPhase>()
+
+    // Accessors for non-excluded phases (default) and all phases
+    val selectedPhases: Set<ExecutionPhase>
+        get() = allPhases - excludedPhases
+    val allPhases: Set<ExecutionPhase> = executionModel.phases - executionModel.rootPhase
+
+    fun excludePhases(exclusions: Set<ExecutionPhase>) {
+        require(exclusions.all { it in executionModel.phases }) {
+            "Cannot exclude phases that are not part of this job's execution model"
+        }
+        // Exclude all given phases and any children
+        val allExclusions = mutableSetOf<ExecutionPhase>()
+        val exclusionsToCheck = mutableListOf<ExecutionPhase>()
+        allExclusions.addAll(exclusions)
+        exclusionsToCheck.addAll(exclusions)
+        while (exclusionsToCheck.isNotEmpty()) {
+            val nextToCheck = exclusionsToCheck.removeLast()
+            val newExclusions = nextToCheck.children - allExclusions
+            allExclusions.addAll(newExclusions)
+            exclusionsToCheck.addAll(newExclusions)
+        }
+        excludedPhases.addAll(allExclusions.filter { !it.isRoot })
+    }
+
+    fun includePhases(inclusions: Set<ExecutionPhase>) {
+        require(inclusions.all { it in executionModel.phases }) {
+            "Cannot include phases that are not part of this job's execution model"
+        }
+        // Include all given phases and any parents
+        val allInclusions = mutableSetOf<ExecutionPhase>()
+        val inclusionsToCheck = mutableListOf<ExecutionPhase>()
+        allInclusions.addAll(inclusions)
+        inclusionsToCheck.addAll(inclusions)
+        while (inclusionsToCheck.isNotEmpty()) {
+            val nextToCheck = inclusionsToCheck.removeLast()
+            val parent = nextToCheck.parent ?: continue
+            if (parent !in allInclusions) {
+                allInclusions.add(parent)
+                inclusionsToCheck.add(parent)
+            }
+        }
+        excludedPhases.removeAll(allInclusions)
+    }
+    
     // Exclusion list for resources
     private val excludedResources = mutableSetOf<Resource>()
 
