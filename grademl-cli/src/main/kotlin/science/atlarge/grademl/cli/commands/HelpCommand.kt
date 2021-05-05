@@ -3,6 +3,7 @@ package science.atlarge.grademl.cli.commands
 import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.CommandRegistry
 import science.atlarge.grademl.cli.terminal.Argument
+import science.atlarge.grademl.cli.terminal.CommandUsagePrinter
 import science.atlarge.grademl.cli.terminal.ParsedCommand
 
 object HelpCommand : Command(
@@ -42,13 +43,12 @@ object HelpCommand : Command(
     }
 
     private fun displayLongHelp(commandName: String) {
-        val command = CommandRegistry[commandName]
-        if (command == null) {
+        val commandUsage = CommandUsagePrinter.usageForCommand(commandName)
+        if (commandUsage == null) {
             println("Cannot display help message for unknown command: \"$commandName\".")
             return
         }
-
-        println(command.definition.longDescription)
+        println(commandUsage)
     }
 
 }
