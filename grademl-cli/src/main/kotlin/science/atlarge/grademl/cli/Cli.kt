@@ -134,12 +134,26 @@ class CliState(
     fun denormalizeTimestamp(normalizedTimestamp: Long): TimestampNs = normalizedTimestamp + earliestTimestamp
 
     private val rootPhaseOutputPath = outputPath.resolve("root_phase")
-    fun outputPathForPhase(phase: ExecutionPhase) =
+    fun outputPathForPhase(phase: ExecutionPhase): Path =
         if (phase.isRoot) {
             rootPhaseOutputPath
         } else {
-            phase.path.pathComponents.fold(rootPhaseOutputPath) { acc, pathComponent -> acc.resolve(pathComponent) }
+            phase.path.pathComponents.fold(rootPhaseOutputPath) { acc, pathComponent ->
+                acc.resolve(pathComponent)
+            }
         }
+
+    private val rootResourceOutputPath = outputPath.resolve("root_resource")
+    fun outputPathForResource(resource: Resource): Path =
+        if (resource.isRoot) {
+            rootResourceOutputPath
+        } else {
+            resource.path.pathComponents.fold(rootResourceOutputPath) { acc, pathComponent ->
+                acc.resolve(pathComponent)
+            }
+        }
+
+    fun outputPathForMetric(metric: Metric): Path = outputPathForResource(metric.resource).resolve(metric.name)
 
     // Exclusion list for phases
     private val excludedPhases = mutableSetOf<ExecutionPhase>()
@@ -186,7 +200,7 @@ class CliState(
         }
         excludedPhases.removeAll(allInclusions)
     }
-    
+
     // Exclusion list for resources
     private val excludedResources = mutableSetOf<Resource>()
 
