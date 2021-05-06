@@ -7,7 +7,7 @@ import science.atlarge.grademl.core.resources.Metric
 import science.atlarge.grademl.core.util.DoubleArrayBuilder
 import science.atlarge.grademl.core.util.LongArrayBuilder
 
-class ResourceDemandEstimation(
+class ResourceDemandEstimationStep(
     private val metrics: Set<Metric>,
     private val phases: Set<ExecutionPhase>,
     private val attributionRuleProvider: (ExecutionPhase, Metric) -> ResourceAttributionRule
@@ -16,7 +16,7 @@ class ResourceDemandEstimation(
     private val cachedDemandEstimates = mutableMapOf<Metric, ResourceDemandEstimate>()
 
     fun estimatedDemandForMetric(metric: Metric): ResourceDemandEstimate? {
-        if (metric in cachedDemandEstimates) return cachedDemandEstimates[metric]!!
+        if (metric in cachedDemandEstimates) return cachedDemandEstimates[metric]
         if (metric !in metrics) return null
         val newEstimate = estimateDemand(metric) ?: return null
         cachedDemandEstimates[metric] = newEstimate
