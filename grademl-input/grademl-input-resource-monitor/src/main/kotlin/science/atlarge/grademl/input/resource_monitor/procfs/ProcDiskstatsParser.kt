@@ -3,27 +3,28 @@ package science.atlarge.grademl.input.resource_monitor.procfs
 import science.atlarge.grademl.core.TimestampNsArray
 import science.atlarge.grademl.core.util.DoubleArrayBuilder
 import science.atlarge.grademl.core.util.LongArrayBuilder
+import science.atlarge.grademl.input.resource_monitor.FileParser
 import science.atlarge.grademl.input.resource_monitor.util.*
 import java.io.File
 import java.io.IOException
 
-class ProcDiskstatsParser {
+object ProcDiskstatsParser : FileParser<DiskUtilizationData> {
 
-    fun parse(logFile: File): DiskUtilizationData {
+    private fun parse(logFile: File): DiskUtilizationData {
         return logFile.inputStream().buffered().use { inStream ->
             // Read first message to determine number and names of disks
             val initialTimestamp = inStream.readLELong()
             require(inStream.read() == 0) { "Expecting monitoring info to start with a DISK_LIST message" }
             val numDisks = inStream.readLEB128Int()
-            val diskNames = Array(numDisks) { inStream.readString() }
+            val diskNames = (0 until numDisks).map { inStream.readString() }
 
             val timestamps = LongArrayBuilder()
             timestamps.append(initialTimestamp)
-            val bytesReadMetric = Array(numDisks) { DoubleArrayBuilder() }
-            val bytesWrittenMetric = Array(numDisks) { DoubleArrayBuilder() }
-            val readTimeFractionMetric = Array(numDisks) { DoubleArrayBuilder() }
-            val writeTimeFractionMetric = Array(numDisks) { DoubleArrayBuilder() }
-            val totalTimeSpentFractionMetric = Array(numDisks) { DoubleArrayBuilder() }
+            val bytesReadMetric = (0 until numDisks).map { DoubleArrayBuilder() }
+            val bytesWrittenMetric = (0 until numDisks).map { DoubleArrayBuilder() }
+            val readTimeFractionMetric = (0 until numDisks).map { DoubleArrayBuilder() }
+            val writeTimeFractionMetric = (0 until numDisks).map { DoubleArrayBuilder() }
+            val totalTimeSpentFractionMetric = (0 until numDisks).map { DoubleArrayBuilder() }
             var lastTimestamp = 0L
             var skipNext =
                 true // TODO: Figure out why (only) the first measurement in each dataset seems to have a <1ms delta
@@ -72,39 +73,131 @@ class ProcDiskstatsParser {
                 skipNext = false
             }
 
-            val timestampArray = timestamps.toArray()
-            val disks = diskNames.mapIndexed { i, diskId ->
-                val totalTimeSpentArr = totalTimeSpentFractionMetric[i].toArray()
-                val totalTimeSpentValid = totalTimeSpentArr.any { it > 0.0 }
-                SingleDiskUtilizationData(
-                    diskId,
-                    timestampArray,
-                    bytesRead = bytesReadMetric[i].toArray(),
-                    bytesWritten = bytesWrittenMetric[i].toArray(),
-                    readTimeFraction = readTimeFractionMetric[i].toArray(),
-                    writeTimeFraction = writeTimeFractionMetric[i].toArray(),
-                    totalTimeSpentFraction = if (totalTimeSpentValid) totalTimeSpentArr else null
-                )
-            }
-
-            DiskUtilizationData(disks)
+            DiskUtilizationData(
+                timestamps = timestamps.toArray(),
+                deviceIds = diskNames,
+                bytesRead = bytesReadMetric.map { it.toArray() },
+                bytesWritten = bytesWrittenMetric.map { it.toArray() },
+                readTimeFraction = readTimeFractionMetric.map { it.toArray() },
+                writeTimeFraction = writeTimeFractionMetric.map { it.toArray() },
+                totalTimeSpentFraction = totalTimeSpentFractionMetric.map { metric ->
+                    val arr = metric.toArray()
+                    if (arr.any { it > 0.0 }) arr else null
+                }
+            )
         }
+    }
+
+    override fun parse(hostname: String, metricFiles: Iterable<File>): DiskUtilizationData {
+        // Parse each metric file individually
+        val utilizationDataStructures = metricFiles.map { parse(it) }.filter { it.timestamps.size > 1 }
+        require(utilizationDataStructures.isNotEmpty()) { "No metric data found for disk utilization" }
+        // Shortcut: return if there was only one file
+        if (utilizationDataStructures.size == 1) return utilizationDataStructures[0]
+        // Otherwise, merge all data structures into one
+        return mergeUtilizationData(utilizationDataStructures)
+    }
+
+    private fun mergeUtilizationData(utilizationDataStructures: List<DiskUtilizationData>): DiskUtilizationData {
+        // Check that none of the metrics overlap
+        val sortedUtilizationData = utilizationDataStructures.sortedBy { it.timestamps.first() }
+        for (i in 0 until sortedUtilizationData.size - 1) {
+            require(sortedUtilizationData[i].timestamps.last() < sortedUtilizationData[i + 1].timestamps.first()) {
+                "Overlapping resource metrics are not supported"
+            }
+        }
+
+        // Check that the number and names of devices are identical
+        val numDevices = sortedUtilizationData[0].deviceIds.size
+        require(sortedUtilizationData.all { it.deviceIds.size == numDevices }) {
+            "Cannot merge disk metrics with different number of devices"
+        }
+        val deviceIds = sortedUtilizationData[0].deviceIds
+        require(sortedUtilizationData.all { diskData ->
+            (0 until numDevices).all { diskData.deviceIds[it] == deviceIds[it] }
+        }) {
+            "Cannot merge disk metrics with different devices or devices in a different order"
+        }
+        // Check that the optional timeSpentFraction metric is consistently present or not present for each device
+        val hasTotalTimeSpentFraction = sortedUtilizationData[0].totalTimeSpentFraction.map { it != null }
+        require(sortedUtilizationData.all { diskData ->
+            (0 until numDevices).all { (diskData.totalTimeSpentFraction[it] != null) == hasTotalTimeSpentFraction[it] }
+        }) {
+            "Cannot merge disk metrics with different presence or absence of optional metrics"
+        }
+
+        // Perform the "merge" through concatenation
+        val timestamps = concatenateArrays(sortedUtilizationData.map { it.timestamps })
+        val bytesRead = (0 until numDevices).map { i ->
+            concatenateArrays(
+                sortedUtilizationData.map { it.bytesRead[i] },
+                separator = doubleArrayOf(0.0)
+            )
+        }
+        val bytesWritten = (0 until numDevices).map { i ->
+            concatenateArrays(
+                sortedUtilizationData.map { it.bytesWritten[i] },
+                separator = doubleArrayOf(0.0)
+            )
+        }
+        val readTimeFraction = (0 until numDevices).map { i ->
+            concatenateArrays(
+                sortedUtilizationData.map { it.readTimeFraction[i] },
+                separator = doubleArrayOf(0.0)
+            )
+        }
+        val writeTimeFraction = (0 until numDevices).map { i ->
+            concatenateArrays(
+                sortedUtilizationData.map { it.writeTimeFraction[i] },
+                separator = doubleArrayOf(0.0)
+            )
+        }
+        val totalTimeSpentFraction = (0 until numDevices).map { i ->
+            if (hasTotalTimeSpentFraction[i]) {
+                concatenateArrays(
+                    sortedUtilizationData.map { it.totalTimeSpentFraction[i]!! },
+                    separator = doubleArrayOf(0.0)
+                )
+            } else {
+                null
+            }
+        }
+
+        return DiskUtilizationData(
+            timestamps, deviceIds, bytesRead, bytesWritten, readTimeFraction, writeTimeFraction, totalTimeSpentFraction
+        )
     }
 
 }
 
-class DiskUtilizationData(diskData: Iterable<SingleDiskUtilizationData>) {
+class DiskUtilizationData(
+    val timestamps: TimestampNsArray,
+    val deviceIds: List<String>,
+    val bytesRead: List<DoubleArray>,
+    val bytesWritten: List<DoubleArray>,
+    val readTimeFraction: List<DoubleArray>,
+    val writeTimeFraction: List<DoubleArray>,
+    val totalTimeSpentFraction: List<DoubleArray?>
+) {
 
-    val disks = diskData.associateBy(SingleDiskUtilizationData::diskId)
+    init {
+        val numDevices = deviceIds.size
+        require(
+            bytesRead.size == numDevices && bytesWritten.size == numDevices &&
+                    readTimeFraction.size == numDevices && writeTimeFraction.size == numDevices &&
+                    totalTimeSpentFraction.size == numDevices
+        ) {
+            "Sizes of disk metric lists must all be identical (i.e., equal to the number of devices)"
+        }
+        require(
+            bytesRead.all { it.size == timestamps.size - 1 } &&
+                    bytesWritten.all { it.size == timestamps.size - 1 } &&
+                    readTimeFraction.all { it.size == timestamps.size - 1 } &&
+                    writeTimeFraction.all { it.size == timestamps.size - 1 } &&
+                    totalTimeSpentFraction.all { if (it == null) true else it.size == timestamps.size - 1 }
+        ) {
+            "Sizes of metrics arrays and timestamps array must be consistent"
+        }
+    }
 
 }
-
-class SingleDiskUtilizationData(
-    val diskId: String,
-    val timestamps: TimestampNsArray,
-    val bytesRead: DoubleArray,
-    val bytesWritten: DoubleArray,
-    val readTimeFraction: DoubleArray,
-    val writeTimeFraction: DoubleArray,
-    val totalTimeSpentFraction: DoubleArray?
-)
