@@ -3,8 +3,6 @@ package science.atlarge.grademl.cli.data
 import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.TimestampNsRange
-import science.atlarge.grademl.core.resources.DoubleMetricData
-import science.atlarge.grademl.core.resources.LongMetricData
 import science.atlarge.grademl.core.resources.Metric
 import java.io.File
 
@@ -46,36 +44,18 @@ object MetricDataWriter {
 
                 val timestamps = metricData.timestamps
                 printLine(timestamps[0], "0")
-                when (metricData) {
-                    is DoubleMetricData -> {
-                        val values = metricData.values
-                        var lastValue = 0.0
-                        for (index in values.indices) {
-                            val newValue = values[index]
-                            if (newValue != lastValue) {
-                                // Only output a data point whenever the metric's value changes
-                                if (index != 0) printLine(timestamps[index], lastValue.toString())
-                                lastValue = newValue
-                            }
-                        }
-                        // Always output a data point at the end of a time series
-                        printLine(timestamps.last(), lastValue.toString())
-                    }
-                    is LongMetricData -> {
-                        val values = metricData.values
-                        var lastValue = 0L
-                        for (index in values.indices) {
-                            val newValue = values[index]
-                            if (newValue != lastValue) {
-                                // Only output a data point whenever the metric's value changes
-                                if (index != 0) printLine(timestamps[index], lastValue.toString())
-                                lastValue = newValue
-                            }
-                        }
-                        // Always output a data point at the end of a time series
-                        printLine(timestamps.last(), lastValue.toString())
+                val values = metricData.values
+                var lastValue = 0.0
+                for (index in values.indices) {
+                    val newValue = values[index]
+                    if (newValue != lastValue) {
+                        // Only output a data point whenever the metric's value changes
+                        if (index != 0) printLine(timestamps[index], lastValue.toString())
+                        lastValue = newValue
                     }
                 }
+                // Always output a data point at the end of a time series
+                printLine(timestamps.last(), lastValue.toString())
             }
         }
     }

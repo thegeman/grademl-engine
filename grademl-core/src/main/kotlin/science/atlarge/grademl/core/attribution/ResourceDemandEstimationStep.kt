@@ -2,8 +2,8 @@ package science.atlarge.grademl.core.attribution
 
 import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.execution.ExecutionPhase
-import science.atlarge.grademl.core.resources.DoubleMetricData
 import science.atlarge.grademl.core.resources.Metric
+import science.atlarge.grademl.core.resources.MetricData
 import science.atlarge.grademl.core.util.DoubleArrayBuilder
 import science.atlarge.grademl.core.util.LongArrayBuilder
 
@@ -33,9 +33,7 @@ class ResourceDemandEstimationStep(
         val endTime = metric.data.timestamps.last()
         val exactDemandOverTime = computeDemandOverTime(exactDemandPerPhase, startTime, endTime)
         val variableDemandOverTime = computeDemandOverTime(variableDemandPerPhase, startTime, endTime)
-        return ResourceDemandEstimate(
-            metric, exactDemandOverTime, variableDemandOverTime, exactDemandPerPhase, variableDemandPerPhase
-        )
+        return ResourceDemandEstimate(metric, exactDemandOverTime, variableDemandOverTime)
     }
 
     private fun getDemandPerPhaseFor(metric: Metric): Pair<Map<ExecutionPhase, Double>, Map<ExecutionPhase, Double>> {
@@ -59,7 +57,7 @@ class ResourceDemandEstimationStep(
         demandPerPhase: Map<ExecutionPhase, Double>,
         startTime: TimestampNs,
         endTime: TimestampNs
-    ): DoubleMetricData {
+    ): MetricData {
         // Map the start and end of each phase to changes in demand, i.e. change points, sorted by timestamp
         val changePoints = demandPerPhase.flatMap { (phase, demand) ->
             listOf(phase.startTime to demand, phase.endTime to -demand)
@@ -101,15 +99,13 @@ class ResourceDemandEstimationStep(
             demandValues.append(currentDemand)
         }
 
-        return DoubleMetricData(timestamps.toArray(), demandValues.toArray(), Double.POSITIVE_INFINITY)
+        return MetricData(timestamps.toArray(), demandValues.toArray(), Double.POSITIVE_INFINITY)
     }
 
 }
 
 data class ResourceDemandEstimate(
     val metric: Metric,
-    val exactDemandOverTime: DoubleMetricData,
-    val variableDemandOverTime: DoubleMetricData,
-    val exactDemandPerPhase: Map<ExecutionPhase, Double>,
-    val variableDemandPerPhase: Map<ExecutionPhase, Double>
+    val exactDemandOverTime: MetricData,
+    val variableDemandOverTime: MetricData
 )

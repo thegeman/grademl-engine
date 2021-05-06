@@ -1,9 +1,8 @@
 package science.atlarge.grademl.core.attribution
 
 import science.atlarge.grademl.core.TimestampNs
-import science.atlarge.grademl.core.resources.DoubleMetricData
-import science.atlarge.grademl.core.resources.LongMetricData
 import science.atlarge.grademl.core.resources.Metric
+import science.atlarge.grademl.core.resources.MetricData
 import science.atlarge.grademl.core.util.DoubleArrayBuilder
 import science.atlarge.grademl.core.util.LongArrayBuilder
 
@@ -12,22 +11,14 @@ class ResourceUpsamplingStep(
     private val resourceDemandEstimates: (Metric) -> ResourceDemandEstimate
 ) {
 
-    private val cachedUpsampledMetrics = mutableMapOf<Metric, DoubleMetricData>()
+    private val cachedUpsampledMetrics = mutableMapOf<Metric, MetricData>()
 
-    fun upsampleMetric(metric: Metric): DoubleMetricData? {
+    fun upsampleMetric(metric: Metric): MetricData? {
         if (metric in cachedUpsampledMetrics) return cachedUpsampledMetrics[metric]
         if (metric !in metrics) return null
         val resourceDemandEstimate = resourceDemandEstimates(metric)
-        val observedUsage = when (val data = metric.data) {
-            is DoubleMetricData -> data
-            is LongMetricData -> DoubleMetricData(
-                data.timestamps,
-                DoubleArray(data.values.size) { i -> data.values[i].toDouble() },
-                data.maxValue.toDouble()
-            )
-        }
         val newUpsampledMetric = MetricUpsampler(
-            observedUsage,
+            metric.data,
             resourceDemandEstimate.exactDemandOverTime,
             resourceDemandEstimate.variableDemandOverTime
         ).getUpsampledMetric()
@@ -38,9 +29,9 @@ class ResourceUpsamplingStep(
 }
 
 private class MetricUpsampler(
-    private val observedUsage: DoubleMetricData,
-    private val exactDemand: DoubleMetricData,
-    private val variableDemand: DoubleMetricData
+    private val observedUsage: MetricData,
+    private val exactDemand: MetricData,
+    private val variableDemand: MetricData
 ) {
 
     private var currentExactDemand = 0.0
@@ -70,11 +61,11 @@ private class MetricUpsampler(
         }
     }
 
-    fun getUpsampledMetric(): DoubleMetricData {
+    fun getUpsampledMetric(): MetricData {
         if (timestamps.size == 0) {
             upsampleMetric()
         }
-        return DoubleMetricData(timestamps.toArray(), values.toArray(), observedUsage.maxValue)
+        return MetricData(timestamps.toArray(), values.toArray(), observedUsage.maxValue)
     }
 
     private fun upsampleMetric() {

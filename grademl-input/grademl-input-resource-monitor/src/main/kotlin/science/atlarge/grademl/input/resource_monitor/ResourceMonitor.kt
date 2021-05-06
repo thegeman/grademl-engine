@@ -2,7 +2,10 @@ package science.atlarge.grademl.input.resource_monitor
 
 import science.atlarge.grademl.core.execution.ExecutionModel
 import science.atlarge.grademl.core.input.InputSource
-import science.atlarge.grademl.core.resources.*
+import science.atlarge.grademl.core.resources.Metric
+import science.atlarge.grademl.core.resources.MetricData
+import science.atlarge.grademl.core.resources.Resource
+import science.atlarge.grademl.core.resources.ResourceModel
 import science.atlarge.grademl.input.resource_monitor.procfs.CpuUtilizationData
 import science.atlarge.grademl.input.resource_monitor.procfs.DiskUtilizationData
 import science.atlarge.grademl.input.resource_monitor.procfs.NetworkUtilizationData
@@ -69,7 +72,7 @@ object ResourceMonitor : InputSource {
             )
             cpuResource.addMetric(
                 name = "utilization",
-                data = DoubleMetricData(
+                data = MetricData(
                     cpuUtilization.timestamps,
                     cpuUtilization.totalCoreUtilization,
                     cpuUtilization.numCpuCores.toDouble()
@@ -77,10 +80,12 @@ object ResourceMonitor : InputSource {
             )
             cpuResource.addMetric(
                 name = "cores-fully-utilized",
-                data = LongMetricData(
+                data = MetricData(
                     cpuUtilization.timestamps,
-                    cpuUtilization.coresFullyUtilized,
-                    cpuUtilization.numCpuCores.toLong()
+                    DoubleArray(cpuUtilization.coresFullyUtilized.size) {
+                        cpuUtilization.coresFullyUtilized[it].toDouble()
+                    },
+                    cpuUtilization.numCpuCores.toDouble()
                 )
             )
             // Create metrics for each individual CPU core and add them as resources
@@ -92,7 +97,7 @@ object ResourceMonitor : InputSource {
                 )
                 coreResource.addMetric(
                     name = "utilization",
-                    data = DoubleMetricData(
+                    data = MetricData(
                         cpuUtilization.timestamps,
                         cpuUtilization.coreUtilization[coreId],
                         1.0
@@ -120,14 +125,14 @@ object ResourceMonitor : InputSource {
                 // TODO: Set maximum value for network metrics to a correct, interface-specific value
                 ifaceResource.addMetric(
                     name = "bytes-received",
-                    data = DoubleMetricData(
+                    data = MetricData(
                         timestamps = networkUtilization.timestamps,
                         values = networkUtilization.bytesReceived[ifaceIndex],
                         maxValue = 1e9
                     )
                 )
                 ifaceResource.addMetric(
-                    name = "bytes-sent", DoubleMetricData(
+                    name = "bytes-sent", MetricData(
                         timestamps = networkUtilization.timestamps,
                         values = networkUtilization.bytesSent[ifaceIndex],
                         maxValue = 1e9
@@ -155,7 +160,7 @@ object ResourceMonitor : InputSource {
                 // TODO: Set maximum value for disk metrics to a correct, device-specific value
                 deviceResource.addMetric(
                     name = "bytes-read",
-                    data = DoubleMetricData(
+                    data = MetricData(
                         timestamps = diskUtilization.timestamps,
                         values = diskUtilization.bytesRead[deviceIndex],
                         maxValue = 1e8
@@ -163,7 +168,7 @@ object ResourceMonitor : InputSource {
                 )
                 deviceResource.addMetric(
                     name = "bytes-written",
-                    data = DoubleMetricData(
+                    data = MetricData(
                         timestamps = diskUtilization.timestamps,
                         values = diskUtilization.bytesWritten[deviceIndex],
                         maxValue = 1e8
@@ -171,7 +176,7 @@ object ResourceMonitor : InputSource {
                 )
                 deviceResource.addMetric(
                     name = "read-time",
-                    data = DoubleMetricData(
+                    data = MetricData(
                         timestamps = diskUtilization.timestamps,
                         values = diskUtilization.readTimeFraction[deviceIndex],
                         maxValue = 1.0
@@ -179,7 +184,7 @@ object ResourceMonitor : InputSource {
                 )
                 deviceResource.addMetric(
                     name = "write-time",
-                    data = DoubleMetricData(
+                    data = MetricData(
                         timestamps = diskUtilization.timestamps,
                         values = diskUtilization.writeTimeFraction[deviceIndex],
                         maxValue = 1.0
@@ -188,7 +193,7 @@ object ResourceMonitor : InputSource {
                 diskUtilization.totalTimeSpentFraction[deviceIndex]?.let { totalTimeSpentFraction ->
                     deviceResource.addMetric(
                         name = "total-utilization",
-                        data = DoubleMetricData(
+                        data = MetricData(
                             timestamps = diskUtilization.timestamps,
                             values = totalTimeSpentFraction,
                             maxValue = 1.0
@@ -227,36 +232,20 @@ fun main(args: Array<String>) {
         val maxTimestamp = metricData.timestamps.last().let {
             "%d.%09d".format(it / 1_000_000_000, it % 1_000_000_000)
         }
-        val valueStats = when (metricData) {
-            is DoubleMetricData -> {
-                if (metricData.values.isNotEmpty()) {
-                    val minValue = metricData.values.minOrNull()
-                    val avgValue = metricData.values.average()
-                    val maxValue = metricData.values.maxOrNull()
-                    "$minValue / $avgValue / $maxValue"
-                } else {
-                    "(none)"
-                }
-            }
-            is LongMetricData -> {
-                if (metricData.values.isNotEmpty()) {
-                    val minValue = metricData.values.minOrNull()
-                    val avgValue = metricData.values.average()
-                    val maxValue = metricData.values.maxOrNull()
-                    "$minValue / $avgValue / $maxValue"
-                } else {
-                    "(none)"
-                }
-            }
+        val valueStats = if (metricData.values.isNotEmpty()) {
+            val minValue = metricData.values.minOrNull()
+            val avgValue = metricData.values.average()
+            val maxValue = metricData.values.maxOrNull()
+            "$minValue / $avgValue / $maxValue"
+        } else {
+            "(none)"
         }
-        val maxValue = when (metricData) {
-            is DoubleMetricData -> metricData.maxValue.toString()
-            is LongMetricData -> metricData.maxValue.toString()
-        }
+
+
         println("$indent:${metric.name}")
         println("$indent    Timestamps:            [$minTimestamp, $maxTimestamp]")
         println("$indent    Values (min/avg/max):  $valueStats")
-        println("$indent    Limit value:           $maxValue")
+        println("$indent    Limit value:           ${metricData.maxValue}")
     }
 
     fun printResource(resource: Resource, indent: String) {

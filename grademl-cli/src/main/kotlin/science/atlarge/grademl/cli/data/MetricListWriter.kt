@@ -1,8 +1,6 @@
 package science.atlarge.grademl.cli.data
 
 import science.atlarge.grademl.cli.CliState
-import science.atlarge.grademl.core.resources.DoubleMetricData
-import science.atlarge.grademl.core.resources.LongMetricData
 import science.atlarge.grademl.core.resources.Metric
 import java.io.File
 
@@ -20,12 +18,7 @@ object MetricListWriter {
                     append('\t')
                     append(metric.path.toString())
                     append('\t')
-                    appendLine(
-                        when (val data = metric.data) {
-                            is DoubleMetricData -> data.maxValue.toString()
-                            is LongMetricData -> data.maxValue.toString()
-                        }
-                    )
+                    appendLine(metric.data.maxValue.toString())
                 }
             }
         }

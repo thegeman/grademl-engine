@@ -80,36 +80,18 @@ object DisplayResourceModelCommand : Command(
     private fun printMetricDetails(metricData: MetricData, indent: String) {
         val minTimestamp = metricData.timestamps.first().toDisplayString()
         val maxTimestamp = metricData.timestamps.last().toDisplayString()
-        val valueStats = when (metricData) {
-            is DoubleMetricData -> {
-                if (metricData.values.isNotEmpty()) {
-                    val minValue = metricData.values.minOrNull()
-                    val avgValue = metricData.values.average()
-                    val maxValue = metricData.values.maxOrNull()
-                    "$minValue / $avgValue / $maxValue"
-                } else {
-                    "(none)"
-                }
-            }
-            is LongMetricData -> {
-                if (metricData.values.isNotEmpty()) {
-                    val minValue = metricData.values.minOrNull()
-                    val avgValue = metricData.values.average()
-                    val maxValue = metricData.values.maxOrNull()
-                    "$minValue / $avgValue / $maxValue"
-                } else {
-                    "(none)"
-                }
-            }
-        }
-        val maxValue = when (metricData) {
-            is DoubleMetricData -> metricData.maxValue.toString()
-            is LongMetricData -> metricData.maxValue.toString()
+        val valueStats = if (metricData.values.isNotEmpty()) {
+            val minValue = metricData.values.minOrNull()
+            val avgValue = metricData.values.average()
+            val maxValue = metricData.values.maxOrNull()
+            "$minValue / $avgValue / $maxValue"
+        } else {
+            "(none)"
         }
 
         println("${indent}Timestamps:            [$minTimestamp, $maxTimestamp]")
         println("${indent}Values (min/avg/max):  $valueStats")
-        println("${indent}Limit value:           $maxValue")
+        println("${indent}Limit value:           ${metricData.maxValue}")
     }
 
 }

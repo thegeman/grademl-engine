@@ -3,8 +3,6 @@ package science.atlarge.grademl.core.attribution
 import science.atlarge.grademl.core.TimestampNsArray
 import science.atlarge.grademl.core.execution.ExecutionPhase
 import science.atlarge.grademl.core.math.NonNegativeLeastSquares
-import science.atlarge.grademl.core.resources.DoubleMetricData
-import science.atlarge.grademl.core.resources.LongMetricData
 import science.atlarge.grademl.core.resources.Metric
 import java.nio.file.Path
 
@@ -36,13 +34,7 @@ class BestFitAttributionRuleProvider(
     private fun computeFitForMetric(metric: Metric) {
         // Create phase activity matrix and metric usage vector in preparation for NNLS fit
         val activityMatrix = createPhaseActivityMatrix(metric.data.timestamps)
-        val observationVector = when (val data = metric.data) {
-            is DoubleMetricData -> data.values
-            is LongMetricData -> {
-                val longValues = data.values
-                DoubleArray(longValues.size) { i -> longValues[i].toDouble() }
-            }
-        }
+        val observationVector = metric.data.values
         // Perform the NNLS fit
         val bestFit = NonNegativeLeastSquares.fit(activityMatrix, observationVector, scratchDirectory)
         // Translate the obtained coefficients to attribution rules
