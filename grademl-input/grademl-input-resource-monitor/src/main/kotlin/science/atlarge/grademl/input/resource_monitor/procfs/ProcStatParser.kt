@@ -184,7 +184,7 @@ class CpuUtilizationData(
             "Core utilization data must be available for all or none of the cores"
         }
         for (core in coreUtilization) {
-            require(core.size == timestamps.size) {
+            require(core.size == timestamps.size - 1) {
                 "Sizes of coreUtilization arrays and timestamps array must be consistent"
             }
         }
