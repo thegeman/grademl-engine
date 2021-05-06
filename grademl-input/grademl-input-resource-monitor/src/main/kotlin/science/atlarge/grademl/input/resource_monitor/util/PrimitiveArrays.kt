@@ -18,7 +18,7 @@ fun concatenateArrays(arrays: List<LongArray>, separator: LongArray = longArrayO
         }
         // Copy next array
         arrays[i].copyInto(outArray, destinationOffset = offset)
-        offset += outArray.size
+        offset += arrays[i].size
     }
 
     return outArray
@@ -42,7 +42,7 @@ fun concatenateArrays(arrays: List<DoubleArray>, separator: DoubleArray = double
         }
         // Copy next array
         arrays[i].copyInto(outArray, destinationOffset = offset)
-        offset += outArray.size
+        offset += arrays[i].size
     }
 
     return outArray
