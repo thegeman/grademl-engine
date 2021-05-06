@@ -164,7 +164,13 @@ object ProcDiskstatsParser : FileParser<DiskUtilizationData> {
         }
 
         return DiskUtilizationData(
-            timestamps, deviceIds, bytesRead, bytesWritten, readTimeFraction, writeTimeFraction, totalTimeSpentFraction
+            timestamps = timestamps,
+            deviceIds = deviceIds,
+            bytesRead = bytesRead,
+            bytesWritten = bytesWritten,
+            readTimeFraction = readTimeFraction,
+            writeTimeFraction = writeTimeFraction,
+            totalTimeSpentFraction = totalTimeSpentFraction
         )
     }
 
