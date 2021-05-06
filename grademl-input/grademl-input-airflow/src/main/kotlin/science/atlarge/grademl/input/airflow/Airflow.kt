@@ -74,7 +74,7 @@ fun main(args: Array<String>) {
     val executionModel = ExecutionModel()
     val foundAirflowLogs = Airflow.parseJobData(args.map { Paths.get(it) }, executionModel, ResourceModel())
     require(foundAirflowLogs) {
-        "Cannot find Airflow logs any of the given jobLogDirectories"
+        "Cannot find Airflow logs in any of the given jobLogDirectories"
     }
     println("Execution model extracted from Airflow logs:")
 
