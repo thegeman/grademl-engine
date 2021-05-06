@@ -37,9 +37,9 @@ object NonNegativeLeastSquares {
             rScriptFile, mapOf(
                 "matrix_height" to matrixHeight.toString(),
                 "matrix_width" to matrixWidth.toString(),
-                "matrix_file" to matrixFile.asRPathString(),
-                "vector_file" to vectorFile.asRPathString(),
-                "output_file" to outputFile.asRPathString()
+                "matrix_file_path" to matrixFile.asRPathString(),
+                "vector_file_path" to vectorFile.asRPathString(),
+                "output_file_path" to outputFile.asRPathString()
             )
         )
 
