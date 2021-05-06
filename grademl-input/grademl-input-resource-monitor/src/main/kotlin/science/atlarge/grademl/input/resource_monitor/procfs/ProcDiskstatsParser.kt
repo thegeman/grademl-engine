@@ -26,11 +26,9 @@ object ProcDiskstatsParser : FileParser<DiskUtilizationData> {
             val writeTimeFractionMetric = (0 until numDisks).map { DoubleArrayBuilder() }
             val totalTimeSpentFractionMetric = (0 until numDisks).map { DoubleArrayBuilder() }
             var lastTimestamp = 0L
-            var skipNext =
-                true // TODO: Figure out why (only) the first measurement in each dataset seems to have a <1ms delta
             while (true) {
                 val timestamp = inStream.tryReadLELong() ?: break
-                if (!skipNext) timestamps.append(timestamp)
+                timestamps.append(timestamp)
                 try {
                     require(inStream.read() == 1) { "Repeated DISK_LIST messages are currently not supported" }
                     inStream.readLEB128Int() // Skip number of disks
@@ -44,15 +42,13 @@ object ProcDiskstatsParser : FileParser<DiskUtilizationData> {
                         val writeTimeMs = inStream.readLEB128Long()
                         val totalTimeMs = inStream.readLEB128Long()
 
-                        if (!skipNext) {
-                            bytesReadMetric[i].append(sectorsRead.toDouble() * 512 * 1_000_000_000L / (timestamp - lastTimestamp))
-                            readTimeFractionMetric[i].append(readTimeMs.toDouble() * 1_000_000L / (timestamp - lastTimestamp))
-                            bytesWrittenMetric[i].append(sectorsWritten.toDouble() * 512 * 1_000_000_000L / (timestamp - lastTimestamp))
-                            writeTimeFractionMetric[i].append(writeTimeMs.toDouble() * 1_000_000L / (timestamp - lastTimestamp))
-                            totalTimeSpentFractionMetric[i].append(
-                                minOf(1.0, totalTimeMs.toDouble() * 1_000_000L / (timestamp - lastTimestamp))
-                            )
-                        }
+                        bytesReadMetric[i].append(sectorsRead.toDouble() * 512 * 1_000_000_000L / (timestamp - lastTimestamp))
+                        readTimeFractionMetric[i].append(readTimeMs.toDouble() * 1_000_000L / (timestamp - lastTimestamp))
+                        bytesWrittenMetric[i].append(sectorsWritten.toDouble() * 512 * 1_000_000_000L / (timestamp - lastTimestamp))
+                        writeTimeFractionMetric[i].append(writeTimeMs.toDouble() * 1_000_000L / (timestamp - lastTimestamp))
+                        totalTimeSpentFractionMetric[i].append(
+                            minOf(1.0, totalTimeMs.toDouble() * 1_000_000L / (timestamp - lastTimestamp))
+                        )
                     }
 
                     lastTimestamp = timestamp
@@ -70,7 +66,6 @@ object ProcDiskstatsParser : FileParser<DiskUtilizationData> {
                     }
                     break
                 }
-                skipNext = false
             }
 
             DiskUtilizationData(
