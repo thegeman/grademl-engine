@@ -9,10 +9,10 @@ sealed class ResourceAttributionRule {
     data class Variable(val demand: Double) : ResourceAttributionRule()
 }
 
-typealias ResourceAttributionProvider = (ExecutionPhase, Metric) -> ResourceAttributionRule
+typealias ResourceAttributionRuleProvider = (ExecutionPhase, Metric) -> ResourceAttributionRule
 
 object ResourceAttributionRuleProviders {
 
-    val DEFAULT: ResourceAttributionProvider = { _, _ -> ResourceAttributionRule.Variable(1.0) }
+    val DEFAULT: ResourceAttributionRuleProvider = { _, _ -> ResourceAttributionRule.Variable(1.0) }
 
 }
