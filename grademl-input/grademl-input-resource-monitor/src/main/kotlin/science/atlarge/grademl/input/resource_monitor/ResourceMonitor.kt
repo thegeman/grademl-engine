@@ -84,17 +84,17 @@ object ResourceMonitor : InputSource {
                 )
             )
             // Create metrics for each individual CPU core and add them as resources
-            for (core in cpuUtilization.cores) {
+            for (coreId in 0 until cpuUtilization.numCpuCores) {
                 val coreResource = resourceModel.addResource(
                     name = "core",
-                    tags = mapOf("id" to core.coreId.toString()),
+                    tags = mapOf("id" to coreId.toString()),
                     parent = cpuResource
                 )
                 coreResource.addMetric(
                     name = "utilization",
                     data = DoubleMetricData(
-                        core.timestamps,
-                        core.utilization,
+                        cpuUtilization.timestamps,
+                        cpuUtilization.coreUtilization[coreId],
                         1.0
                     )
                 )
@@ -109,11 +109,11 @@ object ResourceMonitor : InputSource {
     ) {
         // Enumerate over each network interface in the monitored cluster
         for ((hostname, networkUtilization) in networkUtilizationData) {
-            for ((iface, ifaceUtilization) in networkUtilization.interfaces) {
+            for (ifaceIndex in 0 until networkUtilization.interfaceIds.size) {
                 // Create a resource for the network interface
                 val ifaceResource = resourceModel.addResource(
                     name = "network",
-                    tags = mapOf("iface" to iface),
+                    tags = mapOf("iface" to networkUtilization.interfaceIds[ifaceIndex]),
                     parent = machineResources[hostname]!!
                 )
                 // Add metrics for incoming and outgoing traffic
@@ -121,15 +121,15 @@ object ResourceMonitor : InputSource {
                 ifaceResource.addMetric(
                     name = "bytes-received",
                     data = DoubleMetricData(
-                        timestamps = ifaceUtilization.timestamps,
-                        values = ifaceUtilization.bytesReceived,
+                        timestamps = networkUtilization.timestamps,
+                        values = networkUtilization.bytesReceived[ifaceIndex],
                         maxValue = 1e9
                     )
                 )
                 ifaceResource.addMetric(
                     name = "bytes-sent", DoubleMetricData(
-                        timestamps = ifaceUtilization.timestamps,
-                        values = ifaceUtilization.bytesSent,
+                        timestamps = networkUtilization.timestamps,
+                        values = networkUtilization.bytesSent[ifaceIndex],
                         maxValue = 1e9
                     )
                 )
@@ -144,11 +144,11 @@ object ResourceMonitor : InputSource {
     ) {
         // Enumerate over each disk device in the monitored cluster
         for ((hostname, diskUtilization) in diskUtilizationData) {
-            for ((device, deviceUtilization) in diskUtilization.disks) {
+            for (deviceIndex in 0 until diskUtilization.deviceIds.size) {
                 // Create a resource for the disk device
                 val deviceResource = resourceModel.addResource(
                     name = "disk",
-                    tags = mapOf("device" to device),
+                    tags = mapOf("device" to diskUtilization.deviceIds[deviceIndex]),
                     parent = machineResources[hostname]!!
                 )
                 // Add metrics for bytes read/written, read/write time, etc.
@@ -156,41 +156,41 @@ object ResourceMonitor : InputSource {
                 deviceResource.addMetric(
                     name = "bytes-read",
                     data = DoubleMetricData(
-                        timestamps = deviceUtilization.timestamps,
-                        values = deviceUtilization.bytesRead,
+                        timestamps = diskUtilization.timestamps,
+                        values = diskUtilization.bytesRead[deviceIndex],
                         maxValue = 1e8
                     )
                 )
                 deviceResource.addMetric(
                     name = "bytes-written",
                     data = DoubleMetricData(
-                        timestamps = deviceUtilization.timestamps,
-                        values = deviceUtilization.bytesWritten,
+                        timestamps = diskUtilization.timestamps,
+                        values = diskUtilization.bytesWritten[deviceIndex],
                         maxValue = 1e8
                     )
                 )
                 deviceResource.addMetric(
                     name = "read-time",
                     data = DoubleMetricData(
-                        timestamps = deviceUtilization.timestamps,
-                        values = deviceUtilization.readTimeFraction,
+                        timestamps = diskUtilization.timestamps,
+                        values = diskUtilization.readTimeFraction[deviceIndex],
                         maxValue = 1.0
                     )
                 )
                 deviceResource.addMetric(
                     name = "write-time",
                     data = DoubleMetricData(
-                        timestamps = deviceUtilization.timestamps,
-                        values = deviceUtilization.writeTimeFraction,
+                        timestamps = diskUtilization.timestamps,
+                        values = diskUtilization.writeTimeFraction[deviceIndex],
                         maxValue = 1.0
                     )
                 )
-                if (deviceUtilization.totalTimeSpentFraction != null) {
+                diskUtilization.totalTimeSpentFraction[deviceIndex]?.let { totalTimeSpentFraction ->
                     deviceResource.addMetric(
                         name = "total-utilization",
                         data = DoubleMetricData(
-                            timestamps = deviceUtilization.timestamps,
-                            values = deviceUtilization.totalTimeSpentFraction,
+                            timestamps = diskUtilization.timestamps,
+                            values = totalTimeSpentFraction,
                             maxValue = 1.0
                         )
                     )
@@ -203,19 +203,19 @@ object ResourceMonitor : InputSource {
 
 // Wrapper for testing the metric parser
 fun main(args: Array<String>) {
-    if (args.size != 1 || args[0] == "--help") {
-        println("Arguments: <jobLogDirectory>")
-        exitProcess(if (args.size != 1) -1 else 0)
+    if (args.isEmpty() || args[0] == "--help") {
+        println("Arguments: <jobLogDirectory> [...]")
+        exitProcess(if (args.isEmpty()) -1 else 0)
     }
 
     val resourceModel = ResourceModel()
     val foundResourceMonitorMetrics = ResourceMonitor.parseJobData(
-        listOf(Paths.get(args[0])),
+        args.map { Paths.get(it) },
         ExecutionModel(),
         resourceModel
     )
     require(foundResourceMonitorMetrics) {
-        "Cannot find Resource Monitor logs in ${args[0]}"
+        "Cannot find Resource Monitor logs in any of the given jobLogDirectories"
     }
     println("Resource model extracted from Resource Monitor logs:")
 
