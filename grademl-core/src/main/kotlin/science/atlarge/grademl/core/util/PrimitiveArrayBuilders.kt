@@ -1,9 +1,5 @@
 package science.atlarge.grademl.core.util
 
-/*
- * Append-only ArrayLists optimized for primitive types
- */
-
 class LongArrayBuilder(initialSize: Int = 16) {
 
     var size = 0
@@ -21,6 +17,16 @@ class LongArrayBuilder(initialSize: Int = 16) {
             extendArray()
         array[size] = value
         size++
+    }
+
+    fun last(): Long {
+        require(size > 0) { "Cannot read last element of empty array" }
+        return array[size - 1]
+    }
+
+    fun replaceLast(value: Long) {
+        require(size > 0) { "Cannot replace last element of empty array" }
+        array[size - 1] = value
     }
 
     fun dropLast(count: Int = 1) {
@@ -54,6 +60,16 @@ class DoubleArrayBuilder(initialSize: Int = 16) {
             extendArray()
         array[size] = value
         size++
+    }
+
+    fun last(): Double {
+        require(size > 0) { "Cannot read last element of empty array" }
+        return array[size - 1]
+    }
+
+    fun replaceLast(value: Double) {
+        require(size > 0) { "Cannot replace last element of empty array" }
+        array[size - 1] = value
     }
 
     fun dropLast(count: Int = 1) {
