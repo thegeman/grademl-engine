@@ -49,8 +49,8 @@ object Cli {
         val executionModel = ExecutionModel()
         val resourceModel = ResourceModel()
 
-        Airflow.parseJobLogs(jobLogDirectory, executionModel)
-        ResourceMonitor.parseJobLogs(jobLogDirectory, resourceModel)
+        Airflow.parseJobData(listOf(jobLogDirectory), executionModel, resourceModel)
+        ResourceMonitor.parseJobData(listOf(jobLogDirectory), executionModel, resourceModel)
 
         if (executionModel.phases.size == 1 && resourceModel.resources.any { it.metrics.isNotEmpty() }) {
             println(

@@ -8,8 +8,10 @@ import java.time.format.DateTimeFormatter
 import java.util.*
 
 class AirflowLogParser private constructor(
-    private val airflowLogDirectory: Path
+    private val airflowLogDirectories: Iterable<Path>
 ) {
+
+    // TODO: Support analysis of Airflow logs split over multiple directories
 
     private lateinit var runIds: Set<String>
     private lateinit var dagName: String
@@ -33,7 +35,8 @@ class AirflowLogParser private constructor(
     }
 
     private fun parseRunIds() {
-        runIds = airflowLogDirectory.resolve("run_id")
+        runIds = airflowLogDirectories.first()
+            .resolve("run_id")
             .toFile()
             .readLines()
             .filter { it.isNotEmpty() }
@@ -41,15 +44,15 @@ class AirflowLogParser private constructor(
     }
 
     private fun findDagName() {
-        val dagFiles = airflowLogDirectory.toFile()
+        val dagFiles = airflowLogDirectories.first().toFile()
             .list { _, name -> name.endsWith(".dag") }
-        require(dagFiles != null) { "No files matching '*.dag' found in $airflowLogDirectory" }
-        require(dagFiles.size == 1) { "Too many files matching '*.dag' found in $airflowLogDirectory" }
+        require(dagFiles != null) { "No files matching '*.dag' found in $airflowLogDirectories" }
+        require(dagFiles.size == 1) { "Too many files matching '*.dag' found in $airflowLogDirectories" }
         dagName = dagFiles.first().dropLast(".dag".length)
     }
 
     private fun parseDagStructure() {
-        val dagStructureLines = airflowLogDirectory.resolve("$dagName.dag")
+        val dagStructureLines = airflowLogDirectories.first().resolve("$dagName.dag")
             .toFile()
             .readLines()
             .filter { it.isNotEmpty() }
@@ -80,7 +83,7 @@ class AirflowLogParser private constructor(
 
     private fun parseTaskInformation() {
         // Find and enumerate task log files
-        val taskLogs = airflowLogDirectory.toFile()
+        val taskLogs = airflowLogDirectories.first().toFile()
             .walk()
             .filter { it.isFile && it.extension == "log" }
             .map { it.parentFile.parentFile.name to it }
@@ -116,8 +119,8 @@ class AirflowLogParser private constructor(
 
     companion object {
 
-        fun parseFromDirectory(airflowLogDirectory: Path): AirflowLog {
-            return AirflowLogParser(airflowLogDirectory).parse()
+        fun parseFromDirectories(airflowLogDirectories: Iterable<Path>): AirflowLog {
+            return AirflowLogParser(airflowLogDirectories).parse()
         }
 
     }

@@ -1,5 +1,7 @@
 package science.atlarge.grademl.input.resource_monitor
 
+import science.atlarge.grademl.core.execution.ExecutionModel
+import science.atlarge.grademl.core.input.InputSource
 import science.atlarge.grademl.core.resources.*
 import science.atlarge.grademl.input.resource_monitor.procfs.CpuUtilizationData
 import science.atlarge.grademl.input.resource_monitor.procfs.DiskUtilizationData
@@ -8,39 +10,50 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.system.exitProcess
 
-object ResourceMonitor {
+object ResourceMonitor : InputSource {
 
-    fun parseJobLogs(
-        jobLogDirectory: Path,
-        unifiedResourceModel: ResourceModel? = null
-    ): ResourceModel? {
+    override fun parseJobData(
+        jobDataDirectories: Iterable<Path>,
+        unifiedExecutionModel: ExecutionModel,
+        unifiedResourceModel: ResourceModel
+    ): Boolean {
+        // Find Resource Monitor metric directories
+        val resourceMonitorMetricDirectories = jobDataDirectories
+            .map { it.resolve("metrics").resolve("resource-monitor") }
+            .filter { it.toFile().isDirectory }
+        if (resourceMonitorMetricDirectories.isEmpty()) return false
+
         // Parse Resource Monitor metrics
-        val resourceMonitorLogDirectory = jobLogDirectory.resolve("metrics").resolve("resource-monitor")
-        if (!resourceMonitorLogDirectory.toFile().isDirectory) {
-            return null
-        }
-        val resourceMonitorMetrics = ResourceMonitorParser.parseFromDirectory(resourceMonitorLogDirectory)
+        val resourceMonitorMetrics = ResourceMonitorParser.parseFromDirectories(resourceMonitorMetricDirectories)
 
         // Add a top-level resource for the cluster
-        val resourceModel = unifiedResourceModel ?: ResourceModel()
-        val clusterResource = resourceModel.addResource("cluster")
+        val clusterResource = unifiedResourceModel.addResource("cluster")
         // Add a resource for each machine
         val machineResources = resourceMonitorMetrics.hostnames.associateWith { hostname ->
-            resourceModel.addResource(
+            unifiedResourceModel.addResource(
                 name = "machine",
                 tags = mapOf("hostname" to hostname),
                 parent = clusterResource
             )
         }
         // Add resource-specific metrics to the resource model
-        addCpuUtilizationToResourceModel(resourceMonitorMetrics.cpuUtilizationData, resourceModel, machineResources)
-        addNetworkUtilizationToResourceModel(
-            resourceMonitorMetrics.networkUtilizationData, resourceModel,
+        addCpuUtilizationToResourceModel(
+            resourceMonitorMetrics.cpuUtilizationData,
+            unifiedResourceModel,
             machineResources
         )
-        addDiskUtilizationToResourceModel(resourceMonitorMetrics.diskUtilizationData, resourceModel, machineResources)
+        addNetworkUtilizationToResourceModel(
+            resourceMonitorMetrics.networkUtilizationData,
+            unifiedResourceModel,
+            machineResources
+        )
+        addDiskUtilizationToResourceModel(
+            resourceMonitorMetrics.diskUtilizationData,
+            unifiedResourceModel,
+            machineResources
+        )
 
-        return resourceModel
+        return true
     }
 
     private fun addCpuUtilizationToResourceModel(
@@ -195,8 +208,13 @@ fun main(args: Array<String>) {
         exitProcess(if (args.size != 1) -1 else 0)
     }
 
-    val resourceModel = ResourceMonitor.parseJobLogs(Paths.get(args[0]))
-    requireNotNull(resourceModel) {
+    val resourceModel = ResourceModel()
+    val foundResourceMonitorMetrics = ResourceMonitor.parseJobData(
+        listOf(Paths.get(args[0])),
+        ExecutionModel(),
+        resourceModel
+    )
+    require(foundResourceMonitorMetrics) {
         "Cannot find Resource Monitor logs in ${args[0]}"
     }
     println("Resource model extracted from Resource Monitor logs:")

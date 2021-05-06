@@ -4,15 +4,17 @@ import science.atlarge.grademl.input.resource_monitor.procfs.*
 import java.nio.file.Path
 
 class ResourceMonitorParser private constructor(
-    private val resourceMonitorMetricDirectory: Path
+    private val resourceMonitorMetricDirectories: Iterable<Path>
 ) {
+
+    // TODO: Support analysis of Airflow logs split over multiple directories
 
     private val hostnames = mutableSetOf<String>()
     private val cpuUtilizationData = mutableMapOf<String, CpuUtilizationData>()
     private val networkUtilizationData = mutableMapOf<String, NetworkUtilizationData>()
     private val diskUtilizationData = mutableMapOf<String, DiskUtilizationData>()
 
-    fun parse(): ResourceMonitorMetrics {
+    private fun parse(): ResourceMonitorMetrics {
         findHostnames()
         parseCpuUtilization()
         parseNetworkUtilization()
@@ -22,7 +24,7 @@ class ResourceMonitorParser private constructor(
 
     private fun findHostnames() {
         // Enumerate metric files and extract hostnames from the filenames
-        resourceMonitorMetricDirectory.toFile()
+        resourceMonitorMetricDirectories.first().toFile()
             .walk()
             .filter { it.isFile && "-" in it.name }
             .map { it.name.split("-").last() }
@@ -31,7 +33,7 @@ class ResourceMonitorParser private constructor(
 
     private fun parseCpuUtilization() {
         // Find relevant CPU metric files
-        val cpuMetricFiles = resourceMonitorMetricDirectory.toFile()
+        val cpuMetricFiles = resourceMonitorMetricDirectories.first().toFile()
             .walk()
             .filter { it.isFile && it.name.startsWith("proc-stat") }
         // Parse each file and associate it with a hostname
@@ -44,7 +46,7 @@ class ResourceMonitorParser private constructor(
 
     private fun parseNetworkUtilization() {
         // Find relevant network metric files
-        val networkMetricFiles = resourceMonitorMetricDirectory.toFile()
+        val networkMetricFiles = resourceMonitorMetricDirectories.first().toFile()
             .walk()
             .filter { it.isFile && it.name.startsWith("proc-net-dev") }
         // Parse each file and associate it with a hostname
@@ -57,7 +59,7 @@ class ResourceMonitorParser private constructor(
 
     private fun parseDiskUtilization() {
         // Find relevant disk metric files
-        val diskMetricFiles = resourceMonitorMetricDirectory.toFile()
+        val diskMetricFiles = resourceMonitorMetricDirectories.first().toFile()
             .walk()
             .filter { it.isFile && it.name.startsWith("proc-diskstats") }
         // Parse each file and associate it with a hostname
@@ -70,8 +72,8 @@ class ResourceMonitorParser private constructor(
 
     companion object {
 
-        fun parseFromDirectory(resourceMonitorMetricDirectory: Path): ResourceMonitorMetrics {
-            return ResourceMonitorParser(resourceMonitorMetricDirectory).parse()
+        fun parseFromDirectories(resourceMonitorMetricDirectories: Iterable<Path>): ResourceMonitorMetrics {
+            return ResourceMonitorParser(resourceMonitorMetricDirectories).parse()
         }
 
     }
