@@ -118,13 +118,6 @@ object ProcDiskstatsParser : FileParser<DiskUtilizationData> {
         }) {
             "Cannot merge disk metrics with different devices or devices in a different order"
         }
-        // Check that the optional timeSpentFraction metric is consistently present or not present for each device
-        val hasTotalTimeSpentFraction = sortedUtilizationData[0].totalTimeSpentFraction.map { it != null }
-        require(sortedUtilizationData.all { diskData ->
-            (0 until numDevices).all { (diskData.totalTimeSpentFraction[it] != null) == hasTotalTimeSpentFraction[it] }
-        }) {
-            "Cannot merge disk metrics with different presence or absence of optional metrics"
-        }
 
         // Perform the "merge" through concatenation
         val timestamps = concatenateArrays(sortedUtilizationData.map { it.timestamps })
@@ -153,14 +146,11 @@ object ProcDiskstatsParser : FileParser<DiskUtilizationData> {
             )
         }
         val totalTimeSpentFraction = (0 until numDevices).map { i ->
-            if (hasTotalTimeSpentFraction[i]) {
-                concatenateArrays(
-                    sortedUtilizationData.map { it.totalTimeSpentFraction[i]!! },
-                    separator = doubleArrayOf(0.0)
-                )
-            } else {
-                null
-            }
+            concatenateOptionalArrays(
+                sortedUtilizationData.map { it.totalTimeSpentFraction[i] },
+                expectedArraySizes = sortedUtilizationData.map { it.timestamps.size - 1 },
+                separator = doubleArrayOf(0.0)
+            )
         }
 
         return DiskUtilizationData(
