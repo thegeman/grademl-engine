@@ -44,11 +44,9 @@ fun runRScript(rScriptFile: File): Boolean {
 }
 
 fun File.asRPathString(): String {
-    var path = canonicalPath
-    if (!path.endsWith('/') && !path.endsWith('\\')) path += File.separator
     return if ("win" in System.getProperty("os.name").toLowerCase()) {
-        "shortPathName(\"${path.replace("\\", "\\\\")}\")"
+        "shortPathName(\"${canonicalPath.replace("\\", "\\\\")}\")"
     } else {
-        "\"$path\""
+        "\"$canonicalPath\""
     }
 }
