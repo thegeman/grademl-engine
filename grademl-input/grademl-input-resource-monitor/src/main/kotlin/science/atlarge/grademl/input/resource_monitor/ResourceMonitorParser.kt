@@ -33,9 +33,11 @@ class ResourceMonitorParser private constructor(
 
     private fun <T> parseMetricFiles(filePrefix: String, parser: FileParser<T>, outMap: MutableMap<String, T>) {
         // Find relevant metric files
-        val allMetricFiles = resourceMonitorMetricDirectories.first().toFile()
-            .walk()
-            .filter { it.isFile && it.name.startsWith(filePrefix) }
+        val allMetricFiles = resourceMonitorMetricDirectories.flatMap { dir ->
+            dir.toFile()
+                .walk()
+                .filter { it.isFile && it.name.startsWith(filePrefix) }
+        }
         // Group files by hostname
         val metricFilesByHostname = allMetricFiles.groupBy {
             it.name.split("-").last()
