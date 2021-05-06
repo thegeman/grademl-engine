@@ -3,13 +3,17 @@ package science.atlarge.grademl.input.resource_monitor.procfs
 import science.atlarge.grademl.core.TimestampNsArray
 import science.atlarge.grademl.core.util.DoubleArrayBuilder
 import science.atlarge.grademl.core.util.LongArrayBuilder
+import science.atlarge.grademl.input.resource_monitor.FileParser
+import science.atlarge.grademl.input.resource_monitor.util.concatenateArrays
 import science.atlarge.grademl.input.resource_monitor.util.readLEB128Int
 import science.atlarge.grademl.input.resource_monitor.util.readLEB128Long
 import science.atlarge.grademl.input.resource_monitor.util.readLELong
 import java.io.Closeable
 import java.io.File
 
-class ProcStatParser {
+object ProcStatParser : FileParser<CpuUtilizationData> {
+
+    private const val FULL_CORE_THRESHOLD = 0.95
 
     private class ParserState(logFile: File) : Closeable {
         private val stream = logFile.inputStream().buffered()
@@ -40,9 +44,7 @@ class ProcStatParser {
 
             // Convert the result to the right data structures
             val timestampsArray = timestamps.toArray()
-            val coreUtilizationData = Array(numCpus) { coreId ->
-                CpuCoreUtilizationData(coreId, timestampsArray, coreUtilization[coreId].toArray())
-            }
+            val coreUtilizationData = Array(numCpus) { coreUtilization[it].toArray() }
             return CpuUtilizationData(
                 timestampsArray,
                 totalCoreUtilization.toArray(),
@@ -106,14 +108,59 @@ class ProcStatParser {
         }
     }
 
-    fun parse(logFile: File): CpuUtilizationData {
-        return ParserState(logFile).use {
-            it.parse()
-        }
+    override fun parse(hostname: String, metricFiles: Iterable<File>): CpuUtilizationData {
+        // Parse each metric file individually
+        val utilizationDataStructures = metricFiles.map { metricFile ->
+            ParserState(metricFile).use { it.parse() }
+        }.filter { it.timestamps.size > 1 }
+        require(utilizationDataStructures.isNotEmpty()) { "No metric data found for CPU utilization" }
+        // Shortcut: return if there was only one file
+        if (utilizationDataStructures.size == 1) return utilizationDataStructures[0]
+        // Otherwise, merge all data structures into one
+        return mergeUtilizationData(utilizationDataStructures)
     }
 
-    companion object {
-        const val FULL_CORE_THRESHOLD = 0.95
+    private fun mergeUtilizationData(utilizationDataStructures: List<CpuUtilizationData>): CpuUtilizationData {
+        // Check that none of the metrics overlap
+        val sortedUtilizationData = utilizationDataStructures.sortedBy { it.timestamps.first() }
+        for (i in 0 until sortedUtilizationData.size - 1) {
+            require(sortedUtilizationData[i].timestamps.last() < sortedUtilizationData[i + 1].timestamps.first()) {
+                "Overlapping resource metrics are not supported"
+            }
+        }
+
+        // Check that the number of cores and presence of core utilization data is consistent
+        val numCpuCores = sortedUtilizationData[0].numCpuCores
+        require(sortedUtilizationData.all { it.numCpuCores == numCpuCores }) {
+            "Cannot merge CPU metrics with different number of cores"
+        }
+        val hasCoreUtilization = sortedUtilizationData[0].coreUtilization.isNotEmpty()
+        require(sortedUtilizationData.all { it.coreUtilization.isNotEmpty() == hasCoreUtilization }) {
+            "Cannot merge CPU metrics where only some include core utilization data"
+        }
+
+        // Perform the "merge" through concatenation
+        val timestamps = concatenateArrays(sortedUtilizationData.map { it.timestamps })
+        val totalCoreUtilization = concatenateArrays(
+            sortedUtilizationData.map { it.totalCoreUtilization },
+            separator = doubleArrayOf(0.0)
+        )
+        val coresFullyUtilized = concatenateArrays(
+            sortedUtilizationData.map { it.coresFullyUtilized },
+            separator = longArrayOf(0L)
+        )
+        val coreUtilization = if (hasCoreUtilization) {
+            Array(numCpuCores) { i ->
+                concatenateArrays(
+                    sortedUtilizationData.map { it.coreUtilization[i] },
+                    separator = doubleArrayOf(0.0)
+                )
+            }
+        } else {
+            emptyArray()
+        }
+
+        return CpuUtilizationData(timestamps, totalCoreUtilization, coresFullyUtilized, numCpuCores, coreUtilization)
     }
 
 }
@@ -123,15 +170,24 @@ class CpuUtilizationData(
     val totalCoreUtilization: DoubleArray,
     val coresFullyUtilized: LongArray,
     val numCpuCores: Int,
-    val cores: Array<CpuCoreUtilizationData>
+    val coreUtilization: Array<DoubleArray>
 ) {
 
     init {
-        cores.forEachIndexed { i, cpuCoreUtilizationData ->
-            require(cpuCoreUtilizationData.coreId == i) { "coreId of the i'th CpuCoreUtilizationData must be i" }
+        require(totalCoreUtilization.size == timestamps.size - 1) {
+            "Sizes of totalCoreUtilization array and timestamps array must be consistent"
+        }
+        require(coresFullyUtilized.size == timestamps.size - 1) {
+            "Sizes of totalCoreUtilization array and timestamps array must be consistent"
+        }
+        require(coreUtilization.isEmpty() || coreUtilization.size == numCpuCores) {
+            "Core utilization data must be available for all or none of the cores"
+        }
+        for (core in coreUtilization) {
+            require(core.size == timestamps.size) {
+                "Sizes of coreUtilization arrays and timestamps array must be consistent"
+            }
         }
     }
 
 }
-
-class CpuCoreUtilizationData(val coreId: Int, val timestamps: TimestampNsArray, val utilization: DoubleArray)
