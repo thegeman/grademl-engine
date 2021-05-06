@@ -32,7 +32,7 @@ fun writeRScript(sourceStream: InputStream, destination: File, settings: Map<Str
     }
 }
 
-fun runRScript(rScriptFile: File) {
+fun runRScript(rScriptFile: File): Boolean {
     val rScriptExec = System.getenv().getOrElse("RSCRIPT") { "Rscript" }
     val rScriptDirectory = rScriptFile.parentFile
 
@@ -40,7 +40,7 @@ fun runRScript(rScriptFile: File) {
     pb.directory(rScriptDirectory)
     pb.redirectErrorStream(true)
     pb.redirectOutput(rScriptDirectory.resolve(rScriptFile.nameWithoutExtension + ".log"))
-    pb.start().waitFor()
+    return pb.start().waitFor() == 0
 }
 
 fun File.asRPathString(): String {
