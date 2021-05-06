@@ -24,34 +24,37 @@ object Airflow : InputSource {
         // Parse Airflow log files
         val airflowLog = AirflowLogParser.parseFromDirectories(airflowLogDirectories)
 
-        // Iterate over DAG runs to build the execution model
-        for (runId in airflowLog.runIds) {
-            // Determine which tasks exist for this run
-            val tasksInRun = airflowLog.taskStartTimesPerRun[runId]?.keys.orEmpty()
-            val dagStartTime = (airflowLog.taskStartTimesPerRun[runId]?.values?.minOrNull()
-                ?: airflowLog.taskStartTimesPerRun.values.flatMap { it.values }.minOrNull() ?: 0L)
-            val dagEndTime = (airflowLog.taskEndTimesPerRun[runId]?.values?.maxOrNull() ?: dagStartTime)
-            // Add a phase for the DAG and for each task
-            val dagPhase = unifiedExecutionModel.addPhase(
-                name = airflowLog.dagName,
-                tags = mapOf("run_id" to runId),
-                startTime = dagStartTime,
-                endTime = dagEndTime
-            )
-            val taskPhases = tasksInRun.associateWith { taskName ->
-                unifiedExecutionModel.addPhase(
-                    name = taskName,
-                    startTime = airflowLog.taskStartTimesPerRun[runId]!![taskName]!!,
-                    endTime = airflowLog.taskEndTimesPerRun[runId]!![taskName]!!,
-                    parent = dagPhase
+        // Iterate over DAGs to build the execution model
+        for ((dagId, dagLog) in airflowLog.dagLogs) {
+            // Iterate over DAG runs to build the execution model
+            for (runId in dagLog.runIds) {
+                // Determine which tasks exist for this run
+                val tasksInRun = dagLog.taskStartTimesPerRun[runId]?.keys.orEmpty()
+                val runStartTime = (dagLog.taskStartTimesPerRun[runId]?.values?.minOrNull()
+                    ?: dagLog.taskStartTimesPerRun.values.flatMap { it.values }.minOrNull() ?: 0L)
+                val runEndTime = (dagLog.taskEndTimesPerRun[runId]?.values?.maxOrNull() ?: runStartTime)
+                // Add a phase for the DAG run and for each task
+                val runPhase = unifiedExecutionModel.addPhase(
+                    name = dagId,
+                    tags = mapOf("run_id" to runId),
+                    startTime = runStartTime,
+                    endTime = runEndTime
                 )
-            }
-            // Add dataflow relationships between tasks
-            for ((upstream, downstreams) in airflowLog.taskDownstreamNames) {
-                val upstreamPhase = taskPhases[upstream] ?: continue
-                for (downstream in downstreams) {
-                    val downstreamPhase = taskPhases[downstream] ?: continue
-                    upstreamPhase.addOutgoingDataflow(downstreamPhase)
+                val taskPhases = tasksInRun.associateWith { taskName ->
+                    unifiedExecutionModel.addPhase(
+                        name = taskName,
+                        startTime = dagLog.taskStartTimesPerRun[runId]!![taskName]!!,
+                        endTime = dagLog.taskEndTimesPerRun[runId]!![taskName]!!,
+                        parent = runPhase
+                    )
+                }
+                // Add dataflow relationships between tasks
+                for ((upstream, downstreamIds) in dagLog.taskDownstreamIds) {
+                    val upstreamPhase = taskPhases[upstream] ?: continue
+                    for (downstream in downstreamIds) {
+                        val downstreamPhase = taskPhases[downstream] ?: continue
+                        upstreamPhase.addOutgoingDataflow(downstreamPhase)
+                    }
                 }
             }
         }
@@ -63,15 +66,15 @@ object Airflow : InputSource {
 
 // Wrapper for testing the log parser
 fun main(args: Array<String>) {
-    if (args.size != 1 || args[0] == "--help") {
-        println("Arguments: <jobLogDirectory>")
-        exitProcess(if (args.size != 1) -1 else 0)
+    if (args.isEmpty() || args[0] == "--help") {
+        println("Arguments: <jobLogDirectory> [...]")
+        exitProcess(if (args.isEmpty()) -1 else 0)
     }
 
     val executionModel = ExecutionModel()
-    val foundAirflowLogs = Airflow.parseJobData(listOf(Paths.get(args[0])), executionModel, ResourceModel())
+    val foundAirflowLogs = Airflow.parseJobData(args.map { Paths.get(it) }, executionModel, ResourceModel())
     require(foundAirflowLogs) {
-        "Cannot find Airflow logs in ${args[0]}"
+        "Cannot find Airflow logs any of the given jobLogDirectories"
     }
     println("Execution model extracted from Airflow logs:")
 
