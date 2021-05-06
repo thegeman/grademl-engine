@@ -44,7 +44,7 @@ object ProcStatParser : FileParser<CpuUtilizationData> {
 
             // Convert the result to the right data structures
             val timestampsArray = timestamps.toArray()
-            val coreUtilizationData = Array(numCpus) { coreUtilization[it].toArray() }
+            val coreUtilizationData = coreUtilization.map { it.toArray() }
             return CpuUtilizationData(
                 timestampsArray,
                 totalCoreUtilization.toArray(),
@@ -150,14 +150,14 @@ object ProcStatParser : FileParser<CpuUtilizationData> {
             separator = longArrayOf(0L)
         )
         val coreUtilization = if (hasCoreUtilization) {
-            Array(numCpuCores) { i ->
+            (0 until numCpuCores).map { i ->
                 concatenateArrays(
                     sortedUtilizationData.map { it.coreUtilization[i] },
                     separator = doubleArrayOf(0.0)
                 )
             }
         } else {
-            emptyArray()
+            emptyList()
         }
 
         return CpuUtilizationData(timestamps, totalCoreUtilization, coresFullyUtilized, numCpuCores, coreUtilization)
@@ -170,7 +170,7 @@ class CpuUtilizationData(
     val totalCoreUtilization: DoubleArray,
     val coresFullyUtilized: LongArray,
     val numCpuCores: Int,
-    val coreUtilization: Array<DoubleArray>
+    val coreUtilization: List<DoubleArray>
 ) {
 
     init {
