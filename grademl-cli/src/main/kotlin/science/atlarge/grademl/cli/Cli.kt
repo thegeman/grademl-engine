@@ -16,6 +16,7 @@ import science.atlarge.grademl.core.resources.Resource
 import science.atlarge.grademl.core.resources.ResourceModel
 import science.atlarge.grademl.input.airflow.Airflow
 import science.atlarge.grademl.input.resource_monitor.ResourceMonitor
+import java.io.File
 import java.io.IOError
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -29,12 +30,13 @@ object Cli {
         println()
 
         if (args.size != 2) {
-            println("Usage: grademl-cli <jobLogDirectory> <jobAnalysisDirectory>")
+            println("Usage: grademl-cli <jobLogDirectories> <jobAnalysisDirectory>")
+            println("  jobLogDirectories may be separated by the ${File.pathSeparatorChar} character")
             exitProcess(1)
         }
 
         println("Parsing job log files.")
-        val (executionModel, resourceModel) = parseJobLogs(Paths.get(args[0]))
+        val (executionModel, resourceModel) = parseJobLogs(args[0].split(File.pathSeparatorChar).map { Paths.get(it) })
         println("Completed parsing of input files.")
         println()
 
@@ -45,12 +47,12 @@ object Cli {
         runCli(CliState(executionModel, resourceModel, Paths.get(args[1])))
     }
 
-    private fun parseJobLogs(jobLogDirectory: Path): Pair<ExecutionModel, ResourceModel> {
+    private fun parseJobLogs(jobLogDirectories: List<Path>): Pair<ExecutionModel, ResourceModel> {
         val executionModel = ExecutionModel()
         val resourceModel = ResourceModel()
 
-        Airflow.parseJobData(listOf(jobLogDirectory), executionModel, resourceModel)
-        ResourceMonitor.parseJobData(listOf(jobLogDirectory), executionModel, resourceModel)
+        Airflow.parseJobData(jobLogDirectories, executionModel, resourceModel)
+        ResourceMonitor.parseJobData(jobLogDirectories, executionModel, resourceModel)
 
         if (executionModel.phases.size == 1 && resourceModel.resources.any { it.metrics.isNotEmpty() }) {
             println(
