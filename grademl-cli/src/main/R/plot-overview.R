@@ -147,6 +147,6 @@ p <- ggarrange(p_phase, p_resource, heights = c(p_phase_height, p_resource_heigh
                ncol = 1, nrow = 2, align = "v")
 
 # Save the plot
-ggsave(paste0(output_directory, plot_filename), width = 40,
+ggsave(file.path(output_directory, plot_filename), width = 40,
        height = p_phase_height + p_resource_height,
        units = "cm", limitsize = FALSE, p)
