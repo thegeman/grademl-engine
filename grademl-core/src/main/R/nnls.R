@@ -21,11 +21,13 @@ A <- matrix(
   nrow = matrix_height, ncol = matrix_width, byrow=TRUE
 )
 close(matrix_file)
+A[is.nan(A)] <- 0
 
 # Read the output vector
 vector_file <- file(vector_file_path, "rb")
 b <- readBin(vector_file, numeric(), matrix_height, size = 8, endian = "big")
 close(vector_file)
+b[is.nan(b)] <- 0
 
 # Compute the NNLS fit
 fit_outcome <- bvls(A, b, bl = rep(0, matrix_width), bu = rep(Inf, matrix_width))
