@@ -10,7 +10,7 @@ import science.atlarge.grademl.core.util.LongArrayBuilder
 class ResourceDemandEstimationStep(
     private val metrics: Set<Metric>,
     private val phases: Set<ExecutionPhase>,
-    private val attributionRuleProvider: (ExecutionPhase, Metric) -> ResourceAttributionRule
+    private val attributionRuleProvider: ResourceAttributionRuleProvider
 ) {
 
     private val cachedDemandEstimates = mutableMapOf<Metric, ResourceDemandEstimate>()
@@ -37,7 +37,7 @@ class ResourceDemandEstimationStep(
     }
 
     private fun getDemandPerPhaseFor(metric: Metric): Pair<Map<ExecutionPhase, Double>, Map<ExecutionPhase, Double>> {
-        val attributionRules = phases.map { it to attributionRuleProvider(it, metric) }
+        val attributionRules = phases.map { it to attributionRuleProvider.forPhaseAndMetric(it, metric) }
         val exactDemandPerPhase = attributionRules.mapNotNull { (phase, rule) ->
             when (rule) {
                 is ResourceAttributionRule.Exact -> phase to rule.demand

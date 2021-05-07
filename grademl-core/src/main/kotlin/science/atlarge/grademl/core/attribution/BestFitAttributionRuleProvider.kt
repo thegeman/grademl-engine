@@ -1,16 +1,18 @@
 package science.atlarge.grademl.core.attribution
 
 import science.atlarge.grademl.core.TimestampNsArray
+import science.atlarge.grademl.core.execution.ExecutionModel
 import science.atlarge.grademl.core.execution.ExecutionPhase
 import science.atlarge.grademl.core.math.NonNegativeLeastSquares
 import science.atlarge.grademl.core.resources.Metric
+import science.atlarge.grademl.core.resources.ResourceModel
 import java.nio.file.Path
 
 class BestFitAttributionRuleProvider(
     phases: Iterable<ExecutionPhase>,
     metrics: Iterable<Metric>,
     private val scratchDirectory: Path
-) {
+) : ResourceAttributionRuleProvider {
 
     private val phases = phases.toSet()
     private val orderedPhaseList = phases.sortedBy { it.path }
@@ -18,7 +20,7 @@ class BestFitAttributionRuleProvider(
 
     private val cachedRules = mutableMapOf<Metric, Map<ExecutionPhase, ResourceAttributionRule>>()
 
-    fun apply(phase: ExecutionPhase, metric: Metric): ResourceAttributionRule {
+    override fun forPhaseAndMetric(phase: ExecutionPhase, metric: Metric): ResourceAttributionRule {
         // Sanity check the arguments
         if (phase !in phases || metric !in metrics) return ResourceAttributionRule.None
         // Return from cache if available

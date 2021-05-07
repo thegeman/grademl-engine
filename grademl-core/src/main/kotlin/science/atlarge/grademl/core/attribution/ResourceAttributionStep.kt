@@ -10,7 +10,7 @@ import science.atlarge.grademl.core.util.LongArrayBuilder
 class ResourceAttributionStep(
     private val phases: Set<ExecutionPhase>,
     private val metrics: Set<Metric>,
-    private val attributionRuleProvider: (ExecutionPhase, Metric) -> ResourceAttributionRule,
+    private val attributionRuleProvider: ResourceAttributionRuleProvider,
     private val resourceDemandEstimates: (Metric) -> ResourceDemandEstimate,
     private val upsampledMetricData: (Metric) -> MetricData
 ) {
@@ -35,7 +35,7 @@ class ResourceAttributionStep(
             return MetricData(longArrayOf(phase.startTime), doubleArrayOf(), metric.data.maxValue)
         }
         // Get attribution rule for phase to determine how to attribute resource usage to the phase
-        val attributionRule = attributionRuleProvider(phase, metric)
+        val attributionRule = attributionRuleProvider.forPhaseAndMetric(phase, metric)
         // Return a flat attributed value of zero if the phase does not use the given resource
         if (attributionRule is ResourceAttributionRule.None) {
             return MetricData(
