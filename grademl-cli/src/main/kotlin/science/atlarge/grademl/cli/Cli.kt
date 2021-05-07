@@ -90,8 +90,8 @@ object Cli {
 
         // Repeatedly read, parse, and execute commands until the users quits the application
         while (true) {
-            // Read the next line
-            val line = try {
+            // Read the next line (or lines, if pasted)
+            val lines = try {
                 lineReader.readLine("> ")
             } catch (e: Exception) {
                 when (e) {
@@ -102,22 +102,25 @@ object Cli {
                 }
             }
 
-            // For now, just echo back the parsed line
-            val parsedLine = lineReader.parser.parse(line, 0)
-            if (parsedLine.line().isBlank()) {
-                // Skip empty lines
-                continue
-            }
-            // Look up the first word as command
-            val command = CommandRegistry[parsedLine.words()[0]]
-            if (command == null) {
-                println("Command \"${parsedLine.words()[0]}\" not recognized.")
+            // Split the input text on newlines
+            for (line in lines.split('\n')) {
+                // Parse the next line
+                val parsedLine = lineReader.parser.parse(line, 0)
+                if (parsedLine.line().isBlank()) {
+                    // Skip empty lines
+                    continue
+                }
+                // Look up the first word as command
+                val command = CommandRegistry[parsedLine.words()[0]]
+                if (command == null) {
+                    println("Command \"${parsedLine.words()[0]}\" not recognized.")
+                    println()
+                    continue
+                }
+                // Invoke the command
+                command.process(parsedLine.words().drop(1), cliState)
                 println()
-                continue
             }
-            // Invoke the command
-            command.process(parsedLine.words().drop(1), cliState)
-            println()
         }
     }
 
