@@ -36,7 +36,9 @@ fun tryMatchExecutionPhasePath(
     return when (val matchResult = cliState.executionModel.resolvePath(path)) {
         is PathMatches -> {
             if (restrictToSelected) {
-                val filteredMatches = matchResult.matches.toSet().intersect(cliState.selectedPhases)
+                val filteredMatches = matchResult.matches
+                    .filter { it.isRoot || it in cliState.selectedPhases }
+                    .toSet()
                 filteredMatches.ifEmpty {
                     println("Failed to match phase(s) for path \"$path\":")
                     println("  All matching phases are excluded from selection.")
@@ -58,7 +60,9 @@ fun tryMatchResourcePath(path: ResourcePath, cliState: CliState, restrictToSelec
     return when (val matchResult = cliState.resourceModel.resolvePath(path)) {
         is PathMatches -> {
             if (restrictToSelected) {
-                val filteredMatches = matchResult.matches.toSet().intersect(cliState.selectedResources)
+                val filteredMatches = matchResult.matches
+                    .filter { it.isRoot || it in cliState.selectedResources }
+                    .toSet()
                 filteredMatches.ifEmpty {
                     println("Failed to match resource(s) for path \"$path\":")
                     println("  All matching resources are excluded from selection.")
