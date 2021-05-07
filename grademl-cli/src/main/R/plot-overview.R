@@ -14,7 +14,7 @@ metric_data_filename <- "metric-data.tsv"
 ### END OF GENERATED SETTINGS   ###
 
 # Read phase list
-phase_list <- fread(file = paste0(data_directory, phase_list_filename))
+phase_list <- fread(file = file.path(data_directory, phase_list_filename))
 phase_list <- phase_list[, .(
   phase.id = as.factor(phase.id),
   phase.path = as.factor(phase.path),
@@ -30,7 +30,7 @@ phase_list <- phase_list[, .(
 )]
 
 # Read metric list
-metric_list <- fread(file = paste0(data_directory, metric_list_filename))
+metric_list <- fread(file = file.path(data_directory, metric_list_filename))
 metric_list <- metric_list[, .(
   metric.id = as.factor(metric.id),
   metric.path = as.factor(metric.path),
@@ -38,7 +38,7 @@ metric_list <- metric_list[, .(
 )]
 
 # Read metric data
-metric_data <- fread(file = paste0(data_directory, metric_data_filename))[, .(
+metric_data <- fread(file = file.path(data_directory, metric_data_filename))[, .(
   metric.id,
   timestamp = timestamp / 1e9,
   value
