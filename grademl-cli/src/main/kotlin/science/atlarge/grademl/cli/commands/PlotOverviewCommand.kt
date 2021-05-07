@@ -77,8 +77,8 @@ object PlotOverviewCommand : Command(
         MetricDataWriter.output(
             metricDataFile,
             cliState.selectedMetrics,
-            filterTime = selectedPhases.minOf { it.startTime }..selectedPhases.maxOf { it.endTime },
-            cliState
+            cliState,
+            filterTime = selectedPhases.minOf { it.startTime }..selectedPhases.maxOf { it.endTime }
         )
 
         // Instantiate the plot script template

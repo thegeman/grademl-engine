@@ -13,8 +13,8 @@ object MetricDataWriter {
     fun output(
         outFile: File,
         selectedMetrics: Iterable<Metric>,
-        filterTime: TimestampNsRange? = null,
-        cliState: CliState
+        cliState: CliState,
+        filterTime: TimestampNsRange? = null
     ) {
         outFile.bufferedWriter().use { writer ->
             writer.appendLine("metric.id\ttimestamp\tvalue")

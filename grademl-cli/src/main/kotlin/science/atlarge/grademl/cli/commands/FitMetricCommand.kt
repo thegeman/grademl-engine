@@ -81,8 +81,8 @@ object FitMetricCommand : Command(
         MetricDataWriter.output(
             metricDataFile,
             listOf(metric),
-            filterTime = cliState.executionModel.rootPhase.startTime..cliState.executionModel.rootPhase.endTime,
-            cliState
+            cliState,
+            filterTime = cliState.executionModel.rootPhase.startTime..cliState.executionModel.rootPhase.endTime
         )
 
         // Instantiate the R script template
