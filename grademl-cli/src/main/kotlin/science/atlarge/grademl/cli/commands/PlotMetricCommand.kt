@@ -2,6 +2,7 @@ package science.atlarge.grademl.cli.commands
 
 import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.data.MetricDataWriter
+import science.atlarge.grademl.cli.data.MetricListWriter
 import science.atlarge.grademl.cli.data.PhaseListWriter
 import science.atlarge.grademl.cli.data.ResourceAttributionDataWriter
 import science.atlarge.grademl.cli.terminal.Argument
@@ -79,6 +80,15 @@ object PlotMetricCommand : Command(
             phaseListFile,
             cliState.executionModel.rootPhase,
             selectedPhases,
+            cliState
+        )
+
+        // Output list of metrics
+        val metricListFile = dataOutputDirectory.resolve(MetricListWriter.FILENAME).toFile()
+        println("Writing list of metrics to \"${metricListFile.absolutePath}\".")
+        MetricListWriter.output(
+            metricListFile,
+            listOf(metric),
             cliState
         )
 
