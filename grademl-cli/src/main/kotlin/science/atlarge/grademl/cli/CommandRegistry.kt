@@ -23,8 +23,10 @@ object CommandRegistry {
 
     init {
         registerCommands(
+            AttributeResourceCommand,
             DisplayExecutionModelCommand,
             DisplayResourceModelCommand,
+            EstimateResourceDemandCommand,
             FilterResourcesCommand,
             FilterMetricsCommand,
             FitMetricCommand,

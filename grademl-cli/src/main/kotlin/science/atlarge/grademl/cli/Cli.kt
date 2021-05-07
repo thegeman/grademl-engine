@@ -140,6 +140,8 @@ class CliState(
     fun normalizeTimestamp(plainTimestamp: TimestampNs): Long = plainTimestamp - earliestTimestamp
     fun denormalizeTimestamp(normalizedTimestamp: Long): TimestampNs = normalizedTimestamp + earliestTimestamp
 
+    val scratchDirectory: Path = outputPath.resolve("scratch")
+
     private val rootPhaseOutputPath = outputPath.resolve("root_phase")
     fun outputPathForPhase(phase: ExecutionPhase): Path =
         if (phase.isRoot) {
