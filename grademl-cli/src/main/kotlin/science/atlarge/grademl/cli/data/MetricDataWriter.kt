@@ -4,6 +4,7 @@ import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.TimestampNsRange
 import science.atlarge.grademl.core.resources.Metric
+import science.atlarge.grademl.core.resources.MetricData
 import java.io.File
 
 object MetricDataWriter {
@@ -14,6 +15,7 @@ object MetricDataWriter {
         outFile: File,
         selectedMetrics: Iterable<Metric>,
         cliState: CliState,
+        metricDataSelector: (Metric) -> MetricData = Metric::data,
         filterTime: TimestampNsRange? = null
     ) {
         outFile.bufferedWriter().use { writer ->
@@ -32,7 +34,7 @@ object MetricDataWriter {
                 }
 
                 // Get slice of metric data if needed
-                val metricData = metric.data.let {
+                val metricData = metricDataSelector(metric).let {
                     if (filterTime != null) it.slice(filterTime.first, filterTime.last)
                     else it
                 }
