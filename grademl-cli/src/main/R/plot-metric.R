@@ -15,6 +15,10 @@ resource_attribution_data_filename <- "resource-attribution-data.tsv"
 ### :setting metric_id          ###
 ### END OF GENERATED SETTINGS   ###
 
+####################
+### DATA LOADING ###
+####################
+
 # Read phase list
 phase_list <- fread(file = file.path(data_directory, phase_list_filename))
 phase_list <- phase_list[, .(
@@ -89,3 +93,23 @@ resource_attribution_data <- merge(resource_attribution_data, phase_list, by = "
   timestamp,
   value
 )]
+
+##########################
+### DATA PREPROCESSING ###
+##########################
+
+# Transform metric data to a step function
+stepped_metric_data <- metric_data[, .(
+  timestamp = c(head(timestamp, -1) + 1e-9, tail(timestamp, -1)),
+  value = c(tail(value, -1), tail(value, -1))
+), by = .(metric.id, metric.path, max.value)][order(metric.id, timestamp)]
+
+stepped_upsampled_metric_data <- upsampled_metric_data[, .(
+  timestamp = c(head(timestamp, -1) + 1e-9, tail(timestamp, -1)),
+  value = c(tail(value, -1), tail(value, -1))
+), by = .(metric.id, metric.path, max.value)][order(metric.id, timestamp)]
+
+stepped_resource_attribution_data <- resource_attribution_data[, .(
+  timestamp = c(head(timestamp, -1) + 1e-9, tail(timestamp, -1)),
+  value = c(tail(value, -1), tail(value, -1))
+), by = .(metric.id, metric.path, phase.id, phase.path)][order(metric.id, phase.id, timestamp)]
