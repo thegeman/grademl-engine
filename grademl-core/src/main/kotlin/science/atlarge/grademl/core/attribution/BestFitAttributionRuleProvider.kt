@@ -67,4 +67,20 @@ class BestFitAttributionRuleProvider(
         }
     }
 
+    companion object {
+
+        fun from(
+            executionModel: ExecutionModel,
+            resourceModel: ResourceModel,
+            outputPath: Path
+        ): BestFitAttributionRuleProvider {
+            return BestFitAttributionRuleProvider(
+                executionModel.rootPhase.phasesInTree.filter { it.children.isEmpty() },
+                resourceModel.rootResource.metricsInTree,
+                outputPath.resolve("scratch")
+            )
+        }
+
+    }
+
 }
