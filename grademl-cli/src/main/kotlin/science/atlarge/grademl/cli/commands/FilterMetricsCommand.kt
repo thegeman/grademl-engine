@@ -40,7 +40,9 @@ object FilterMetricsCommand : Command(
         for (pathExpression in pathExpressions) {
             paths.add(parseMetricPathExpression(pathExpression) ?: return)
         }
-        val matchedMetrics = paths.flatMap { tryMatchMetricPath(it, cliState) ?: return }.toSet()
+        val matchedMetrics = paths.flatMap {
+            tryMatchMetricPath(it, cliState, restrictToSelected = false) ?: return
+        }.toSet()
 
         val previousSelectionSize = cliState.selectedMetrics.size
         if (excludeOrInclude == "exclude") cliState.excludeMetrics(matchedMetrics)

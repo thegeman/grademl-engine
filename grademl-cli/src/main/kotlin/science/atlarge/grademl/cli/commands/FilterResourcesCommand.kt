@@ -36,7 +36,9 @@ object FilterResourcesCommand : Command(
 
         val pathExpressions = parsedCommand.getArgumentValues("resource_pattern")
         val paths = pathExpressions.map(::parseResourcePathExpression)
-        val matchedResources = paths.flatMap { tryMatchResourcePath(it, cliState) ?: return }.toSet()
+        val matchedResources = paths.flatMap {
+            tryMatchResourcePath(it, cliState, restrictToSelected = false) ?: return
+        }.toSet()
 
         val previousSelectionSize = cliState.selectedResources.size
         if (excludeOrInclude == "exclude") cliState.excludeResources(matchedResources)
