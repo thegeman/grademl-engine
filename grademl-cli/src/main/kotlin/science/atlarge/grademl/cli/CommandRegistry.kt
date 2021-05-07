@@ -29,6 +29,7 @@ object CommandRegistry {
             FilterMetricsCommand,
             FitMetricCommand,
             HelpCommand,
+            PlotMetricCommand,
             PlotOverviewCommand
         )
     }
