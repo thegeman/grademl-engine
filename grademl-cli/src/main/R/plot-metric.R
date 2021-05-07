@@ -113,3 +113,55 @@ stepped_resource_attribution_data <- resource_attribution_data[, .(
   timestamp = c(head(timestamp, -1) + 1e-9, tail(timestamp, -1)),
   value = c(tail(value, -1), tail(value, -1))
 ), by = .(metric.id, metric.path, phase.id, phase.path)][order(metric.id, phase.id, timestamp)]
+
+################
+### PLOTTING ###
+################
+
+# Determine the start and end time of the plot
+start_time <- min(stepped_metric_data$timestamp)
+end_time <- max(stepped_metric_data$timestamp)
+
+# Plot observed resource usage
+p_observed_metric <- ggplot(stepped_metric_data) +
+  geom_line(aes(x = timestamp, y = value)) +
+  scale_x_continuous(limits = c(start_time, end_time), expand = c(0, 0)) +
+  expand_limits(y = c(0, 1)) +
+  ggtitle("Observed resource usage") +
+  theme_bw()
+
+# Plot upsampled resource usage
+p_upsampled_metric <- ggplot(stepped_upsampled_metric_data) +
+  geom_line(aes(x = timestamp, y = value)) +
+  scale_x_continuous(limits = c(start_time, end_time), expand = c(0, 0)) +
+  expand_limits(y = c(0, 1)) +
+  ggtitle("Upsampled resource usage") +
+  theme_bw()
+
+# Plot resource attribution data
+phase_count <- length(unique(stepped_resource_attribution_data$phase.id))
+p_resource_attribution <- ggplot(stepped_resource_attribution_data) +
+  geom_line(data = stepped_upsampled_metric_data, aes(x = timestamp, y = value),
+            colour = "gray70", size = 0.05) +
+  geom_line(aes(x = timestamp, y = value), size = 0.25) +
+  scale_x_continuous(limits = c(start_time, end_time), expand = c(0, 0)) +
+  expand_limits(y = c(0, 1)) +
+  facet_wrap(~ phase.path, scales = "free_y", nrow = phase_count) +
+  ggtitle("Attributed resource usage") +
+  theme_bw()
+
+# Arrange the different subplots in one plot
+p_observed_metric_height <- 6
+p_upsampled_metric_height <- 6
+p_resource_attribution_height <- 4 * phase_count + 2
+p <- ggarrange(p_observed_metric, p_upsampled_metric, p_resource_attribution,
+               heights = c(p_observed_metric_height,
+                           p_upsampled_metric_height,
+                           p_resource_attribution_height),
+               ncol = 1, nrow = 3, align = "v")
+
+# Save the plot
+ggsave(file.path(output_directory, plot_filename), width = 40,
+       height = p_observed_metric_height + p_upsampled_metric_height +
+         p_resource_attribution_height,
+       units = "cm", limitsize = FALSE, p)
