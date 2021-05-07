@@ -24,6 +24,9 @@ object NonNegativeLeastSquares {
         require(matrixWidth > 0) { "Matrix must not be empty" }
         require(vector.size == matrixHeight) { "Matrix and vector heights must match" }
 
+        // Make sure that the scratch directory exists
+        scratchDirectory.toFile().mkdirs()
+
         // Write the matrix and vector data to binary files
         val matrixFile = scratchDirectory.resolve(MATRIX_FILENAME).toFile()
         val vectorFile = scratchDirectory.resolve(VECTOR_FILENAME).toFile()
