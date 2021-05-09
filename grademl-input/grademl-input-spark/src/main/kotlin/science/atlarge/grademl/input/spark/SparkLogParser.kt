@@ -7,15 +7,22 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.streams.toList
 
+typealias SparkAppId = String
+typealias SparkJobId = String
+typealias SparkStageId = String
+typealias SparkTaskId = String
+data class SparkStageAttemptId(val id: SparkStageId, val attempt: String)
+data class SparkTaskAttemptId(val id: SparkTaskId, val attempt: String)
+
 class SparkLogParser private constructor(
     private val sparkLogDirectories: Iterable<Path>
 ) {
 
     private val appLogFiles = mutableSetOf<File>()
-    private val sparkJobsPerApp = mutableMapOf<String, List<SparkJobInfo>>()
-    private val sparkStagesPerApp = mutableMapOf<String, List<SparkStageInfo>>()
-    private val sparkTasksPerAppAndStage = mutableMapOf<String, Map<SparkStageId, List<SparkTaskInfo>>>()
-    private val sparkJobDependenciesPerApp = mutableMapOf<String, Map<String, List<String>>>()
+    private val sparkJobsPerApp = mutableMapOf<SparkAppId, List<SparkJobInfo>>()
+    private val sparkStagesPerApp = mutableMapOf<SparkAppId, List<SparkStageInfo>>()
+    private val sparkTasksPerAppAndStage = mutableMapOf<SparkAppId, Map<SparkStageAttemptId, List<SparkTaskInfo>>>()
+    private val sparkJobDependenciesPerApp = mutableMapOf<SparkAppId, Map<SparkJobId, Set<SparkJobId>>>()
 
     private fun parse(): SparkLog {
         findAppLogFiles()
@@ -111,7 +118,7 @@ class SparkLogParser private constructor(
         val startEventByStageId = groupedSparkEvents["SparkListenerStageSubmitted"].orEmpty()
             .map { it["Stage Info"] as JsonObject }
             .associateBy {
-                SparkStageId(
+                SparkStageAttemptId(
                     (it["Stage ID"] as JsonPrimitive).content,
                     (it["Stage Attempt ID"] as JsonPrimitive).content
                 )
@@ -119,7 +126,7 @@ class SparkLogParser private constructor(
         val endEventByStageId = groupedSparkEvents["SparkListenerStageCompleted"].orEmpty()
             .map { it["Stage Info"] as JsonObject }
             .associateBy {
-                SparkStageId(
+                SparkStageAttemptId(
                     (it["Stage ID"] as JsonPrimitive).content,
                     (it["Stage Attempt ID"] as JsonPrimitive).content
                 )
@@ -142,16 +149,16 @@ class SparkLogParser private constructor(
 
     private fun parseSparkTasks(
         groupedSparkEvents: Map<String, List<JsonObject>>
-    ): Map<SparkStageId, List<SparkTaskInfo>> {
+    ): Map<SparkStageAttemptId, List<SparkTaskInfo>> {
         // Find task start and end events
         val startEventsByStageIdAndTaskId = groupedSparkEvents["SparkListenerTaskStart"].orEmpty()
             .map { event ->
-                val stageId = SparkStageId(
+                val stageId = SparkStageAttemptId(
                     (event["Stage ID"] as JsonPrimitive).content,
                     (event["Stage Attempt ID"] as JsonPrimitive).content
                 )
                 val taskInfo = event["Task Info"] as JsonObject
-                val taskId = SparkTaskId(
+                val taskId = SparkTaskAttemptId(
                     (taskInfo["Task ID"] as JsonPrimitive).content,
                     (taskInfo["Attempt"] as JsonPrimitive).content
                 )
@@ -161,12 +168,12 @@ class SparkLogParser private constructor(
             .mapValues { (_, eventsForStage) -> eventsForStage.toMap() }
         val endEventsByStageIdAndTaskId = groupedSparkEvents["SparkListenerTaskEnd"].orEmpty()
             .map { event ->
-                val stageId = SparkStageId(
+                val stageId = SparkStageAttemptId(
                     (event["Stage ID"] as JsonPrimitive).content,
                     (event["Stage Attempt ID"] as JsonPrimitive).content
                 )
                 val taskInfo = event["Task Info"] as JsonObject
-                val taskId = SparkTaskId(
+                val taskId = SparkTaskAttemptId(
                     (taskInfo["Task ID"] as JsonPrimitive).content,
                     (taskInfo["Attempt"] as JsonPrimitive).content
                 )
@@ -199,10 +206,10 @@ class SparkLogParser private constructor(
         }
     }
 
-    private fun inferJobDependencies(jobs: List<SparkJobInfo>): Map<String, List<String>> {
+    private fun inferJobDependencies(jobs: List<SparkJobInfo>): Map<String, Set<String>> {
         // Infer job dependencies from start and end times of jobs,
         // assuming that a job depends on all jobs that ended before its start time
-        val jobDependencies = mutableMapOf<String, List<String>>()
+        val jobDependencies = mutableMapOf<String, Set<String>>()
         val completedJobs = mutableSetOf<String>()
         val jobQueue = jobs.flatMap { job ->
             listOf(
@@ -215,7 +222,7 @@ class SparkLogParser private constructor(
                 // Process the start of a job
                 1 -> {
                     if (completedJobs.isNotEmpty()) {
-                        jobDependencies[jobChange.second] = completedJobs.toList()
+                        jobDependencies[jobChange.second] = completedJobs.toSet()
                     }
                 }
                 // Process the end of a job
@@ -241,24 +248,20 @@ class SparkLogParser private constructor(
 class SparkLog()
 
 class SparkJobInfo(
-    val id: String,
-    val stages: List<String>,
+    val id: SparkJobId,
+    val stages: List<SparkStageId>,
     val startTime: TimestampNs,
     val endTime: TimestampNs
 )
-
-data class SparkStageId(val id: String, val attemptId: String)
 
 class SparkStageInfo(
-    val id: SparkStageId,
+    val attemptId: SparkStageAttemptId,
     val startTime: TimestampNs,
     val endTime: TimestampNs
 )
 
-data class SparkTaskId(val id: String, val attemptId: String)
-
 class SparkTaskInfo(
-    val id: SparkTaskId,
+    val attemptId: SparkTaskAttemptId,
     val startTime: TimestampNs,
     val endTime: TimestampNs
 )
