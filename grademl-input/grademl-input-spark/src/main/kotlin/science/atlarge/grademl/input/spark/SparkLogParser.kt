@@ -15,6 +15,7 @@ class SparkLogParser private constructor(
     private val sparkJobsPerApp = mutableMapOf<String, List<SparkJobInfo>>()
     private val sparkStagesPerApp = mutableMapOf<String, List<SparkStageInfo>>()
     private val sparkTasksPerAppAndStage = mutableMapOf<String, Map<SparkStageId, List<SparkTaskInfo>>>()
+    private val sparkJobDependenciesPerApp = mutableMapOf<String, Map<String, List<String>>>()
 
     private fun parse(): SparkLog {
         findAppLogFiles()
@@ -67,7 +68,9 @@ class SparkLogParser private constructor(
         sparkJobsPerApp[appId] = parseSparkJobs(groupedSparkEvents)
         sparkStagesPerApp[appId] = parseSparkStages(groupedSparkEvents)
         sparkTasksPerAppAndStage[appId] = parseSparkTasks(groupedSparkEvents)
-        // TODO: Parse more events from Spark logs
+        sparkJobDependenciesPerApp[appId] = inferJobDependencies(sparkJobsPerApp[appId]!!)
+        // TODO: Parse RDD info if useful
+        // TODO: Parse stage-level dependencies
     }
 
     private fun parseAppId(groupedSparkEvents: Map<String, List<JsonObject>>): String {
@@ -194,6 +197,35 @@ class SparkLogParser private constructor(
                 SparkTaskInfo(taskId, startTime,  endTime)
             }
         }
+    }
+
+    private fun inferJobDependencies(jobs: List<SparkJobInfo>): Map<String, List<String>> {
+        // Infer job dependencies from start and end times of jobs,
+        // assuming that a job depends on all jobs that ended before its start time
+        val jobDependencies = mutableMapOf<String, List<String>>()
+        val completedJobs = mutableSetOf<String>()
+        val jobQueue = jobs.flatMap { job ->
+            listOf(
+                (job.startTime to 1) to job.id,
+                (job.endTime to -1) to job.id
+            )
+        }.sortedWith(compareBy({ it.first.first }, { it.first.second }))
+        for (jobChange in jobQueue) {
+            when (jobChange.first.second) {
+                // Process the start of a job
+                1 -> {
+                    if (completedJobs.isNotEmpty()) {
+                        jobDependencies[jobChange.second] = completedJobs.toList()
+                    }
+                }
+                // Process the end of a job
+                -1 -> {
+                    completedJobs.removeAll(jobDependencies[jobChange.second].orEmpty())
+                    completedJobs.add(jobChange.second)
+                }
+            }
+        }
+        return jobDependencies
     }
 
     companion object {
