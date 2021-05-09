@@ -16,6 +16,7 @@ import science.atlarge.grademl.core.resources.Resource
 import science.atlarge.grademl.core.resources.ResourceModel
 import science.atlarge.grademl.input.airflow.Airflow
 import science.atlarge.grademl.input.resource_monitor.ResourceMonitor
+import science.atlarge.grademl.input.spark.Spark
 import java.io.File
 import java.io.IOError
 import java.nio.file.Path
@@ -51,8 +52,9 @@ object Cli {
         val executionModel = ExecutionModel()
         val resourceModel = ResourceModel()
 
-        Airflow.parseJobData(jobLogDirectories, executionModel, resourceModel)
         ResourceMonitor.parseJobData(jobLogDirectories, executionModel, resourceModel)
+        Spark.parseJobData(jobLogDirectories, executionModel, resourceModel)
+        Airflow.parseJobData(jobLogDirectories, executionModel, resourceModel)
 
         if (executionModel.phases.size == 1 && resourceModel.resources.any { it.metrics.isNotEmpty() }) {
             println(
