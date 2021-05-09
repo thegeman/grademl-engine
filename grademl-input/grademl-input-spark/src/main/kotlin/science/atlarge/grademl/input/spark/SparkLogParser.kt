@@ -29,7 +29,13 @@ class SparkLogParser private constructor(
         for (logFile in appLogFiles) {
             parseSparkLogFile(logFile)
         }
-        return SparkLog()
+        return SparkLog(
+            sparkJobsPerApp.keys,
+            sparkJobsPerApp,
+            sparkStagesPerApp,
+            sparkTasksPerAppAndStage,
+            sparkJobDependenciesPerApp
+        )
     }
 
     private fun findAppLogFiles() {
@@ -245,7 +251,13 @@ class SparkLogParser private constructor(
 
 }
 
-class SparkLog()
+class SparkLog(
+    val appIds: Set<SparkAppId>,
+    val sparkJobsPerApp: Map<SparkAppId, List<SparkJobInfo>>,
+    val sparkStagesPerApp: Map<SparkAppId, List<SparkStageInfo>>,
+    val sparkTasksPerAppAndStage: Map<SparkAppId, Map<SparkStageAttemptId, List<SparkTaskInfo>>>,
+    val sparkJobDependenciesPerApp: Map<SparkAppId, Map<SparkJobId, Set<SparkJobId>>>
+)
 
 class SparkJobInfo(
     val id: SparkJobId,
