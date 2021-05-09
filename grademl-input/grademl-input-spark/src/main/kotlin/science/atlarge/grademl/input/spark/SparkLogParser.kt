@@ -14,6 +14,7 @@ class SparkLogParser private constructor(
     private val appLogFiles = mutableSetOf<File>()
     private val sparkJobsPerApp = mutableMapOf<String, List<SparkJobInfo>>()
     private val sparkStagesPerApp = mutableMapOf<String, List<SparkStageInfo>>()
+    private val sparkTasksPerAppAndStage = mutableMapOf<String, Map<SparkStageId, List<SparkTaskInfo>>>()
 
     private fun parse(): SparkLog {
         findAppLogFiles()
@@ -65,6 +66,7 @@ class SparkLogParser private constructor(
         val appId = parseAppId(groupedSparkEvents)
         sparkJobsPerApp[appId] = parseSparkJobs(groupedSparkEvents)
         sparkStagesPerApp[appId] = parseSparkStages(groupedSparkEvents)
+        sparkTasksPerAppAndStage[appId] = parseSparkTasks(groupedSparkEvents)
         // TODO: Parse more events from Spark logs
     }
 
@@ -135,6 +137,65 @@ class SparkLogParser private constructor(
         }
     }
 
+    private fun parseSparkTasks(
+        groupedSparkEvents: Map<String, List<JsonObject>>
+    ): Map<SparkStageId, List<SparkTaskInfo>> {
+        // Find task start and end events
+        val startEventsByStageIdAndTaskId = groupedSparkEvents["SparkListenerTaskStart"].orEmpty()
+            .map { event ->
+                val stageId = SparkStageId(
+                    (event["Stage ID"] as JsonPrimitive).content,
+                    (event["Stage Attempt ID"] as JsonPrimitive).content
+                )
+                val taskInfo = event["Task Info"] as JsonObject
+                val taskId = SparkTaskId(
+                    (taskInfo["Task ID"] as JsonPrimitive).content,
+                    (taskInfo["Attempt"] as JsonPrimitive).content
+                )
+                stageId to (taskId to taskInfo)
+            }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, eventsForStage) -> eventsForStage.toMap() }
+        val endEventsByStageIdAndTaskId = groupedSparkEvents["SparkListenerTaskEnd"].orEmpty()
+            .map { event ->
+                val stageId = SparkStageId(
+                    (event["Stage ID"] as JsonPrimitive).content,
+                    (event["Stage Attempt ID"] as JsonPrimitive).content
+                )
+                val taskInfo = event["Task Info"] as JsonObject
+                val taskId = SparkTaskId(
+                    (taskInfo["Task ID"] as JsonPrimitive).content,
+                    (taskInfo["Attempt"] as JsonPrimitive).content
+                )
+                stageId to (taskId to taskInfo)
+            }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, eventsForStage) -> eventsForStage.toMap() }
+        // Make sure start and end events match up
+        require(startEventsByStageIdAndTaskId.keys.containsAll(endEventsByStageIdAndTaskId.keys) &&
+                endEventsByStageIdAndTaskId.keys.containsAll(startEventsByStageIdAndTaskId.keys)) {
+            "Found mismatch between task start and end events"
+        }
+        // Iterate over stages and interpret corresponding task events
+        return startEventsByStageIdAndTaskId.mapValues { (stageId, startEvents) ->
+            val endEvents = endEventsByStageIdAndTaskId[stageId]!!
+            // Make sure start and end events match up
+            require(startEvents.keys.containsAll(endEvents.keys) &&
+                    endEvents.keys.containsAll(startEvents.keys)) {
+                "Found mismatch between task start and end events"
+            }
+            // Extract relevant task information from start and end events
+            startEvents.map { (taskId, startEvent) ->
+                val endEvent = endEvents[taskId]!!
+
+                val startTime = (startEvent["Launch Time"] as JsonPrimitive).content.toLong() * 1_000_000
+                val endTime = (endEvent["Finish Time"] as JsonPrimitive).content.toLong() * 1_000_000
+
+                SparkTaskInfo(taskId, startTime,  endTime)
+            }
+        }
+    }
+
     companion object {
 
         fun parseFromDirectories(sparkLogDirectories: Iterable<Path>): SparkLog {
@@ -158,6 +219,14 @@ data class SparkStageId(val id: String, val attemptId: String)
 
 class SparkStageInfo(
     val id: SparkStageId,
+    val startTime: TimestampNs,
+    val endTime: TimestampNs
+)
+
+data class SparkTaskId(val id: String, val attemptId: String)
+
+class SparkTaskInfo(
+    val id: SparkTaskId,
     val startTime: TimestampNs,
     val endTime: TimestampNs
 )
