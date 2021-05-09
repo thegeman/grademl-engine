@@ -1,7 +1,7 @@
 description = "Parsing for Spark log files"
 
 plugins {
-    kotlin("jvm") version "1.5.0-RC"
+    kotlin("jvm") version "1.5.0"
 }
 
 dependencies {
