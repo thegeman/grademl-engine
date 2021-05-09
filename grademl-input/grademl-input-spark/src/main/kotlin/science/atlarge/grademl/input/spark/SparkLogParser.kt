@@ -1,8 +1,7 @@
 package science.atlarge.grademl.input.spark
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.*
+import science.atlarge.grademl.core.TimestampNs
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -13,6 +12,7 @@ class SparkLogParser private constructor(
 ) {
 
     private val appLogFiles = mutableSetOf<File>()
+    private val sparkJobsPerApp = mutableMapOf<String, List<SparkJobInfo>>()
 
     private fun parse(): SparkLog {
         findAppLogFiles()
@@ -62,6 +62,7 @@ class SparkLogParser private constructor(
         val groupedSparkEvents = sparkEvents.groupBy { (it["Event"] as JsonPrimitive).content }
         // Parse different kinds of events for relevant information
         val appId = parseAppId(groupedSparkEvents)
+        sparkJobsPerApp[appId] = parseSparkJobs(groupedSparkEvents)
         // TODO: Parse more events from Spark logs
     }
 
@@ -71,6 +72,31 @@ class SparkLogParser private constructor(
             "Found ${applicationStartEvents.size} SparkListenerApplicationStart events, expected 1"
         }
         return (applicationStartEvents[0]["App ID"] as JsonPrimitive).content
+    }
+
+    private fun parseSparkJobs(groupedSparkEvents: Map<String, List<JsonObject>>): List<SparkJobInfo> {
+        // Find job start and end events
+        val startEventByJobId = groupedSparkEvents["SparkListenerJobStart"].orEmpty().associateBy {
+            (it["Job ID"] as JsonPrimitive).content
+        }
+        val endEventByJobId = groupedSparkEvents["SparkListenerJobEnd"].orEmpty().associateBy {
+            (it["Job ID"] as JsonPrimitive).content
+        }
+        // Make sure start and end events match up
+        require(startEventByJobId.keys.containsAll(endEventByJobId.keys) &&
+                endEventByJobId.keys.containsAll(startEventByJobId.keys)) {
+            "Found mismatch between job start and end events"
+        }
+        // Extract relevant job information from start and end events
+        return startEventByJobId.map { (jobId, startEvent) ->
+            val endEvent = endEventByJobId[jobId]!!
+
+            val stages = (startEvent["Stage IDs"] as JsonArray).map { (it as JsonPrimitive).content }
+            val startTime = (startEvent["Submission Time"] as JsonPrimitive).content.toLong() * 1_000_000
+            val endTime = (endEvent["Completion Time"] as JsonPrimitive).content.toLong() * 1_000_000
+
+            SparkJobInfo(jobId, stages, startTime, endTime)
+        }
     }
 
     companion object {
@@ -84,3 +110,10 @@ class SparkLogParser private constructor(
 }
 
 class SparkLog()
+
+class SparkJobInfo(
+    val id: String,
+    val stages: List<String>,
+    val startTime: TimestampNs,
+    val endTime: TimestampNs
+)
