@@ -100,7 +100,7 @@ class SparkLogParser private constructor(
                 .map { Json.parseToJsonElement(it) as JsonObject }
                 .toList()
         }
-        // Group events by event type for easier look-ups
+        // Group events by event type for easier lookups
         val groupedSparkEvents = sparkEvents.groupBy { (it["Event"] as JsonPrimitive).content }
         // Parse different kinds of events for relevant information
         val appId = parseAppId(groupedSparkEvents)
