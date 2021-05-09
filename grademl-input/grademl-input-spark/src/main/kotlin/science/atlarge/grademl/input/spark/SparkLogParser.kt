@@ -40,7 +40,7 @@ class SparkLogParser private constructor(
 ) {
 
     private val appLogFiles = mutableSetOf<File>()
-    private val sparkApps = mutableListOf<SparkAppInfo>()
+    private val sparkApps = mutableMapOf<SparkAppId, SparkAppInfo>()
     private val sparkJobsPerApp = mutableMapOf<SparkAppId, List<SparkJobInfo>>()
     private val sparkStagesPerApp = mutableMapOf<SparkAppId, List<SparkStageInfo>>()
     private val sparkTasksPerApp = mutableMapOf<SparkAppId, List<SparkTaskInfo>>()
@@ -52,11 +52,15 @@ class SparkLogParser private constructor(
             parseSparkLogFile(logFile)
         }
         return SparkLog(
-            sparkApps,
-            sparkJobsPerApp,
-            sparkStagesPerApp,
-            sparkTasksPerApp,
-            sparkJobDependenciesPerApp
+            sparkApps.keys.map { appId ->
+                SparkAppLog(
+                    sparkApps[appId]!!,
+                    sparkJobsPerApp[appId]!!,
+                    sparkStagesPerApp[appId]!!,
+                    sparkTasksPerApp[appId]!!,
+                    sparkJobDependenciesPerApp[appId]!!
+                )
+            }
         )
     }
 
@@ -100,7 +104,7 @@ class SparkLogParser private constructor(
         val groupedSparkEvents = sparkEvents.groupBy { (it["Event"] as JsonPrimitive).content }
         // Parse different kinds of events for relevant information
         val appId = parseAppId(groupedSparkEvents)
-        sparkApps.add(parseAppInfo(groupedSparkEvents))
+        sparkApps[appId] = parseAppInfo(groupedSparkEvents)
         sparkJobsPerApp[appId] = parseSparkJobs(groupedSparkEvents)
         val (tasks, stagesToTasksMap) = parseSparkTasks(groupedSparkEvents)
         sparkTasksPerApp[appId] = tasks
@@ -285,17 +289,26 @@ class SparkLogParser private constructor(
 }
 
 class SparkLog(
-    val appIds: List<SparkAppInfo>,
-    val sparkJobsPerApp: Map<SparkAppId, List<SparkJobInfo>>,
-    val sparkStagesPerApp: Map<SparkAppId, List<SparkStageInfo>>,
-    val sparkTasksPerApp: Map<SparkAppId, List<SparkTaskInfo>>,
-    val sparkJobDependenciesPerApp: Map<SparkAppId, Map<SparkJobId, Set<SparkJobId>>>
+    val sparkApps: List<SparkAppLog>
 )
+
+class SparkAppLog(
+    val appInfo: SparkAppInfo,
+    sparkJobs: List<SparkJobInfo>,
+    sparkStages: List<SparkStageInfo>,
+    sparkTasks: List<SparkTaskInfo>,
+    val sparkJobDependencies: Map<SparkJobId, Set<SparkJobId>>
+) {
+    val sparkJobs = sparkJobs.associateBy { it.id }
+    val sparkStageAttempts = sparkStages.associateBy { it.attemptId }
+    val sparkTaskAttempts = sparkTasks.associateBy { it.attemptId }
+    val sparkAttemptsPerStage = sparkStages.groupBy { it.attemptId.stageId }
+}
 
 class SparkAppInfo(
     val id: SparkAppId,
     val startTime: TimestampNs,
-    val endTime: TimestampNs
+    val endTime: TimestampNs,
 )
 
 class SparkJobInfo(
@@ -307,7 +320,7 @@ class SparkJobInfo(
 
 class SparkStageInfo(
     val attemptId: SparkStageAttemptId,
-    val tasks: List<SparkTaskAttemptId>,
+    val taskAttempts: List<SparkTaskAttemptId>,
     val startTime: TimestampNs,
     val endTime: TimestampNs
 )

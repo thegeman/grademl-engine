@@ -24,7 +24,65 @@ object Spark : InputSource {
         // Parse Spark log files
         val sparkLog = SparkLogParser.parseFromDirectories(sparkLogDirectories)
 
-        // TODO: Convert Spark logs to phases in the execution model
+        // Iterate over Spark applications to build the execution model
+        for (appLog in sparkLog.sparkApps) {
+            // Add execution phase for application
+            val appPhase = unifiedExecutionModel.addPhase(
+                name = "SparkApplication",
+                tags = mapOf("id" to appLog.appInfo.id),
+                startTime = appLog.appInfo.startTime,
+                endTime = appLog.appInfo.endTime
+            )
+            // Add execution phases for stages
+            val stageAttemptPhases = appLog.sparkAttemptsPerStage.flatMap { (_, attempts) ->
+                attempts.map { stageAttempt ->
+                    stageAttempt.attemptId to unifiedExecutionModel.addPhase(
+                        name = "Stage",
+                        tags = mapOf(
+                            "id" to stageAttempt.attemptId.stageId.toString(),
+                            "attempt" to stageAttempt.attemptId.attempt.toString()
+                        ),
+                        startTime = stageAttempt.startTime,
+                        endTime = stageAttempt.endTime,
+                        parent = appPhase
+                    )
+                }
+            }.toMap()
+            // Add execution phases for tasks
+            for ((stageAttemptId, stageAttempt) in appLog.sparkStageAttempts) {
+                val stagePhase = stageAttemptPhases[stageAttemptId]!!
+                for (taskAttemptId in stageAttempt.taskAttempts) {
+                    val taskAttempt = appLog.sparkTaskAttempts[taskAttemptId]!!
+                    unifiedExecutionModel.addPhase(
+                        name = "Task",
+                        tags = mapOf(
+                            "id" to taskAttemptId.taskId.toString(),
+                            "attempt" to taskAttemptId.attempt.toString()
+                        ),
+                        startTime = taskAttempt.startTime,
+                        endTime = taskAttempt.endTime,
+                        parent = stagePhase
+                    )
+                }
+            }
+            // Add dependencies between stages derived from job-level dependencies
+            val attemptPhasesPerStage = stageAttemptPhases.entries
+                .groupBy({ it.key.stageId }, { it.value })
+            for ((jobId, jobDependencies) in appLog.sparkJobDependencies) {
+                val targetPhases = appLog.sparkJobs[jobId]!!.stages.flatMap { attemptPhasesPerStage[it]!! }
+                val sourcePhases = jobDependencies.flatMap { appLog.sparkJobs[it]!!.stages }
+                    .flatMap { attemptPhasesPerStage[it]!! }
+                for (source in sourcePhases) {
+                    for (target in targetPhases) {
+                        source.addOutgoingDataflow(target)
+                    }
+                }
+            }
+            // TODO: Add dependencies between stages within a job
+            // TODO: Only add job-level dependencies between "source" and "sink" stages in a job
+            // TODO: Consider how to deal with dependencies for stages with multiple attempts
+        }
+
         return true
     }
 
