@@ -16,6 +16,9 @@ class SparkLogParser private constructor(
 
     private fun parse(): SparkLog {
         findAppLogFiles()
+        for (logFile in appLogFiles) {
+            parseSparkLogFile(logFile)
+        }
         return SparkLog()
     }
 
@@ -46,6 +49,28 @@ class SparkLogParser private constructor(
                 continue
             }
         }
+    }
+
+    private fun parseSparkLogFile(logFile: File) {
+        // Parse each line in the file to a JSON object representing one Spark event
+        val sparkEvents = logFile.useLines { lines ->
+            lines.filter { it.isNotBlank() }
+                .map { Json.parseToJsonElement(it) as JsonObject }
+                .toList()
+        }
+        // Group events by event type for easier look-ups
+        val groupedSparkEvents = sparkEvents.groupBy { (it["Event"] as JsonPrimitive).content }
+        // Parse different kinds of events for relevant information
+        val appId = parseAppId(groupedSparkEvents)
+        // TODO: Parse more events from Spark logs
+    }
+
+    private fun parseAppId(groupedSparkEvents: Map<String, List<JsonObject>>): String {
+        val applicationStartEvents = groupedSparkEvents["SparkListenerApplicationStart"]!!
+        require(applicationStartEvents.size == 1) {
+            "Found ${applicationStartEvents.size} SparkListenerApplicationStart events, expected 1"
+        }
+        return (applicationStartEvents[0]["App ID"] as JsonPrimitive).content
     }
 
     companion object {
