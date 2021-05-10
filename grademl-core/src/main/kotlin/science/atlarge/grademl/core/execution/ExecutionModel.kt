@@ -33,13 +33,14 @@ class ExecutionModel {
     fun addPhase(
         name: String,
         tags: Map<String, String> = emptyMap(),
+        typeTags: Set<String> = tags.keys,
         description: String? = null,
         startTime: TimestampNs,
         endTime: TimestampNs,
         parent: ExecutionPhase = rootPhase
     ): ExecutionPhase {
         require(parent in _phases) { "Cannot add phase with parent that is not part of this ExecutionModel" }
-        val phase = SubExecutionPhase(name, tags, description, startTime, endTime, this)
+        val phase = SubExecutionPhase(name, tags, typeTags, description, startTime, endTime, this)
         _phases.add(phase)
         phaseParents[phase] = parent
         phaseChildren.getOrPut(parent) { mutableSetOf() }.add(phase)
@@ -121,18 +122,33 @@ sealed class ExecutionPhase(
 
     abstract val name: String
     abstract val tags: Map<String, String>
+    abstract val typeTags: Set<String>
     abstract val description: String?
     abstract val startTime: TimestampNs
     abstract val endTime: TimestampNs
 
     val identifier: String by lazy {
-        if (tags.isEmpty()) name
-        else "$name[${
-            tags.entries.sortedBy { it.key }.joinToString(separator = ", ") { "${it.key}=${it.value}" }
-        }]"
+        if (tags.isEmpty()) {
+            name
+        } else {
+            "$name[${tags.entries.sortedBy { it.key }.joinToString(separator = ", ") { "${it.key}=${it.value}" }}]"
+        }
+    }
+    
+    val typeIdentifier: String by lazy {
+        require(tags.keys.containsAll(typeTags)) { "Type tags must be a subset of tags" }
+        if (typeTags.isEmpty()) {
+            name
+        } else {
+            val ts = tags.entries.filter { it.key in typeTags }.sortedBy { it.key }
+            "$name[${ts.joinToString(separator = ", ") { "${it.key}=${it.value}" }}]"
+        }
     }
 
     lateinit var path: ExecutionPhasePath
+        private set
+
+    lateinit var typePath: ExecutionPhasePath
         private set
 
     val duration: DurationNs
@@ -163,8 +179,9 @@ sealed class ExecutionPhase(
     }
 
     internal fun recomputePath() {
-        // Determine the path of this ExecutionPhase
+        // Determine the (type) path of this ExecutionPhase
         path = parent?.path?.resolve(identifier) ?: ExecutionPhasePath.ROOT
+        typePath = parent?.typePath?.resolve(typeIdentifier) ?: ExecutionPhasePath.ROOT
         // Cache hash code
         hashCode = path.hashCode()
         // Propagate the change
@@ -180,6 +197,8 @@ private class RootExecutionPhase(
         get() = ""
     override val tags: Map<String, String>
         get() = emptyMap()
+    override val typeTags: Set<String>
+        get() = emptySet()
     override val description: String?
         get() = null
     override val startTime: TimestampNs
@@ -191,6 +210,7 @@ private class RootExecutionPhase(
 private class SubExecutionPhase(
     override val name: String,
     override val tags: Map<String, String>,
+    override val typeTags: Set<String>,
     override val description: String?,
     override val startTime: TimestampNs,
     override val endTime: TimestampNs,
