@@ -37,7 +37,8 @@ object Spark : InputSource {
             unifiedExecutionModel.addPhase(
                 name = "Driver",
                 startTime = appLog.appInfo.startTime,
-                endTime = appLog.appInfo.endTime
+                endTime = appLog.appInfo.endTime,
+                parent = appPhase
             )
             // Add execution phases for stages
             val stageAttemptPhases = appLog.sparkAttemptsPerStage.flatMap { (_, attempts) ->
