@@ -25,6 +25,11 @@ class ExecutionModel {
     fun getOutFlowsOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseOutFlows[phase] ?: emptySet()
     fun getInFlowsOf(phase: ExecutionPhase): Set<ExecutionPhase> = phaseInFlows[phase] ?: emptySet()
 
+    init {
+        // Ensure that the root phase has a correct path
+        rootPhase.recomputePath()
+    }
+
     fun addPhase(
         name: String,
         tags: Map<String, String> = emptyMap(),
@@ -162,6 +167,8 @@ sealed class ExecutionPhase(
         path = parent?.path?.resolve(identifier) ?: ExecutionPhasePath.ROOT
         // Cache hash code
         hashCode = path.hashCode()
+        // Propagate the change
+        children.forEach(ExecutionPhase::recomputePath)
     }
 
 }
