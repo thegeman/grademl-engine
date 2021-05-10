@@ -18,7 +18,7 @@ fun sumOfMetricData(metricData: List<MetricData>, combinedMaxValue: Double): Met
         var periodId = timestamps.binarySearch(metric.timestamps.first())
         while (metricIterator.hasNext) {
             metricIterator.next()
-            while (timestamps[periodId + 1] <= metricIterator.currentEndTime) {
+            while (timestamps[periodId] < metricIterator.currentEndTime) {
                 values[periodId] += metricIterator.currentValue
                 periodId++
             }
