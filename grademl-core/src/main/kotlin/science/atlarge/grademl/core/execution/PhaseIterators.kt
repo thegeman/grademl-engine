@@ -53,7 +53,7 @@ class ActivePhaseCountIterator(
     override fun hasNext() = nextPhaseEvent != null
 
     override fun next(): ActivePhaseCount {
-        if (nextPhaseEvent == null) throw NoSuchElementException()
+        if (!hasNext()) throw NoSuchElementException()
         // Edit countObject with current period's information
         countObject.startTime = startTime
         countObject.endTime = nextPhaseEvent!!.timestamp
@@ -61,6 +61,11 @@ class ActivePhaseCountIterator(
         // Process the next event and any other events with the same timestamp
         prepareNextPeriod()
         return countObject
+    }
+
+    fun peekNextStartTime(): TimestampNs {
+        if (!hasNext()) throw NoSuchElementException()
+        return startTime
     }
 
     private fun fetchNextEvent() {
