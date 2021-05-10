@@ -42,6 +42,7 @@ object Spark : InputSource {
                             "id" to stageAttempt.attemptId.stageId.toString(),
                             "attempt" to stageAttempt.attemptId.attempt.toString()
                         ),
+                        typeTags = setOf("id"),
                         startTime = stageAttempt.startTime,
                         endTime = stageAttempt.endTime,
                         parent = appPhase
@@ -59,6 +60,7 @@ object Spark : InputSource {
                             "id" to taskAttemptId.taskId.toString(),
                             "attempt" to taskAttemptId.attempt.toString()
                         ),
+                        typeTags = emptySet(),
                         startTime = taskAttempt.startTime,
                         endTime = taskAttempt.endTime,
                         parent = stagePhase

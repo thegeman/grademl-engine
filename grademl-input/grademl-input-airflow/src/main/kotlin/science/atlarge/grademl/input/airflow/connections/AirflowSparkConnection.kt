@@ -46,6 +46,7 @@ object AirflowSparkConnection : AirflowConnection {
                     airflowTaskTriple.second]!![airflowTaskTriple.third]!!
             unifiedExecutionModel.setParentOfPhase(sparkPhase, airflowPhase)
         }
+        // TODO: Replace ID tag of SparkApplication phases with a deterministic counter so they share a phase type?
     }
 
 }

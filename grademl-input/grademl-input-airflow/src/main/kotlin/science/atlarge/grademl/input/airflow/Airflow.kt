@@ -40,6 +40,7 @@ object Airflow : InputSource {
                 val runPhase = unifiedExecutionModel.addPhase(
                     name = dagId,
                     tags = mapOf("run_id" to runId),
+                    typeTags = emptySet(),
                     startTime = runStartTime,
                     endTime = runEndTime
                 )
