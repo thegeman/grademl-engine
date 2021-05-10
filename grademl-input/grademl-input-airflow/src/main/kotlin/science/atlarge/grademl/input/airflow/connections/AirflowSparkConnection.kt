@@ -17,9 +17,9 @@ object AirflowSparkConnection : AirflowConnection {
         unifiedResourceModel: ResourceModel
     ) {
         // Get a list of Spark application IDs to match
-        val sparkAppIds = unifiedExecutionModel.rootPhase.children.filter { it.name == "SparkApplication" }
-            .map { it.tags["id"]!! }
-        if (sparkAppIds.isEmpty()) return
+        val sparkAppPhases = unifiedExecutionModel.rootPhase.children.filter { it.name == "SparkApplication" }
+            .associateBy { it.tags["id"]!! }
+        if (sparkAppPhases.isEmpty()) return
         // Go through all Airflow task runs and check for lines containing "Spark" and one or more Spark app IDs
         val matchedSparkApps = mutableMapOf<String, Triple<AirflowDagId, AirflowRunId, AirflowTaskId>>()
         for ((dagId, dagLog) in airflowLog.dagLogs) {
@@ -28,7 +28,7 @@ object AirflowSparkConnection : AirflowConnection {
                     // Find lines containing "Spark"
                     val sparkLines = taskLog.filter { "spark" in it.toLowerCase() }
                     // Find occurrences of any Spark application ID
-                    val appIdsInTaskLog = sparkAppIds.filter { appId -> sparkLines.any { appId in it } }
+                    val appIdsInTaskLog = sparkAppPhases.keys.filter { appId -> sparkLines.any { appId in it } }
                     // Make sure no application matches to more than one task run
                     require(matchedSparkApps.keys.intersect(appIdsInTaskLog).isEmpty()) {
                         "Found Spark application IDs referenced in more than one Airflow task's log"
@@ -40,7 +40,12 @@ object AirflowSparkConnection : AirflowConnection {
             }
         }
         // Move Spark application phases to be children of the correct Airflow task phases
-        // TODO: Implement option for changing parent of execution phases in ExecutionModel
+        for ((appId, airflowTaskTriple) in matchedSparkApps) {
+            val sparkPhase = sparkAppPhases[appId]!!
+            val airflowPhase = phasesByDagRunAndTaskId[airflowTaskTriple.first]!![
+                    airflowTaskTriple.second]!![airflowTaskTriple.third]!!
+            unifiedExecutionModel.setParentOfPhase(sparkPhase, airflowPhase)
+        }
     }
 
 }
