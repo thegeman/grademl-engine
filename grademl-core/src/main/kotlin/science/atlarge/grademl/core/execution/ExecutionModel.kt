@@ -38,7 +38,33 @@ class ExecutionModel {
         _phases.add(phase)
         phaseParents[phase] = parent
         phaseChildren.getOrPut(parent) { mutableSetOf() }.add(phase)
+        phase.recomputePath()
         return phase
+    }
+
+    fun setParentOfPhase(
+        phase: ExecutionPhase,
+        newParent: ExecutionPhase
+    ) {
+        require(phase in _phases) { "Cannot set parent of phase that is not part of this ExecutionModel" }
+        require(newParent in _phases) { "Cannot set parent to phase that is not part of this ExecutionModel" }
+        require(phase != newParent) { "Cannot set a phase to become its own parent" }
+        // Make sure newParent is not a descendant of phase
+        var finger: ExecutionPhase? = newParent
+        while (finger != null) {
+            require(finger != phase) { "Cannot set a phase's parent to be one of its descendants" }
+            finger = finger.parent
+        }
+        // Make sure phase does not have any dataflows, as migration of those is not currently supported
+        require(phase.inFlows.isEmpty() && phase.outFlows.isEmpty()) {
+            "Cannot change the parent of a phase with any incoming or outgoing dataflows"
+        }
+        // Perform the move
+        val oldParent = phaseParents[phase]
+        if (oldParent != null) phaseChildren[oldParent]!!.remove(phase)
+        phaseParents[phase] = newParent
+        phaseChildren.getOrPut(newParent) { mutableSetOf() }.add(phase)
+        phase.recomputePath()
     }
 
     private val pathMatcher = PathMatcher(
@@ -101,12 +127,8 @@ sealed class ExecutionPhase(
         }]"
     }
 
-    val path: ExecutionPhasePath by lazy {
-        when {
-            isRoot -> ExecutionPhasePath.ROOT
-            else -> parent!!.path.resolve(identifier)
-        }
-    }
+    lateinit var path: ExecutionPhasePath
+        private set
 
     val duration: DurationNs
         get() = if (startTime < endTime) endTime - startTime else 0
@@ -129,8 +151,17 @@ sealed class ExecutionPhase(
             return phaseSet
         }
 
+    private var hashCode: Int = 0
+
     fun addOutgoingDataflow(sink: ExecutionPhase) {
         model.addDataflowRelationship(this, sink)
+    }
+
+    internal fun recomputePath() {
+        // Determine the path of this ExecutionPhase
+        path = parent?.path?.resolve(identifier) ?: ExecutionPhasePath.ROOT
+        // Cache hash code
+        hashCode = path.hashCode()
     }
 
 }
