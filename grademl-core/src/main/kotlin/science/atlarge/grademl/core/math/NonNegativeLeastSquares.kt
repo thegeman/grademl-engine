@@ -24,6 +24,10 @@ object NonNegativeLeastSquares {
         require(matrixWidth > 0) { "Matrix must not be empty" }
         require(vector.size == matrixHeight) { "Matrix and vector heights must match" }
 
+        require(matrixHeight.toLong() * matrixWidth * 8 <= 128L * 1024 * 1024) {
+            "Matrix exceeds 128MB, stopping to prevent disk flooding and unreasonable execution times"
+        }
+
         // Make sure that the scratch directory exists
         scratchDirectory.toFile().mkdirs()
 
@@ -52,14 +56,20 @@ object NonNegativeLeastSquares {
         // Run the R-based NNLS solver
         if (!runRScript(rScriptFile)) throw IllegalStateException("NNLS solver did not complete successfully")
 
-        // Read the resulting fit vector from the output file and return it
+        // Read the resulting fit vector from the output file
         val resultVector = readVector(outputFile)
         require(resultVector.size == matrixWidth) { "Output vector height must match matrix width" }
+
+        // Clean up the scratch files
+        matrixFile.delete()
+        vectorFile.delete()
+        outputFile.delete()
+
         return resultVector
     }
 
     private fun writeMatrix(matrix: Array<DoubleArray>, file: File) {
-        DataOutputStream(file.outputStream()).use { outStream ->
+        DataOutputStream(file.outputStream().buffered(1024 * 1024)).use { outStream ->
             for (row in matrix) {
                 for (value in row) {
                     outStream.writeDouble(value)
@@ -69,7 +79,7 @@ object NonNegativeLeastSquares {
     }
 
     private fun writeVector(vector: DoubleArray, file: File) {
-        DataOutputStream(file.outputStream().buffered()).use { outStream ->
+        DataOutputStream(file.outputStream().buffered(1024 * 1024)).use { outStream ->
             for (value in vector) {
                 outStream.writeDouble(value)
             }
