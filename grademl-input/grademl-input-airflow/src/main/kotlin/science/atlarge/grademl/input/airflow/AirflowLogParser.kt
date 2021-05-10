@@ -26,6 +26,8 @@ class AirflowLogParser private constructor(
             MutableMap<AirflowTaskId, TimestampNs>>>()
     private val taskEndTimesPerRunPerDag = mutableMapOf<AirflowDagId, MutableMap<AirflowRunId,
             MutableMap<AirflowTaskId, TimestampNs>>>()
+    private val taskLogContentsPerRunPerDag = mutableMapOf<AirflowDagId, MutableMap<AirflowRunId,
+            MutableMap<AirflowTaskId, List<String>>>>()
 
     // Expected directory structure:
     // <airflowLogDirectory>/
@@ -45,7 +47,8 @@ class AirflowLogParser private constructor(
                     taskIdsPerDag[dagId].orEmpty(),
                     taskDownstreamIdsPerDag[dagId].orEmpty(),
                     taskStartTimesPerRunPerDag[dagId].orEmpty(),
-                    taskEndTimesPerRunPerDag[dagId].orEmpty()
+                    taskEndTimesPerRunPerDag[dagId].orEmpty(),
+                    taskLogContentsPerRunPerDag[dagId].orEmpty()
                 )
             }.associateBy { it.dagId }
         )
@@ -204,6 +207,8 @@ class AirflowLogParser private constructor(
             .getOrPut(runId) { mutableMapOf() }[taskId] = startTime
         taskEndTimesPerRunPerDag.getOrPut(dagId) { mutableMapOf() }
             .getOrPut(runId) { mutableMapOf() }[taskId] = endTime
+        taskLogContentsPerRunPerDag.getOrPut(dagId) { mutableMapOf() }
+            .getOrPut(runId) { mutableMapOf() }[taskId] = logLines
     }
 
     companion object {
@@ -226,5 +231,6 @@ data class AirflowDagLog(
     val taskIds: Set<AirflowTaskId>,
     val taskDownstreamIds: Map<AirflowTaskId, Set<AirflowTaskId>>,
     val taskStartTimesPerRun: Map<AirflowRunId, Map<AirflowTaskId, TimestampNs>>,
-    val taskEndTimesPerRun: Map<AirflowRunId, Map<AirflowTaskId, TimestampNs>>
+    val taskEndTimesPerRun: Map<AirflowRunId, Map<AirflowTaskId, TimestampNs>>,
+    val taskLogContentsPerRunPerDag: Map<AirflowRunId, Map<AirflowTaskId, List<String>>>
 )

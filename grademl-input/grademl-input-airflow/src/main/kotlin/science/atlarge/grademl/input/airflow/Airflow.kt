@@ -4,6 +4,7 @@ import science.atlarge.grademl.core.execution.ExecutionModel
 import science.atlarge.grademl.core.execution.ExecutionPhase
 import science.atlarge.grademl.core.input.InputSource
 import science.atlarge.grademl.core.resources.ResourceModel
+import science.atlarge.grademl.input.airflow.connections.AirflowConnections
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.system.exitProcess
@@ -25,6 +26,8 @@ object Airflow : InputSource {
         val airflowLog = AirflowLogParser.parseFromDirectories(airflowLogDirectories)
 
         // Iterate over DAGs to build the execution model
+        val phasesByDagRunAndTaskId = mutableMapOf<AirflowDagId, MutableMap<AirflowRunId,
+                Map<AirflowTaskId, ExecutionPhase>>>()
         for ((dagId, dagLog) in airflowLog.dagLogs) {
             // Iterate over DAG runs to build the execution model
             for (runId in dagLog.runIds) {
@@ -56,8 +59,19 @@ object Airflow : InputSource {
                         upstreamPhase.addOutgoingDataflow(downstreamPhase)
                     }
                 }
+                // Add the task phases to a lookup table
+                phasesByDagRunAndTaskId.getOrPut(dagId) { mutableMapOf() }[runId] = taskPhases
             }
         }
+
+        // Handle connections with other frameworks supported by GradeML (e.g., modify SparkApplication execution
+        // phases to be the children of corresponding Airflow tasks)
+        AirflowConnections.processConnectionsForAirflowLogs(
+            airflowLog,
+            phasesByDagRunAndTaskId,
+            unifiedExecutionModel,
+            unifiedResourceModel
+        )
 
         return true
     }
