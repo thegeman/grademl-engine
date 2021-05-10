@@ -15,8 +15,8 @@ class BestFitAttributionRuleProvider(
 ) : ResourceAttributionRuleProvider {
 
     private val phases = phases.toSet()
-    private val phasesByType = phases.groupBy { it.typePath }
-    private val orderedPhaseTypes = phasesByType.keys.sorted()
+    private val phasesByType = phases.groupBy { it.type }
+    private val orderedPhaseTypes = phasesByType.keys.sortedBy { it.path }
     private val metrics = metrics.toSet()
 
     private val cachedRules = mutableMapOf<Metric, Map<ExecutionPhase, ResourceAttributionRule>>()
@@ -48,7 +48,7 @@ class BestFitAttributionRuleProvider(
                 ResourceAttributionRule.None
             }
         }.toMap()
-        cachedRules[metric] = phases.associateWith { rulePerPhaseType[it.typePath]!! }
+        cachedRules[metric] = phases.associateWith { rulePerPhaseType[it.type]!! }
     }
 
     private fun createPhaseActivityMatrix(

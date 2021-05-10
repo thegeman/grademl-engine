@@ -148,7 +148,7 @@ sealed class ExecutionPhase(
     lateinit var path: ExecutionPhasePath
         private set
 
-    lateinit var typePath: ExecutionPhasePath
+    var type: ExecutionPhaseType = ExecutionPhaseType(ExecutionPhasePath.ROOT)
         private set
 
     val duration: DurationNs
@@ -181,7 +181,7 @@ sealed class ExecutionPhase(
     internal fun recomputePath() {
         // Determine the (type) path of this ExecutionPhase
         path = parent?.path?.resolve(identifier) ?: ExecutionPhasePath.ROOT
-        typePath = parent?.typePath?.resolve(typeIdentifier) ?: ExecutionPhasePath.ROOT
+        type = ExecutionPhaseType(parent?.type?.path?.resolve(typeIdentifier) ?: ExecutionPhasePath.ROOT)
         // Cache hash code
         hashCode = path.hashCode()
         // Propagate the change
@@ -216,5 +216,8 @@ private class SubExecutionPhase(
     override val endTime: TimestampNs,
     model: ExecutionModel
 ) : ExecutionPhase(model)
+
+@JvmInline
+value class ExecutionPhaseType(val path: ExecutionPhasePath)
 
 typealias ExecutionPhasePath = Path
