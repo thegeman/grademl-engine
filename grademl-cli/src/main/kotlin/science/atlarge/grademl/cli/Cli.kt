@@ -8,6 +8,7 @@ import org.jline.terminal.TerminalBuilder
 import science.atlarge.grademl.cli.terminal.CommandCompleter
 import science.atlarge.grademl.cli.util.MetricList
 import science.atlarge.grademl.cli.util.PhaseList
+import science.atlarge.grademl.cli.util.PhaseTypeList
 import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.execution.ExecutionModel
 import science.atlarge.grademl.core.execution.ExecutionPhase
@@ -135,6 +136,7 @@ class CliState(
 ) {
 
     val phaseList = PhaseList.fromExecutionModel(executionModel)
+    val phaseTypeList = PhaseTypeList.fromExecutionModel(executionModel)
     val metricList = MetricList.fromResourceModel(resourceModel)
 
     private val earliestTimestamp = executionModel.rootPhase.startTime
