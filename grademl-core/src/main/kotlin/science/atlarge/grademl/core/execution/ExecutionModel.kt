@@ -217,6 +217,13 @@ private class SubExecutionPhase(
 ) : ExecutionPhase(model)
 
 @JvmInline
-value class ExecutionPhaseType(val path: ExecutionPhasePath)
+value class ExecutionPhaseType(val path: ExecutionPhasePath) {
+    val parent: ExecutionPhaseType?
+        get() = if (path.pathComponents.isNotEmpty()) {
+            ExecutionPhaseType(ExecutionPhasePath(path.pathComponents.dropLast(1), path.isRelative))
+        } else {
+            null
+        }
+}
 
 typealias ExecutionPhasePath = Path
