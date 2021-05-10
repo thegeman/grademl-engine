@@ -1,6 +1,7 @@
 package science.atlarge.grademl.core.execution
 
 import science.atlarge.grademl.core.*
+import science.atlarge.grademl.core.util.computeGraphClosure
 import java.util.*
 
 class ExecutionModel {
@@ -165,12 +166,10 @@ sealed class ExecutionPhase(
     val inFlows: Set<ExecutionPhase>
         get() = model.getInFlowsOf(this)
 
-    val phasesInTree: Set<ExecutionPhase>
-        get() {
-            val phaseSet = mutableSetOf(this)
-            for (child in children) phaseSet.addAll(child.phasesInTree)
-            return phaseSet
-        }
+    val ancestors: Set<ExecutionPhase>
+        get() = computeGraphClosure(listOf(this)) { listOfNotNull(it.parent) }
+    val descendants: Set<ExecutionPhase>
+        get() = computeGraphClosure(listOf(this)) { it.children }
 
     private var hashCode: Int = 0
 

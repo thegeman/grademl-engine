@@ -12,7 +12,7 @@ class ResourceAttribution(
     attributionRuleProvider: ResourceAttributionRuleProvider
 ) {
 
-    val leafPhases = executionModel.rootPhase.phasesInTree.filter { it.children.isEmpty() }.toSet()
+    val leafPhases = executionModel.rootPhase.descendants.filter { it.children.isEmpty() }.toSet()
     val metrics = resourceModel.rootResource.metricsInTree
 
     private val demandEstimationStep = ResourceDemandEstimationStep(
