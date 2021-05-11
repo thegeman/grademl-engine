@@ -42,11 +42,11 @@ object DisplayExecutionModelCommand : Command(
         val value = maxDepthStr.toLongOrNull()
         return when {
             value == null -> {
-                println("Failed to parse depth value: \"$maxDepthStr\". Expected a positive integer value.")
+                println("Failed to parse depth value: \"$maxDepthStr\". Expected a non-negative integer value.")
                 null
             }
-            value <= 0 -> {
-                println("Maximum depth must be at least one.")
+            value < 0 -> {
+                println("Maximum depth must be a non-negative integer.")
                 null
             }
             value > Int.MAX_VALUE -> Int.MAX_VALUE
@@ -60,14 +60,13 @@ object DisplayExecutionModelCommand : Command(
                 if (maxDepth >= 0) " (up to depth $maxDepth)" else ""
             }:"
         )
-        for (topLevelPhase in executionModel.rootPhase.children.sortedBy { it.identifier }) {
-            printPhase(topLevelPhase, 1, maxDepth, verbose)
-        }
+        printPhase(executionModel.rootPhase, 0, maxDepth, verbose)
     }
 
     private fun printPhase(phase: ExecutionPhase, depth: Int, maxDepth: Int, verbose: Boolean) {
         // Print the phase's identifier
-        println("${"  ".repeat(depth)}/${phase.identifier}")
+        if (phase.isRoot) println("<root>")
+        else println("${"  ".repeat(depth)}/${phase.identifier}")
         // Print more details if requested
         if (verbose) printPhaseDetails(phase, "  ".repeat(depth) + 3)
         // Print recursively
@@ -83,7 +82,9 @@ object DisplayExecutionModelCommand : Command(
 
         println("${indent}Start time:          ${phase.startTime.toDisplayString()}")
         println("${indent}End time:            ${phase.endTime.toDisplayString()}")
-        println("${indent}Outgoing dataflows:  (${outFlows.joinToString(", ") { it.identifier }})")
+        if (!phase.isRoot) {
+            println("${indent}Outgoing dataflows:  (${outFlows.joinToString(", ") { it.identifier }})")
+        }
     }
 
 }
