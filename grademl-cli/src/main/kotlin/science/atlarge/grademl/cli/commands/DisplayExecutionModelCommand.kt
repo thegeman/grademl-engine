@@ -94,7 +94,7 @@ object DisplayExecutionModelCommand : Command(
             else -> println("${"  ".repeat(depth)}/${phase.identifier}")
         }
         // Print more details if requested
-        if (verbose) printPhaseDetails(phase, "  ".repeat(depth + 3))
+        if (verbose) printPhaseDetails(phase, cliState, "  ".repeat(depth + 3))
         // Print recursively
         if (depth < maxDepth) {
             // Skip child phases that have been excluded in the CLI
@@ -105,11 +105,13 @@ object DisplayExecutionModelCommand : Command(
         }
     }
 
-    private fun printPhaseDetails(phase: ExecutionPhase, indent: String) {
+    private fun printPhaseDetails(phase: ExecutionPhase, cliState: CliState, indent: String) {
+        val startTime = cliState.normalizeTimestamp(phase.startTime).toDisplayString()
+        val endTime = cliState.normalizeTimestamp(phase.endTime).toDisplayString()
         val outFlows = phase.outFlows.sortedBy { it.identifier }
 
-        println("${indent}Start time:          ${phase.startTime.toDisplayString()}")
-        println("${indent}End time:            ${phase.endTime.toDisplayString()}")
+        println("${indent}Start time:          ${startTime.padStart(endTime.length, ' ')}")
+        println("${indent}End time:            $endTime")
         if (!phase.isRoot) {
             println("${indent}Outgoing dataflows:  (${outFlows.joinToString(", ") { it.identifier }})")
         }
