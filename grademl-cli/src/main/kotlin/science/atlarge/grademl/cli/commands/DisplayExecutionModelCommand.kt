@@ -68,7 +68,7 @@ object DisplayExecutionModelCommand : Command(
         if (phase.isRoot) println("<root>")
         else println("${"  ".repeat(depth)}/${phase.identifier}")
         // Print more details if requested
-        if (verbose) printPhaseDetails(phase, "  ".repeat(depth) + 3)
+        if (verbose) printPhaseDetails(phase, "  ".repeat(depth + 3))
         // Print recursively
         if (depth < maxDepth) {
             for (childPhase in phase.children.sortedBy { it.identifier }) {
