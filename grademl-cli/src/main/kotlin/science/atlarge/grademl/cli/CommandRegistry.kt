@@ -25,6 +25,7 @@ object CommandRegistry {
         registerCommands(
             DisplayExecutionModelCommand,
             DisplayResourceModelCommand,
+            FilterPhasesCommand,
             FilterResourcesCommand,
             FilterMetricsCommand,
             FitMetricCommand,
