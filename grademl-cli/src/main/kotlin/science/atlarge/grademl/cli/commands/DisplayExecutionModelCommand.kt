@@ -6,7 +6,6 @@ import science.atlarge.grademl.cli.terminal.Option
 import science.atlarge.grademl.cli.terminal.OptionArgument
 import science.atlarge.grademl.cli.terminal.ParsedCommand
 import science.atlarge.grademl.cli.util.toDisplayString
-import science.atlarge.grademl.core.execution.ExecutionModel
 import science.atlarge.grademl.core.execution.ExecutionPhase
 
 object DisplayExecutionModelCommand : Command(
@@ -34,7 +33,7 @@ object DisplayExecutionModelCommand : Command(
         val maxDepth = parseMaxDepth(parsedCommand) ?: return
 
         // Print (part of) the execution model
-        printExecutionModel(cliState.executionModel, maxDepth, verbose)
+        printExecutionModel(cliState, maxDepth, verbose)
     }
 
     private fun parseMaxDepth(parsedCommand: ParsedCommand): Int? {
@@ -54,16 +53,24 @@ object DisplayExecutionModelCommand : Command(
         }
     }
 
-    private fun printExecutionModel(executionModel: ExecutionModel, maxDepth: Int, verbose: Boolean) {
+    private fun printExecutionModel(cliState: CliState, maxDepth: Int, verbose: Boolean) {
         println(
             "Execution model extracted from job logs${
                 if (maxDepth >= 0) " (up to depth $maxDepth)" else ""
             }:"
         )
-        printPhase(executionModel.rootPhase, 0, if (maxDepth >= 0) maxDepth else Int.MAX_VALUE, verbose)
+        printPhase(
+            cliState.executionModel.rootPhase,
+            cliState,
+            0,
+            if (maxDepth >= 0) maxDepth else Int.MAX_VALUE,
+            verbose
+        )
     }
 
-    private fun printPhase(phase: ExecutionPhase, depth: Int, maxDepth: Int, verbose: Boolean) {
+    private fun printPhase(phase: ExecutionPhase, cliState: CliState, depth: Int, maxDepth: Int, verbose: Boolean) {
+        // Skip this phase if has been excluded in the CLI
+        if (!phase.isRoot && phase !in cliState.selectedPhases) return
         // Print the phase's identifier
         if (phase.isRoot) println("<root>")
         else println("${"  ".repeat(depth)}/${phase.identifier}")
@@ -71,8 +78,10 @@ object DisplayExecutionModelCommand : Command(
         if (verbose) printPhaseDetails(phase, "  ".repeat(depth + 3))
         // Print recursively
         if (depth < maxDepth) {
-            for (childPhase in phase.children.sortedBy { it.identifier }) {
-                printPhase(childPhase, depth + 1, maxDepth, verbose)
+            // Skip child phases that have been excluded in the CLI
+            val selectedChildren = phase.children.intersect(cliState.selectedPhases)
+            for (childPhase in selectedChildren.sortedBy { it.identifier }) {
+                printPhase(childPhase, cliState, depth + 1, maxDepth, verbose)
             }
         }
     }
