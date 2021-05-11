@@ -60,7 +60,7 @@ object DisplayExecutionModelCommand : Command(
                 if (maxDepth >= 0) " (up to depth $maxDepth)" else ""
             }:"
         )
-        printPhase(executionModel.rootPhase, 0, maxDepth, verbose)
+        printPhase(executionModel.rootPhase, 0, if (maxDepth >= 0) maxDepth else Int.MAX_VALUE, verbose)
     }
 
     private fun printPhase(phase: ExecutionPhase, depth: Int, maxDepth: Int, verbose: Boolean) {
