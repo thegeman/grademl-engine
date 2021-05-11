@@ -104,7 +104,8 @@ data class Argument(
 
 sealed class ArgumentValueConstraint {
     object Any : ArgumentValueConstraint()
-    data class Choice(val options: Set<String>) : ArgumentValueConstraint()
+    class Choice(val options: Set<String>) : ArgumentValueConstraint()
+    class Integer(val validRange: LongRange) : ArgumentValueConstraint()
     object ExecutionPhasePath : ArgumentValueConstraint()
     object ResourcePath : ArgumentValueConstraint()
     object MetricPath : ArgumentValueConstraint()

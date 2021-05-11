@@ -100,6 +100,7 @@ class CommandCompleter(
                     Candidate(opt, opt, null, null, null, null, true)
                 }
             }
+            is ArgumentValueConstraint.Integer -> return
             ArgumentValueConstraint.ExecutionPhasePath -> addExecutionPathCandidates(partialWord, candidates)
             ArgumentValueConstraint.ResourcePath -> addResourcePathCandidates(partialWord, candidates)
             ArgumentValueConstraint.MetricPath -> addMetricPathCandidates(partialWord, candidates)
