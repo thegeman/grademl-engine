@@ -1,7 +1,9 @@
 package science.atlarge.grademl.cli.commands
 
 import science.atlarge.grademl.cli.CliState
+import science.atlarge.grademl.cli.terminal.ArgumentValueConstraint
 import science.atlarge.grademl.cli.terminal.Option
+import science.atlarge.grademl.cli.terminal.OptionArgument
 import science.atlarge.grademl.cli.terminal.ParsedCommand
 import science.atlarge.grademl.cli.util.toDisplayString
 import science.atlarge.grademl.core.execution.ExecutionModel
@@ -13,29 +15,66 @@ object DisplayExecutionModelCommand : Command(
     longHelpMessage = "Displays information about a job's execution model. By default outputs a tree of execution phases,\n" +
             "and for each execution phase its start time, end time, and a list of outgoing dataflows.",
     supportedOptions = listOf(
-        Option('s', "short", "only display execution phase names")
+        Option('s', "short", "only display execution phase names"),
+        Option(
+            'd',
+            "max-depth",
+            "limit the depth of phases to display",
+            argument = OptionArgument(
+                "DEPTH",
+                valueConstraint = ArgumentValueConstraint.Integer(0..Long.MAX_VALUE)
+            )
+        )
     )
 ) {
 
     override fun process(parsedCommand: ParsedCommand, cliState: CliState) {
-        printExecutionModel(
-            cliState.executionModel,
-            verbose = !parsedCommand.isOptionProvided("short")
-        )
+        // Parse command options
+        val verbose = !parsedCommand.isOptionProvided("short")
+        val maxDepth = parseMaxDepth(parsedCommand) ?: return
+
+        // Print (part of) the execution model
+        printExecutionModel(cliState.executionModel, maxDepth, verbose)
     }
 
-    private fun printExecutionModel(executionModel: ExecutionModel, verbose: Boolean) {
-        println("Execution model extracted from job logs:")
-        for (topLevelPhase in executionModel.rootPhase.children.sortedBy { it.identifier }) {
-            printPhase(topLevelPhase, "  ", verbose)
+    private fun parseMaxDepth(parsedCommand: ParsedCommand): Int? {
+        val maxDepthStr = parsedCommand.getOptionValue("max-depth") ?: return Int.MIN_VALUE
+        val value = maxDepthStr.toLongOrNull()
+        return when {
+            value == null -> {
+                println("Failed to parse depth value: \"$maxDepthStr\". Expected a positive integer value.")
+                null
+            }
+            value <= 0 -> {
+                println("Maximum depth must be at least one.")
+                null
+            }
+            value > Int.MAX_VALUE -> Int.MAX_VALUE
+            else -> value.toInt()
         }
     }
 
-    private fun printPhase(phase: ExecutionPhase, indent: String, verbose: Boolean) {
-        println("$indent/${phase.identifier}")
-        if (verbose) printPhaseDetails(phase, "$indent      ")
-        for (childPhase in phase.children.sortedBy { it.identifier }) {
-            printPhase(childPhase, "$indent  ", verbose)
+    private fun printExecutionModel(executionModel: ExecutionModel, maxDepth: Int, verbose: Boolean) {
+        println(
+            "Execution model extracted from job logs${
+                if (maxDepth >= 0) " (up to depth $maxDepth)" else ""
+            }:"
+        )
+        for (topLevelPhase in executionModel.rootPhase.children.sortedBy { it.identifier }) {
+            printPhase(topLevelPhase, 1, maxDepth, verbose)
+        }
+    }
+
+    private fun printPhase(phase: ExecutionPhase, depth: Int, maxDepth: Int, verbose: Boolean) {
+        // Print the phase's identifier
+        println("${"  ".repeat(depth)}/${phase.identifier}")
+        // Print more details if requested
+        if (verbose) printPhaseDetails(phase, "  ".repeat(depth) + 3)
+        // Print recursively
+        if (depth < maxDepth) {
+            for (childPhase in phase.children.sortedBy { it.identifier }) {
+                printPhase(childPhase, depth + 1, maxDepth, verbose)
+            }
         }
     }
 
