@@ -1,12 +1,11 @@
 package science.atlarge.grademl.cli.commands
 
 import science.atlarge.grademl.cli.CliState
-import science.atlarge.grademl.cli.terminal.ArgumentValueConstraint
-import science.atlarge.grademl.cli.terminal.Option
-import science.atlarge.grademl.cli.terminal.OptionArgument
-import science.atlarge.grademl.cli.terminal.ParsedCommand
+import science.atlarge.grademl.cli.terminal.*
 import science.atlarge.grademl.cli.util.toDisplayString
+import science.atlarge.grademl.cli.util.tryMatchExecutionPhasePath
 import science.atlarge.grademl.core.execution.ExecutionPhase
+import science.atlarge.grademl.core.execution.ExecutionPhasePath
 
 object DisplayExecutionModelCommand : Command(
     name = "display-execution-model",
@@ -24,6 +23,15 @@ object DisplayExecutionModelCommand : Command(
                 valueConstraint = ArgumentValueConstraint.Integer(0..Long.MAX_VALUE)
             )
         )
+    ),
+    supportedArguments = listOf(
+        Argument(
+            "phase_path",
+            "phases to display, along with their descendants (default: /)",
+            valueConstraint = ArgumentValueConstraint.ExecutionPhasePath,
+            isOptional = true,
+            isVararg = true
+        )
     )
 ) {
 
@@ -31,9 +39,14 @@ object DisplayExecutionModelCommand : Command(
         // Parse command options
         val verbose = !parsedCommand.isOptionProvided("short")
         val maxDepth = parseMaxDepth(parsedCommand) ?: return
+        val givenPhases = parsePhasePaths(parsedCommand, cliState) ?: return
+        val selectedPhases = givenPhases.ifEmpty { listOf(cliState.executionModel.rootPhase) }
 
-        // Print (part of) the execution model
-        printExecutionModel(cliState, maxDepth, verbose)
+        // For each given phase, print (part of) the execution model rooted in that phase
+        selectedPhases.forEachIndexed { i, phase ->
+            if (i > 0) println()
+            printExecutionModel(phase, cliState, maxDepth, verbose)
+        }
     }
 
     private fun parseMaxDepth(parsedCommand: ParsedCommand): Int? {
@@ -53,27 +66,33 @@ object DisplayExecutionModelCommand : Command(
         }
     }
 
-    private fun printExecutionModel(cliState: CliState, maxDepth: Int, verbose: Boolean) {
+    private fun parsePhasePaths(parsedCommand: ParsedCommand, cliState: CliState): List<ExecutionPhase>? {
+        val phasePathExpressions = parsedCommand.getArgumentValues("phase_path")
+        if (phasePathExpressions.isEmpty()) return emptyList()
+        // Try to match each phase path expression
+        return phasePathExpressions.flatMap { phasePathExpression ->
+            tryMatchExecutionPhasePath(ExecutionPhasePath.parse(phasePathExpression), cliState) ?: return null
+        }
+    }
+
+    private fun printExecutionModel(rootPhase: ExecutionPhase, cliState: CliState, maxDepth: Int, verbose: Boolean) {
         println(
-            "Execution model extracted from job logs${
+            "Displaying execution model rooted in the following phase${
                 if (maxDepth >= 0) " (up to depth $maxDepth)" else ""
             }:"
         )
-        printPhase(
-            cliState.executionModel.rootPhase,
-            cliState,
-            0,
-            if (maxDepth >= 0) maxDepth else Int.MAX_VALUE,
-            verbose
-        )
+        printPhase(rootPhase, cliState, 0, if (maxDepth >= 0) maxDepth else Int.MAX_VALUE, verbose)
     }
 
     private fun printPhase(phase: ExecutionPhase, cliState: CliState, depth: Int, maxDepth: Int, verbose: Boolean) {
         // Skip this phase if has been excluded in the CLI
         if (!phase.isRoot && phase !in cliState.selectedPhases) return
-        // Print the phase's identifier
-        if (phase.isRoot) println("<root>")
-        else println("${"  ".repeat(depth)}/${phase.identifier}")
+        // Print the phase's identifier (or path, for the root phase of this subtree)
+        when {
+            phase.isRoot -> println("<root>")
+            depth == 0 -> println("${phase.path}")
+            else -> println("${"  ".repeat(depth)}/${phase.identifier}")
+        }
         // Print more details if requested
         if (verbose) printPhaseDetails(phase, "  ".repeat(depth + 3))
         // Print recursively
