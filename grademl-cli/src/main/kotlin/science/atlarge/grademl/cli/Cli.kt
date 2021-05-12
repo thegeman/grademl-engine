@@ -6,12 +6,8 @@ import science.atlarge.grademl.cli.util.*
 import science.atlarge.grademl.core.GradeMLEngine
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.core.GradeMLJobStatusUpdate
-import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.attribution.ResourceAttribution
 import science.atlarge.grademl.core.execution.ExecutionModel
-import science.atlarge.grademl.core.execution.ExecutionPhase
-import science.atlarge.grademl.core.resources.Metric
-import science.atlarge.grademl.core.resources.Resource
 import science.atlarge.grademl.core.resources.ResourceModel
 import science.atlarge.grademl.input.airflow.Airflow
 import science.atlarge.grademl.input.resource_monitor.ResourceMonitor
