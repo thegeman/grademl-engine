@@ -2,13 +2,13 @@ package science.atlarge.grademl.cli.commands
 
 import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.data.*
-import science.atlarge.grademl.cli.terminal.Argument
-import science.atlarge.grademl.cli.terminal.ArgumentValueConstraint
-import science.atlarge.grademl.cli.terminal.Option
-import science.atlarge.grademl.cli.terminal.ParsedCommand
+import science.atlarge.grademl.cli.terminal.*
 import science.atlarge.grademl.cli.util.parseMetricPathExpression
 import science.atlarge.grademl.cli.util.tryMatchMetricPath
-import science.atlarge.grademl.core.attribution.*
+import science.atlarge.grademl.core.TimestampNs
+import science.atlarge.grademl.core.TimestampNsRange
+import science.atlarge.grademl.core.attribution.BestFitAttributionRuleProvider
+import science.atlarge.grademl.core.attribution.ResourceAttribution
 import science.atlarge.grademl.core.resources.Metric
 import science.atlarge.grademl.core.util.asRPathString
 import science.atlarge.grademl.core.util.instantiateRScript
@@ -24,6 +24,14 @@ object PlotMetricCommand : Command(
             null,
             "show-phases",
             "show phases instead of phase types in plot"
+        ),
+        Option(
+            null,
+            "zoom-time",
+            "zoom into a specific period of time, formatted as 'start:end', in seconds",
+            argument = OptionArgument(
+                "START:END"
+            )
         )
     ),
     supportedArguments = listOf(
@@ -43,6 +51,9 @@ object PlotMetricCommand : Command(
     override fun process(parsedCommand: ParsedCommand, cliState: CliState) {
         // Parse options
         val showPhases = parsedCommand.isOptionProvided("show-phases")
+        val zoomTime = parsedCommand.getOptionValue("zoom-time")?.let { arg ->
+            parseZoomTimeArgument(arg, cliState::denormalizeTimestamp) ?: return
+        }
 
         // Parse the metric_path argument value(s) for a set of metrics to plot
         val metrics = parsedCommand.getArgumentValues("metric_path")
@@ -60,14 +71,74 @@ object PlotMetricCommand : Command(
 
         // Plot each metric
         for (metric in metrics) {
-            plotMetric(metric, resourceAttribution, showPhases, cliState)
+            plotMetric(metric, resourceAttribution, showPhases, zoomTime, cliState)
         }
+    }
+
+    private fun parseZoomTimeArgument(argument: String, denormalizeTs: (Long) -> TimestampNs): TimestampNsRange? {
+        // Try extracting two strings representing decimal numbers from the argument
+        val regex = """(-?[0-9]+(?:\.[0-9]+)?):(-?[0-9]+(?:\.[0-9]+)?)""".toRegex()
+        val match = regex.matchEntire(argument)
+        if (match == null) {
+            println("Failed to parse zoom-time argument:")
+            println("  Argument does not match expected format of START:END, where START and END are decimal numbers.")
+            return null
+        }
+        // Define a helper function for parsing a decimal number of seconds to an integer number of nanoseconds
+        fun parseDecimalToTimestamp(s: String): TimestampNs? {
+            val intLimit = Long.MAX_VALUE / 1_000_000_000
+            val (intPart, decimalPart) = if ('.' in s) {
+                val splits = s.split('.')
+                splits[0] to splits[1].trimEnd('0')
+            } else {
+                s to ""
+            }
+            val intPartValue = intPart.toLongOrNull()
+            if (intPartValue == null || intPartValue > intLimit || intPartValue < -intLimit) {
+                println("Failed to parse zoom-time argument:")
+                println("  Integer part of given value $s exceeds the timestamp limits.")
+                return null
+            }
+            if (decimalPart.length > 9) {
+                println("Failed to parse zoom-time argument:")
+                println("  Decimal part of given value $s exceeds the supported nanosecond precision.")
+                return null
+            }
+            val decimalPartValue = decimalPart.padEnd(9, '0').toLong()
+            return intPartValue * 1_000_000_000 + if (intPartValue >= 0) decimalPartValue else -decimalPartValue
+        }
+        // Parse the start and end timestamps
+        val normalizedStartTime = parseDecimalToTimestamp(match.groupValues[1]) ?: return null
+        val normalizedEndTime = parseDecimalToTimestamp(match.groupValues[2]) ?: return null
+        if (normalizedEndTime < normalizedStartTime) {
+            println("Failed to parse zoom-time argument:")
+            println(
+                "  The given end time (${match.groupValues[2]}) is earlier than " +
+                        "the given start time (${match.groupValues[1]})."
+            )
+            return null
+        }
+        // Convert normalized timestamps to unix timestamps
+        val startTime = denormalizeTs(normalizedStartTime)
+        if (startTime < normalizedStartTime) {
+            println("Failed to parse zoom-time argument:")
+            println("  The given start time (${match.groupValues[1]}) exceeds the timestamp limits.")
+            return null
+        }
+        val endTime = denormalizeTs(normalizedEndTime)
+        if (endTime < normalizedStartTime) {
+            println("Failed to parse zoom-time argument:")
+            println("  The given end time (${match.groupValues[2]}) exceeds the timestamp limits.")
+            return null
+        }
+        return startTime..endTime
     }
 
     private fun plotMetric(
         metric: Metric,
         resourceAttribution: ResourceAttribution,
         showPhases: Boolean,
+        zoomTime: TimestampNsRange?,
         cliState: CliState
     ) {
         // Create output paths for data and scripts
@@ -78,7 +149,9 @@ object PlotMetricCommand : Command(
         // Compute attributed resource usage for each leaf phase
         println("Computing resource attribution for metric \"${metric.path}\".")
         val phaseAttribution = resourceAttribution.leafPhases.associateWith {
-            resourceAttribution.attributeMetricToPhase(metric, it)!!
+            val attributionResult = resourceAttribution.attributeMetricToPhase(metric, it)!!
+            if (zoomTime != null) attributionResult.slice(zoomTime.first, zoomTime.last)
+            else attributionResult
         }
 
         // Output list of leaf phases, if needed
@@ -105,7 +178,15 @@ object PlotMetricCommand : Command(
         // Write raw metric data
         val metricDataFile = dataOutputDirectory.resolve(MetricDataWriter.FILENAME).toFile()
         println("Writing observed metric data to \"${metricDataFile.absolutePath}\".")
-        MetricDataWriter.output(metricDataFile, listOf(metric), cliState)
+        MetricDataWriter.output(
+            metricDataFile,
+            listOf(metric),
+            cliState,
+            metricDataSelector = {
+                if (zoomTime != null) it.data.slice(zoomTime.first, zoomTime.last)
+                else it.data
+            }
+        )
 
         // Write upsampled metric data
         val upsampledMetricDataFile = dataOutputDirectory.resolve("upsampled-metric-data.tsv").toFile()
@@ -114,7 +195,10 @@ object PlotMetricCommand : Command(
             upsampledMetricDataFile,
             listOf(metric),
             cliState,
-            metricDataSelector = { resourceAttribution.upsampleMetric(it)!! }
+            metricDataSelector = {
+                if (zoomTime != null) resourceAttribution.upsampleMetric(it)!!.slice(zoomTime.first, zoomTime.last)
+                else resourceAttribution.upsampleMetric(it)!!
+            }
         )
 
         // Write attributed resource usage per phase, if needed
@@ -150,7 +234,9 @@ object PlotMetricCommand : Command(
                 "output_directory" to metricOutputDirectory.toFile().asRPathString(),
                 "data_directory" to dataOutputDirectory.toFile().asRPathString(),
                 "metric_id" to "\"${cliState.metricList.metricToIdentifier(metric)}\"",
-                "plot_per_phase" to if (showPhases) "TRUE" else "FALSE"
+                "plot_per_phase" to if (showPhases) "TRUE" else "FALSE",
+                "start_time" to if (zoomTime != null) "${cliState.normalizeTimestamp(zoomTime.first)}" else "-Inf",
+                "end_time" to if (zoomTime != null) "${cliState.normalizeTimestamp(zoomTime.last)}" else "Inf"
             )
         )
 

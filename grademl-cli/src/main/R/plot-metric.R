@@ -15,6 +15,8 @@ aggregate_resource_attribution_data_filename <- "aggregate-resource-attribution-
 ### :setting plot_filename      ###
 ### :setting metric_id          ###
 ### :setting plot_per_phase     ###
+### :setting start_time         ###
+### :setting end_time           ###
 ### END OF GENERATED SETTINGS   ###
 
 ####################
@@ -42,19 +44,19 @@ phase_list <- phase_list[order(canonical.index)][, `:=`(
 
 # Read metric data
 metric_data <- fread(file = file.path(data_directory, metric_data_filename))[
-  metric.id == metric_id, .(timestamp = timestamp / 1e9, value)]
+  metric.id == metric_id, .(timestamp, value)]
 
 # Read upsampled metric data
 upsampled_metric_data <- fread(file = file.path(data_directory, upsampled_metric_data_filename))[
-  metric.id == metric_id, .(timestamp = timestamp / 1e9, value)]
+  metric.id == metric_id, .(timestamp, value)]
 
 # Read (aggregated) resource attribution data
 if (plot_per_phase) {
   resource_attribution_data <- fread(file = file.path(data_directory, resource_attribution_data_filename))[
-    metric.id == metric_id, .(phase.id, timestamp = timestamp / 1e9, value, count = 1)]
+    metric.id == metric_id, .(phase.id, timestamp, value, count = 1)]
 } else {
   resource_attribution_data <- fread(file = file.path(data_directory, aggregate_resource_attribution_data_filename))[
-    metric.id == metric_id, .(phase.id = phase.type.id, timestamp = timestamp / 1e9, value, count)]
+    metric.id == metric_id, .(phase.id = phase.type.id, timestamp, value, count)]
 }
 resource_attribution_data <- merge(resource_attribution_data, phase_list, by = "phase.id")[,
   .(phase.path, timestamp, value, count)]
@@ -65,20 +67,30 @@ resource_attribution_data <- merge(resource_attribution_data, phase_list, by = "
 
 # Transform metric data to a step function
 stepped_metric_data <- metric_data[, .(
-  timestamp = c(head(timestamp, -1) + 1e-9, tail(timestamp, -1)),
+  timestamp = c(head(timestamp, -1) + 1, tail(timestamp, -1)),
   value = c(tail(value, -1), tail(value, -1))
 )][order(timestamp)]
 
 stepped_upsampled_metric_data <- upsampled_metric_data[, .(
-  timestamp = c(head(timestamp, -1) + 1e-9, tail(timestamp, -1)),
+  timestamp = c(head(timestamp, -1) + 1, tail(timestamp, -1)),
   value = c(tail(value, -1), tail(value, -1))
 )][order(timestamp)]
 
 stepped_resource_attribution_data <- resource_attribution_data[, .(
-  timestamp = c(head(timestamp, -1) + 1e-9, tail(timestamp, -1)),
+  timestamp = c(head(timestamp, -1) + 1, tail(timestamp, -1)),
   value = c(tail(value, -1), tail(value, -1)),
   count = c(tail(count, -1), tail(count, -1))
 ), by = .(phase.path)][order(phase.path, timestamp)]
+
+# Clamp timestamps between the given start and end time
+stepped_metric_data[, timestamp := pmin(pmax(timestamp, start_time), end_time)]
+stepped_upsampled_metric_data[, timestamp := pmin(pmax(timestamp, start_time), end_time)]
+stepped_resource_attribution_data[, timestamp := pmin(pmax(timestamp, start_time), end_time)]
+
+# Convert timestamps from nanoseconds to seconds
+stepped_metric_data[, timestamp := timestamp / 1e9]
+stepped_upsampled_metric_data[, timestamp := timestamp / 1e9]
+stepped_resource_attribution_data[, timestamp := timestamp / 1e9]
 
 ################
 ### PLOTTING ###
