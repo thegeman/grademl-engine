@@ -6,6 +6,7 @@ import org.jline.reader.impl.DefaultParser
 import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
 import science.atlarge.grademl.cli.terminal.CommandCompleter
+import science.atlarge.grademl.cli.terminal.GradeMLLineReader
 import science.atlarge.grademl.cli.util.MetricList
 import science.atlarge.grademl.cli.util.PhaseList
 import science.atlarge.grademl.cli.util.PhaseTypeList
@@ -78,13 +79,13 @@ object Cli {
             .jansi(true)
             .build()
         val parser = DefaultParser()
-        val lineReader = LineReaderBuilder.builder()
-            .appName("GradeML")
-            .terminal(terminal)
-            .completer(CommandCompleter(cliState))
-            .parser(parser)
-            .history(DefaultHistory())
-            .build()
+        val lineReader = GradeMLLineReader(
+            terminal = terminal,
+            appName = "GradeML",
+            parser = parser,
+            completer = CommandCompleter(cliState),
+            history = DefaultHistory()
+        )
 
         // Set window title
         if (terminal.type.startsWith("xterm")) {
@@ -93,8 +94,8 @@ object Cli {
 
         // Repeatedly read, parse, and execute commands until the users quits the application
         while (true) {
-            // Read the next line (or lines, if pasted)
-            val lines = try {
+            // Read the next line
+            val line = try {
                 lineReader.readLine("> ")
             } catch (e: Exception) {
                 when (e) {
@@ -105,25 +106,24 @@ object Cli {
                 }
             }
 
-            // Split the input text on newlines
-            for (line in lines.split('\n')) {
-                // Parse the next line
-                val parsedLine = lineReader.parser.parse(line, 0)
-                if (parsedLine.line().isBlank()) {
-                    // Skip empty lines
-                    continue
-                }
-                // Look up the first word as command
-                val command = CommandRegistry[parsedLine.words()[0]]
-                if (command == null) {
-                    println("Command \"${parsedLine.words()[0]}\" not recognized.")
-                    println()
-                    continue
-                }
-                // Invoke the command
-                command.process(parsedLine.words().drop(1), cliState)
-                println()
+            // Parse the line
+            val parsedLine = lineReader.parser.parse(line, 0)
+            if (parsedLine.line().isBlank()) {
+                // Skip empty lines
+                continue
             }
+
+            // Look up the first word as command
+            val command = CommandRegistry[parsedLine.words()[0]]
+            if (command == null) {
+                println("Command \"${parsedLine.words()[0]}\" not recognized.")
+                println()
+                continue
+            }
+
+            // Invoke the command
+            command.process(parsedLine.words().drop(1), cliState)
+            println()
         }
     }
 
