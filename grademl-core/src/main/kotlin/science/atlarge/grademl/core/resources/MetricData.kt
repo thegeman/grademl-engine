@@ -14,6 +14,12 @@ class MetricData(
     }
 
     fun slice(startTime: TimestampNs, endTime: TimestampNs): MetricData {
+        if (startTime >= timestamps.last()) {
+            return MetricData(longArrayOf(startTime), doubleArrayOf(), maxValue)
+        } else if (endTime <= timestamps.first()) {
+            return MetricData(longArrayOf(endTime), doubleArrayOf(), maxValue)
+        }
+
         var startIdx = timestamps.binarySearch(startTime)
         if (startIdx < 0) startIdx = maxOf(startIdx.inv() - 1, 0)
         var endIdx = timestamps.binarySearch(endTime)
