@@ -96,7 +96,17 @@ object PlotOverviewCommand : Command(
 
         // Plot the overview using R
         println("Generating plot to \"${plotOutputFile.absolutePath}\".")
-        runRScript(rScriptFile)
+        val plotSuccessful = runRScript(rScriptFile)
+
+        // Clean up if the plot succeeded
+        if (plotSuccessful) {
+            println("Cleaning up input files.")
+            phaseListFile.delete()
+            metricListFile.delete()
+            metricDataFile.delete()
+        } else {
+            println("Failed to generate plot, see \"${plotOutputFile.absoluteFile.nameWithoutExtension}.log\".")
+        }
     }
 
 }

@@ -264,7 +264,21 @@ object PlotMetricCommand : Command(
 
         // Produce the plot using R
         println("Generating plot to \"${plotOutputFile.absolutePath}\".")
-        runRScript(rScriptFile)
+        val plotSuccessful = runRScript(rScriptFile)
+
+        // Clean up if the plot succeeded
+        if (plotSuccessful) {
+            println("Cleaning up input files.")
+            if (showPhases) phaseListFile.delete()
+            else phaseTypeListFile.delete()
+            metricListFile.delete()
+            metricDataFile.delete()
+            upsampledMetricDataFile.delete()
+            if (showPhases) resourceAttributionDataFile.delete()
+            else aggregatedResourceAttributionDataFile.delete()
+        } else {
+            println("Failed to generate plot, see \"${plotOutputFile.absoluteFile.nameWithoutExtension}.log\".")
+        }
     }
 
 }
