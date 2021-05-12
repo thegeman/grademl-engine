@@ -10,6 +10,7 @@ import science.atlarge.grademl.core.TimestampNsRange
 import science.atlarge.grademl.core.attribution.BestFitAttributionRuleProvider
 import science.atlarge.grademl.core.attribution.ResourceAttribution
 import science.atlarge.grademl.core.resources.Metric
+import science.atlarge.grademl.core.resources.sum
 import science.atlarge.grademl.core.util.asRPathString
 import science.atlarge.grademl.core.util.instantiateRScript
 import science.atlarge.grademl.core.util.runRScript
@@ -216,10 +217,25 @@ object PlotMetricCommand : Command(
         val aggregatedResourceAttributionDataFile = dataOutputDirectory
             .resolve(AggregateResourceAttributionDataWriter.FILENAME).toFile()
         if (!showPhases) {
+            // Aggregate the attributed resource usage for all phases of a given type
+            val phasesPerType = phaseAttribution.keys.groupBy { it.type }
+            val aggregateResourceAttribution = phaseAttribution.entries
+                .groupBy({ it.key.type }, { it.value })
+                .mapValues { it.value.sum(it.value.first().maxValue) }
+            // Filter out any phase type that do not occur during the given zoom period
+            val selectedAggregateResourceAttribution = if (zoomTime != null) {
+                val selectedTypes = phasesPerType.filter {
+                    it.value.any { p -> p.startTime <= zoomTime.last && zoomTime.first <= p.endTime }
+                }.keys
+                aggregateResourceAttribution.filterKeys { it in selectedTypes }
+            } else {
+                aggregateResourceAttribution
+            }
             println("Writing resource attribution data to \"${aggregatedResourceAttributionDataFile.absolutePath}\".")
             AggregateResourceAttributionDataWriter.output(
                 aggregatedResourceAttributionDataFile,
-                mapOf(metric to phaseAttribution),
+                mapOf(metric to selectedAggregateResourceAttribution),
+                phasesPerType,
                 cliState
             )
         }
