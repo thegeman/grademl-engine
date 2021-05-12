@@ -8,14 +8,18 @@ object GradeMLEngine {
 
     private val knownInputSources = mutableSetOf<InputSource>()
 
-    fun analyzeJob(jobDataDirectories: Iterable<Path>, jobOutputDirectory: Path): GradeMLJob {
-        return GradeMLJob(
+    fun analyzeJob(
+        jobDataDirectories: Iterable<Path>,
+        jobOutputDirectory: Path,
+        progressReport: (GradeMLJobStatusUpdate) -> Unit = { }
+    ): GradeMLJob {
+        return GradeMLJobProcessor.processJob(
             jobDataDirectories,
             jobOutputDirectory,
-            knownInputSources
-        ) { executionModel, resourceModel ->
-            BestFitAttributionRuleProvider.from(executionModel, resourceModel, jobOutputDirectory)
-        }
+            knownInputSources,
+            { em, rm -> BestFitAttributionRuleProvider.from(em, rm, jobOutputDirectory) },
+            progressReport
+        )
     }
 
     fun registerInputSource(inputSource: InputSource) {
