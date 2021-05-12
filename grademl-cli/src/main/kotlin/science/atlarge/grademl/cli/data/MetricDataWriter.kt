@@ -27,7 +27,7 @@ object MetricDataWriter {
                     writer.apply {
                         append(metricId)
                         append('\t')
-                        append(cliState.normalizeTimestamp(timestamp).toString())
+                        append(cliState.time.normalize(timestamp).toString())
                         append('\t')
                         appendLine(value)
                     }

@@ -32,7 +32,7 @@ object ResourceAttributionDataWriter {
                             append('\t')
                             append(phaseId)
                             append('\t')
-                            append(cliState.normalizeTimestamp(timestamp).toString())
+                            append(cliState.time.normalize(timestamp).toString())
                             append('\t')
                             appendLine(value)
                         }

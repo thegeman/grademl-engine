@@ -134,10 +134,7 @@ class CliState(
     val resourceFilter = ResourceFilter(resourceModel)
     val metricFilter = MetricFilter(resourceModel, resourceFilter)
 
-    private val earliestTimestamp = executionModel.rootPhase.startTime
-
-    fun normalizeTimestamp(plainTimestamp: TimestampNs): Long = plainTimestamp - earliestTimestamp
-    fun denormalizeTimestamp(normalizedTimestamp: Long): TimestampNs = normalizedTimestamp + earliestTimestamp
+    val time = JobTime(executionModel)
 
     private val rootPhaseOutputPath = outputPath.resolve("root_phase")
     fun outputPathForPhase(phase: ExecutionPhase): Path =

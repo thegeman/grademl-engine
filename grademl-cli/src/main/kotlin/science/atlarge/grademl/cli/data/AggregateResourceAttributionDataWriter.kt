@@ -37,7 +37,7 @@ object AggregateResourceAttributionDataWriter {
                             append('\t')
                             append(phaseTypeId)
                             append('\t')
-                            append(cliState.normalizeTimestamp(timestamp).toString())
+                            append(cliState.time.normalize(timestamp).toString())
                             append('\t')
                             append(value)
                             append('\t')

@@ -106,8 +106,8 @@ object DisplayExecutionModelCommand : Command(
     }
 
     private fun printPhaseDetails(phase: ExecutionPhase, cliState: CliState, indent: String) {
-        val startTime = cliState.normalizeTimestamp(phase.startTime).toDisplayString()
-        val endTime = cliState.normalizeTimestamp(phase.endTime).toDisplayString()
+        val startTime = cliState.time.normalize(phase.startTime).toDisplayString()
+        val endTime = cliState.time.normalize(phase.endTime).toDisplayString()
         val outFlows = phase.outFlows.sortedBy { it.identifier }
 
         println("${indent}Start time:          ${startTime.padStart(endTime.length, ' ')}")

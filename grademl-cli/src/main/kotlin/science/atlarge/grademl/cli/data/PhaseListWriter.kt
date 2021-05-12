@@ -43,9 +43,9 @@ object PhaseListWriter {
                     append('\t')
                     append(depth.toString())
                     append('\t')
-                    append(cliState.normalizeTimestamp(phase.startTime).toString())
+                    append(cliState.time.normalize(phase.startTime).toString())
                     append('\t')
-                    append(cliState.normalizeTimestamp(phase.endTime).toString())
+                    append(cliState.time.normalize(phase.endTime).toString())
                     append('\t')
                     appendLine(index.toString())
                 }

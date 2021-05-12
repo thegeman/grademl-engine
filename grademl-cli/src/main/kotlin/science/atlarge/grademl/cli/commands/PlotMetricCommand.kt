@@ -53,7 +53,7 @@ object PlotMetricCommand : Command(
         // Parse options
         val showPhases = parsedCommand.isOptionProvided("show-phases")
         val zoomTime = parsedCommand.getOptionValue("zoom-time")?.let { arg ->
-            parseZoomTimeArgument(arg, cliState::denormalizeTimestamp) ?: return
+            parseZoomTimeArgument(arg, cliState.time::denormalize) ?: return
         }
 
         // Parse the metric_path argument value(s) for a set of metrics to plot
@@ -251,8 +251,8 @@ object PlotMetricCommand : Command(
                 "data_directory" to dataOutputDirectory.toFile().asRPathString(),
                 "metric_id" to "\"${cliState.metricList.metricToIdentifier(metric)}\"",
                 "plot_per_phase" to if (showPhases) "TRUE" else "FALSE",
-                "start_time" to if (zoomTime != null) "${cliState.normalizeTimestamp(zoomTime.first)}" else "-Inf",
-                "end_time" to if (zoomTime != null) "${cliState.normalizeTimestamp(zoomTime.last)}" else "Inf"
+                "start_time" to if (zoomTime != null) "${cliState.time.normalize(zoomTime.first)}" else "-Inf",
+                "end_time" to if (zoomTime != null) "${cliState.time.normalize(zoomTime.last)}" else "Inf"
             )
         )
 
