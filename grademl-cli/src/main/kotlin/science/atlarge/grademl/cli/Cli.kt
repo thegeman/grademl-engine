@@ -1,7 +1,6 @@
 package science.atlarge.grademl.cli
 
 import org.jline.reader.EndOfFileException
-import org.jline.reader.LineReaderBuilder
 import org.jline.reader.impl.DefaultParser
 import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
@@ -10,7 +9,11 @@ import science.atlarge.grademl.cli.terminal.GradeMLLineReader
 import science.atlarge.grademl.cli.util.MetricList
 import science.atlarge.grademl.cli.util.PhaseList
 import science.atlarge.grademl.cli.util.PhaseTypeList
+import science.atlarge.grademl.core.GradeMLEngine
+import science.atlarge.grademl.core.GradeMLJob
+import science.atlarge.grademl.core.GradeMLJobStatusUpdate
 import science.atlarge.grademl.core.TimestampNs
+import science.atlarge.grademl.core.attribution.ResourceAttribution
 import science.atlarge.grademl.core.execution.ExecutionModel
 import science.atlarge.grademl.core.execution.ExecutionPhase
 import science.atlarge.grademl.core.resources.Metric
@@ -38,39 +41,45 @@ object Cli {
             exitProcess(1)
         }
 
-        println("Parsing job log files.")
-        val (executionModel, resourceModel) = parseJobLogs(args[0].split(File.pathSeparatorChar).map { Paths.get(it) })
-        println("Completed parsing of input files.")
-        println()
+        val inputPaths = args[0].split(File.pathSeparatorChar).map { Paths.get(it) }
+        val outputPath = Paths.get(args[1])
+
+        GradeMLEngine.registerInputSource(ResourceMonitor)
+        GradeMLEngine.registerInputSource(Spark)
+        GradeMLEngine.registerInputSource(Airflow)
+
+        val gradeMLJob = GradeMLEngine.analyzeJob(inputPaths, outputPath) { update ->
+            when (update) {
+                GradeMLJobStatusUpdate.LOG_PARSING_STARTING -> {
+                    println("Parsing job log files.")
+                }
+                GradeMLJobStatusUpdate.LOG_PARSING_COMPLETED -> {
+                    println("Completed parsing of input files.")
+                    println()
+                }
+                else -> {
+                }
+            }
+        }
+
+        if (
+            gradeMLJob.unifiedExecutionModel.phases.size == 1 &&
+            gradeMLJob.unifiedResourceModel.resources.any { it.metrics.isNotEmpty() }
+        ) {
+            println(
+                "Did not find any execution logs. Creating dummy execution model to allow analysis of the resource model."
+            )
+            val (startTime, endTime) = gradeMLJob.unifiedResourceModel.resources.flatMap { it.metrics }
+                .map { it.data.timestamps.first() to it.data.timestamps.last() }
+                .reduce { acc, pair -> minOf(acc.first, pair.first) to maxOf(acc.second, pair.second) }
+            gradeMLJob.unifiedExecutionModel.addPhase("dummy_phase", startTime, endTime)
+        }
 
         println("Explore the job's performance data interactively by issuing commands.")
         println("Enter \"help\" for a list of available commands.")
         println()
 
-        runCli(CliState(executionModel, resourceModel, Paths.get(args[1])))
-    }
-
-    private fun parseJobLogs(jobLogDirectories: List<Path>): Pair<ExecutionModel, ResourceModel> {
-        val executionModel = ExecutionModel()
-        val resourceModel = ResourceModel()
-
-        ResourceMonitor.parseJobData(jobLogDirectories, executionModel, resourceModel)
-        Spark.parseJobData(jobLogDirectories, executionModel, resourceModel)
-        Airflow.parseJobData(jobLogDirectories, executionModel, resourceModel)
-
-        if (executionModel.phases.size == 1 && resourceModel.resources.any { it.metrics.isNotEmpty() }) {
-            println(
-                "Did not find any execution logs. Creating dummy execution model to allow " +
-                        "analysis of the resource model."
-            )
-            executionModel.addPhase(
-                "dummy_phase",
-                startTime = resourceModel.resources.flatMap { it.metrics }.minOf { it.data.timestamps.first() },
-                endTime = resourceModel.resources.flatMap { it.metrics }.maxOf { it.data.timestamps.last() }
-            )
-        }
-
-        return executionModel to resourceModel
+        runCli(CliState(gradeMLJob, outputPath))
     }
 
     private fun runCli(cliState: CliState) {
@@ -130,10 +139,16 @@ object Cli {
 }
 
 class CliState(
-    val executionModel: ExecutionModel,
-    val resourceModel: ResourceModel,
+    private val gradeMLJob: GradeMLJob,
     val outputPath: Path
 ) {
+
+    val executionModel: ExecutionModel
+        get() = gradeMLJob.unifiedExecutionModel
+    val resourceModel: ResourceModel
+        get() = gradeMLJob.unifiedResourceModel
+    val resourceAttribution: ResourceAttribution
+        get() = gradeMLJob.resourceAttribution
 
     val phaseList = PhaseList.fromExecutionModel(executionModel)
     val phaseTypeList = PhaseTypeList.fromExecutionModel(executionModel)
