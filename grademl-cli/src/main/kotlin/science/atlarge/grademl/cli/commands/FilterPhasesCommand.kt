@@ -40,10 +40,10 @@ object FilterPhasesCommand : Command(
             tryMatchExecutionPhasePath(it, cliState, restrictToSelected = false) ?: return
         }.toSet()
 
-        val previousSelectionSize = cliState.selectedPhases.size
-        if (excludeOrInclude == "exclude") cliState.excludePhases(matchedPhases)
-        else cliState.includePhases(matchedPhases)
-        val newSelectionSize = cliState.selectedPhases.size
+        val previousSelectionSize = cliState.phaseFilter.includedPhases.size
+        if (excludeOrInclude == "exclude") cliState.phaseFilter.excludePhases(matchedPhases)
+        else cliState.phaseFilter.includePhases(matchedPhases)
+        val newSelectionSize = cliState.phaseFilter.includedPhases.size
 
         if (excludeOrInclude == "exclude") {
             println("Excluded ${previousSelectionSize - newSelectionSize} previously included phase(s).")

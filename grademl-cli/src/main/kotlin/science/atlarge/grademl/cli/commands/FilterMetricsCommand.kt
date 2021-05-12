@@ -44,10 +44,10 @@ object FilterMetricsCommand : Command(
             tryMatchMetricPath(it, cliState, restrictToSelected = false) ?: return
         }.toSet()
 
-        val previousSelectionSize = cliState.selectedMetrics.size
-        if (excludeOrInclude == "exclude") cliState.excludeMetrics(matchedMetrics)
-        else cliState.includeMetrics(matchedMetrics)
-        val newSelectionSize = cliState.selectedMetrics.size
+        val previousSelectionSize = cliState.metricFilter.includedMetrics.size
+        if (excludeOrInclude == "exclude") cliState.metricFilter.excludeMetrics(matchedMetrics)
+        else cliState.metricFilter.includeMetrics(matchedMetrics)
+        val newSelectionSize = cliState.metricFilter.includedMetrics.size
 
         if (excludeOrInclude == "exclude") {
             println("Excluded ${previousSelectionSize - newSelectionSize} previously included metric(s).")

@@ -19,10 +19,10 @@ object DisplayResourceModelCommand : Command(
     override fun process(parsedCommand: ParsedCommand, cliState: CliState) {
         printResourceModel(
             cliState.resourceModel,
-            cliState.selectedResources,
-            cliState.allResources,
-            cliState.selectedMetrics,
-            cliState.allMetrics,
+            cliState.resourceFilter.includedResources,
+            cliState.resourceFilter.allResources,
+            cliState.metricFilter.includedMetrics,
+            cliState.metricFilter.allMetrics,
             verbose = !parsedCommand.isOptionProvided("short")
         )
     }

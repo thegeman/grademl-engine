@@ -86,7 +86,7 @@ object DisplayExecutionModelCommand : Command(
 
     private fun printPhase(phase: ExecutionPhase, cliState: CliState, depth: Int, maxDepth: Int, verbose: Boolean) {
         // Skip this phase if has been excluded in the CLI
-        if (!phase.isRoot && phase !in cliState.selectedPhases) return
+        if (!phase.isRoot && phase !in cliState.phaseFilter.includedPhases) return
         // Print the phase's identifier (or path, for the root phase of this subtree)
         when {
             phase.isRoot -> println("<root>")
@@ -98,7 +98,7 @@ object DisplayExecutionModelCommand : Command(
         // Print recursively
         if (depth < maxDepth) {
             // Skip child phases that have been excluded in the CLI
-            val selectedChildren = phase.children.intersect(cliState.selectedPhases)
+            val selectedChildren = phase.children.intersect(cliState.phaseFilter.includedPhases)
             for (childPhase in selectedChildren.sortedBy { it.identifier }) {
                 printPhase(childPhase, cliState, depth + 1, maxDepth, verbose)
             }

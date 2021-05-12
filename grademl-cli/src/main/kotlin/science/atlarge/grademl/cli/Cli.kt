@@ -2,9 +2,7 @@ package science.atlarge.grademl.cli
 
 import org.jline.reader.EndOfFileException
 import science.atlarge.grademl.cli.terminal.GradeMLTerminal
-import science.atlarge.grademl.cli.util.MetricList
-import science.atlarge.grademl.cli.util.PhaseList
-import science.atlarge.grademl.cli.util.PhaseTypeList
+import science.atlarge.grademl.cli.util.*
 import science.atlarge.grademl.core.GradeMLEngine
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.core.GradeMLJobStatusUpdate
@@ -132,6 +130,10 @@ class CliState(
     val phaseTypeList = PhaseTypeList.fromExecutionModel(executionModel)
     val metricList = MetricList.fromResourceModel(resourceModel)
 
+    val phaseFilter = PhaseFilter(executionModel)
+    val resourceFilter = ResourceFilter(resourceModel)
+    val metricFilter = MetricFilter(resourceModel, resourceFilter)
+
     private val earliestTimestamp = executionModel.rootPhase.startTime
 
     fun normalizeTimestamp(plainTimestamp: TimestampNs): Long = plainTimestamp - earliestTimestamp
@@ -158,122 +160,5 @@ class CliState(
         }
 
     fun outputPathForMetric(metric: Metric): Path = outputPathForResource(metric.resource).resolve(metric.name)
-
-    // Exclusion list for phases
-    private val excludedPhases = mutableSetOf<ExecutionPhase>()
-
-    // Accessors for non-excluded phases (default) and all phases
-    val selectedPhases: Set<ExecutionPhase>
-        get() = allPhases - excludedPhases
-    val allPhases: Set<ExecutionPhase> = executionModel.phases - executionModel.rootPhase
-
-    fun excludePhases(exclusions: Set<ExecutionPhase>) {
-        require(exclusions.all { it in executionModel.phases }) {
-            "Cannot exclude phases that are not part of this job's execution model"
-        }
-        // Exclude all given phases and any children
-        val allExclusions = mutableSetOf<ExecutionPhase>()
-        val exclusionsToCheck = mutableListOf<ExecutionPhase>()
-        allExclusions.addAll(exclusions)
-        exclusionsToCheck.addAll(exclusions)
-        while (exclusionsToCheck.isNotEmpty()) {
-            val nextToCheck = exclusionsToCheck.removeLast()
-            val newExclusions = nextToCheck.children - allExclusions
-            allExclusions.addAll(newExclusions)
-            exclusionsToCheck.addAll(newExclusions)
-        }
-        excludedPhases.addAll(allExclusions.filter { !it.isRoot })
-    }
-
-    fun includePhases(inclusions: Set<ExecutionPhase>) {
-        require(inclusions.all { it in executionModel.phases }) {
-            "Cannot include phases that are not part of this job's execution model"
-        }
-        // Include all given phases and any parents
-        val allInclusions = mutableSetOf<ExecutionPhase>()
-        val inclusionsToCheck = mutableListOf<ExecutionPhase>()
-        allInclusions.addAll(inclusions)
-        inclusionsToCheck.addAll(inclusions)
-        while (inclusionsToCheck.isNotEmpty()) {
-            val nextToCheck = inclusionsToCheck.removeLast()
-            val parent = nextToCheck.parent ?: continue
-            if (parent !in allInclusions) {
-                allInclusions.add(parent)
-                inclusionsToCheck.add(parent)
-            }
-        }
-        excludedPhases.removeAll(allInclusions)
-    }
-
-    // Exclusion list for resources
-    private val excludedResources = mutableSetOf<Resource>()
-
-    // Accessors for non-excluded resources (default) and all resources
-    val selectedResources: Set<Resource>
-        get() = allResources - excludedResources
-    val allResources: Set<Resource> = resourceModel.resources - resourceModel.rootResource
-
-    fun excludeResources(exclusions: Set<Resource>) {
-        require(exclusions.all { it in resourceModel.resources }) {
-            "Cannot exclude resources that are not part of this job's resource model"
-        }
-        // Exclude all given resources and any children
-        val allExclusions = mutableSetOf<Resource>()
-        val exclusionsToCheck = mutableListOf<Resource>()
-        allExclusions.addAll(exclusions)
-        exclusionsToCheck.addAll(exclusions)
-        while (exclusionsToCheck.isNotEmpty()) {
-            val nextToCheck = exclusionsToCheck.removeLast()
-            val newExclusions = nextToCheck.children - allExclusions
-            allExclusions.addAll(newExclusions)
-            exclusionsToCheck.addAll(newExclusions)
-        }
-        excludedResources.addAll(allExclusions.filter { !it.isRoot })
-    }
-
-    fun includeResources(inclusions: Set<Resource>) {
-        require(inclusions.all { it in resourceModel.resources }) {
-            "Cannot include resources that are not part of this job's resource model"
-        }
-        // Include all given resources and any parents
-        val allInclusions = mutableSetOf<Resource>()
-        val inclusionsToCheck = mutableListOf<Resource>()
-        allInclusions.addAll(inclusions)
-        inclusionsToCheck.addAll(inclusions)
-        while (inclusionsToCheck.isNotEmpty()) {
-            val nextToCheck = inclusionsToCheck.removeLast()
-            val parent = nextToCheck.parent ?: continue
-            if (parent !in allInclusions) {
-                allInclusions.add(parent)
-                inclusionsToCheck.add(parent)
-            }
-        }
-        excludedResources.removeAll(allInclusions)
-    }
-
-    // Exclusion list for metrics
-    private val excludedMetrics = mutableSetOf<Metric>()
-
-    // Accessors for non-excluded metrics (default) and all metrics
-    val selectedMetrics: Set<Metric>
-        get() = allMetrics.filter { it !in excludedMetrics && it.resource !in excludedResources }.toSet()
-    val allMetrics: Set<Metric> = resourceModel.resources.flatMap { it.metrics }.toSet()
-
-    fun excludeMetrics(exclusions: Set<Metric>) {
-        require(exclusions.all { it in allMetrics }) {
-            "Cannot exclude metrics that are not part of this job's resource model"
-        }
-        // Exclude all given metrics
-        excludedMetrics.addAll(exclusions)
-    }
-
-    fun includeMetrics(inclusions: Set<Metric>) {
-        require(inclusions.all { it in allMetrics }) {
-            "Cannot include metrics that are not part of this job's resource model"
-        }
-        // Include all given metrics and corresponding resources
-        excludedMetrics.removeAll(inclusions)
-        includeResources(inclusions.map { it.resource }.toSet())
-    }
 
 }

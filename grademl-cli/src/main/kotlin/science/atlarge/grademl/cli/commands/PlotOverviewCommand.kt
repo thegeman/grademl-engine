@@ -67,7 +67,7 @@ object PlotOverviewCommand : Command(
         println("Writing list of selected metrics to \"${metricListFile.absolutePath}\".")
         MetricListWriter.output(
             metricListFile,
-            cliState.selectedMetrics,
+            cliState.metricFilter.includedMetrics,
             cliState
         )
 
@@ -76,7 +76,7 @@ object PlotOverviewCommand : Command(
         println("Writing metric data to \"${metricDataFile.absolutePath}\".")
         MetricDataWriter.output(
             metricDataFile,
-            cliState.selectedMetrics,
+            cliState.metricFilter.includedMetrics,
             cliState,
             filterTime = selectedPhases.minOf { it.startTime }..selectedPhases.maxOf { it.endTime }
         )

@@ -40,10 +40,10 @@ object FilterResourcesCommand : Command(
             tryMatchResourcePath(it, cliState, restrictToSelected = false) ?: return
         }.toSet()
 
-        val previousSelectionSize = cliState.selectedResources.size
-        if (excludeOrInclude == "exclude") cliState.excludeResources(matchedResources)
-        else cliState.includeResources(matchedResources)
-        val newSelectionSize = cliState.selectedResources.size
+        val previousSelectionSize = cliState.resourceFilter.includedResources.size
+        if (excludeOrInclude == "exclude") cliState.resourceFilter.excludeResources(matchedResources)
+        else cliState.resourceFilter.includeResources(matchedResources)
+        val newSelectionSize = cliState.resourceFilter.includedResources.size
 
         if (excludeOrInclude == "exclude") {
             println("Excluded ${previousSelectionSize - newSelectionSize} previously included resource(s).")

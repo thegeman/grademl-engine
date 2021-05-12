@@ -36,9 +36,7 @@ fun tryMatchExecutionPhasePath(
     return when (val matchResult = cliState.executionModel.resolvePath(path)) {
         is PathMatches -> {
             if (restrictToSelected) {
-                val filteredMatches = matchResult.matches
-                    .filter { it.isRoot || it in cliState.selectedPhases }
-                    .toSet()
+                val filteredMatches = matchResult.matches.intersect(cliState.phaseFilter.includedPhases)
                 filteredMatches.ifEmpty {
                     println("Failed to match phase(s) for path \"$path\":")
                     println("  All matching phases are excluded from selection.")
@@ -60,9 +58,7 @@ fun tryMatchResourcePath(path: ResourcePath, cliState: CliState, restrictToSelec
     return when (val matchResult = cliState.resourceModel.resolvePath(path)) {
         is PathMatches -> {
             if (restrictToSelected) {
-                val filteredMatches = matchResult.matches
-                    .filter { it.isRoot || it in cliState.selectedResources }
-                    .toSet()
+                val filteredMatches = matchResult.matches.intersect(cliState.resourceFilter.includedResources)
                 filteredMatches.ifEmpty {
                     println("Failed to match resource(s) for path \"$path\":")
                     println("  All matching resources are excluded from selection.")
@@ -84,7 +80,7 @@ fun tryMatchMetricPath(path: MetricPath, cliState: CliState, restrictToSelected:
     return when (val matchResult = cliState.resourceModel.resolvePath(path)) {
         is PathMatches -> {
             if (restrictToSelected) {
-                val filteredMatches = matchResult.matches.toSet().intersect(cliState.selectedMetrics)
+                val filteredMatches = matchResult.matches.intersect(cliState.metricFilter.includedMetrics)
                 filteredMatches.ifEmpty {
                     println("Failed to match metric(s) for path \"$path\":")
                     println("  All matching metrics are excluded from selection.")
