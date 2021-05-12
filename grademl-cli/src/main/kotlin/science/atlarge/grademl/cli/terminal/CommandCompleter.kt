@@ -4,13 +4,15 @@ import org.jline.reader.Candidate
 import org.jline.reader.Completer
 import org.jline.reader.LineReader
 import org.jline.reader.ParsedLine
-import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.CommandRegistry
 import science.atlarge.grademl.core.Path
 import science.atlarge.grademl.core.PathMatches
+import science.atlarge.grademl.core.execution.ExecutionModel
+import science.atlarge.grademl.core.resources.ResourceModel
 
 class CommandCompleter(
-    private val cliState: CliState
+    var executionModel: ExecutionModel = ExecutionModel(),
+    var resourceModel: ResourceModel = ResourceModel()
 ) : Completer {
 
     override fun complete(reader: LineReader, line: ParsedLine, candidates: MutableList<Candidate>) {
@@ -110,7 +112,7 @@ class CommandCompleter(
     private fun addExecutionPathCandidates(pathExpression: String, candidates: MutableList<Candidate>) {
         // If the current expression is empty, suggest children of the root phase
         if (pathExpression.isEmpty()) {
-            for (phase in cliState.executionModel.rootPhase.children) {
+            for (phase in executionModel.rootPhase.children) {
                 candidates.add(
                     Candidate(
                         "${Path.SEPARATOR}${phase.name}",
@@ -130,7 +132,7 @@ class CommandCompleter(
         val pathWithoutLastComponent = Path(path.pathComponents.dropLast(1), path.isRelative)
         val lastComponent = path.pathComponents.lastOrNull() ?: ""
         // Resolve "locked in" part of the path
-        val phaseMatchResult = cliState.executionModel.resolvePath(pathWithoutLastComponent)
+        val phaseMatchResult = executionModel.resolvePath(pathWithoutLastComponent)
         if (phaseMatchResult !is PathMatches) return
         val matchedPhases = phaseMatchResult.matches
         // Check if the next path component start with a (double) dot
@@ -180,7 +182,7 @@ class CommandCompleter(
     ) {
         // If the current expression is empty, suggest children of the root resource
         if (pathExpression.isEmpty()) {
-            val rootResources = cliState.resourceModel.rootResource.children
+            val rootResources = resourceModel.rootResource.children
             val filteredResources = if (filterResourcesWithMetrics) {
                 rootResources.filter { it.metricsInTree.isNotEmpty() }
             } else {
@@ -214,7 +216,7 @@ class CommandCompleter(
             path.pathComponents.last()
         }
         // Resolve "locked in" part of the path
-        val resourceMatchResult = cliState.resourceModel.resolvePath(pathWithoutLastComponent)
+        val resourceMatchResult = resourceModel.resolvePath(pathWithoutLastComponent)
         if (resourceMatchResult !is PathMatches) return
         val matchedResources = resourceMatchResult.matches
         // Check if the next path component start with a (double) dot
@@ -273,7 +275,7 @@ class CommandCompleter(
         if (':' in pathExpression) {
             val resourcePathStr = pathExpression.split(':').first()
             val resourcePath = Path.parse(resourcePathStr)
-            val resourcePathMatches = cliState.resourceModel.resolvePath(resourcePath) as? PathMatches ?: return
+            val resourcePathMatches = resourceModel.resolvePath(resourcePath) as? PathMatches ?: return
             val validMetrics = resourcePathMatches.matches.flatMap { it.metrics }.map { it.name }.toSet()
             for (validMetric in validMetrics) {
                 candidates.add(
@@ -292,7 +294,7 @@ class CommandCompleter(
         }
         // If current path maps to one or more resources, suggest metrics
         if (!pathExpression.endsWith(Path.SEPARATOR)) {
-            val pathMatches = cliState.resourceModel.resolvePath(Path.parse(pathExpression)) as? PathMatches
+            val pathMatches = resourceModel.resolvePath(Path.parse(pathExpression)) as? PathMatches
             if (pathMatches != null && pathMatches.matches.any { it.metrics.isNotEmpty() }) {
                 for (metric in pathMatches.matches.flatMap { it.metrics }.map { it.name }.toSet()) {
                     candidates.add(
