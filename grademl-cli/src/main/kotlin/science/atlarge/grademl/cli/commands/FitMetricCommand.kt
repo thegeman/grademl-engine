@@ -51,7 +51,7 @@ object FitMetricCommand : Command(
 
     private fun fitMetric(metric: Metric, cliState: CliState) {
         // Create output paths for data and scripts
-        val metricOutputDirectory = cliState.outputPathForMetric(metric)
+        val metricOutputDirectory = cliState.output.pathForMetric(metric)
         val dataOutputDirectory = metricOutputDirectory.resolve(".data").also { it.toFile().mkdirs() }
         val rScriptDirectory = metricOutputDirectory.resolve(".R").also { it.toFile().mkdirs() }
 
@@ -61,7 +61,7 @@ object FitMetricCommand : Command(
         MetricListWriter.output(
             metricListFile,
             listOf(metric),
-            cliState
+            cliState.metricList
         )
 
         // Output selected phases in the execution model
@@ -72,7 +72,8 @@ object FitMetricCommand : Command(
             phaseListFile,
             cliState.executionModel.rootPhase,
             selectedPhases,
-            cliState
+            cliState.phaseList,
+            cliState.time
         )
 
         // Write metric data as time series to a file

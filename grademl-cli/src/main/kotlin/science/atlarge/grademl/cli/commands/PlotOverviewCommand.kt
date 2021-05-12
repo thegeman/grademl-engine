@@ -47,7 +47,7 @@ object PlotOverviewCommand : Command(
 
     private fun plotOverviewForPhase(phase: ExecutionPhase, cliState: CliState) {
         // Create output paths for data and scripts
-        val phaseOutputDirectory = cliState.outputPathForPhase(phase)
+        val phaseOutputDirectory = cliState.output.pathForPhase(phase)
         val dataOutputDirectory = phaseOutputDirectory.resolve(".data").also { it.toFile().mkdirs() }
         val rScriptDirectory = phaseOutputDirectory.resolve(".R").also { it.toFile().mkdirs() }
 
@@ -59,7 +59,8 @@ object PlotOverviewCommand : Command(
             phaseListFile,
             phase,
             selectedPhases,
-            cliState
+            cliState.phaseList,
+            cliState.time
         )
 
         // Output selected metrics in the resource model
@@ -68,7 +69,7 @@ object PlotOverviewCommand : Command(
         MetricListWriter.output(
             metricListFile,
             cliState.metricFilter.includedMetrics,
-            cliState
+            cliState.metricList
         )
 
         // Write all metric data as time series to a file

@@ -77,7 +77,7 @@ class BestFitAttributionRuleProvider(
             return BestFitAttributionRuleProvider(
                 executionModel.rootPhase.descendants.filter { it.children.isEmpty() },
                 resourceModel.rootResource.metricsInTree,
-                outputPath.resolve("scratch")
+                outputPath.resolve(".scratch")
             )
         }
 

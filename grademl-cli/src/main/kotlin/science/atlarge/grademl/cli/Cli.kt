@@ -135,27 +135,7 @@ class CliState(
     val metricFilter = MetricFilter(resourceModel, resourceFilter)
 
     val time = JobTime(executionModel)
-
-    private val rootPhaseOutputPath = outputPath.resolve("root_phase")
-    fun outputPathForPhase(phase: ExecutionPhase): Path =
-        if (phase.isRoot) {
-            rootPhaseOutputPath
-        } else {
-            phase.path.pathComponents.fold(rootPhaseOutputPath) { acc, pathComponent ->
-                acc.resolve(pathComponent)
-            }
-        }
-
-    private val rootResourceOutputPath = outputPath.resolve("root_resource")
-    fun outputPathForResource(resource: Resource): Path =
-        if (resource.isRoot) {
-            rootResourceOutputPath
-        } else {
-            resource.path.pathComponents.fold(rootResourceOutputPath) { acc, pathComponent ->
-                acc.resolve(pathComponent)
-            }
-        }
-
-    fun outputPathForMetric(metric: Metric): Path = outputPathForResource(metric.resource).resolve(metric.name)
+    val output = OutputPaths(outputPath, phaseList, metricList)
+        .also { it.writeIndex(executionModel, resourceModel, time) }
 
 }

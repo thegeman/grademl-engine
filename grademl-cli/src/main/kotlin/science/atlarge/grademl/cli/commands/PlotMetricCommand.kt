@@ -143,7 +143,7 @@ object PlotMetricCommand : Command(
         cliState: CliState
     ) {
         // Create output paths for data and scripts
-        val metricOutputDirectory = cliState.outputPathForMetric(metric)
+        val metricOutputDirectory = cliState.output.pathForMetric(metric)
         val dataOutputDirectory = metricOutputDirectory.resolve(".data").also { it.toFile().mkdirs() }
         val rScriptDirectory = metricOutputDirectory.resolve(".R").also { it.toFile().mkdirs() }
 
@@ -160,7 +160,13 @@ object PlotMetricCommand : Command(
         val phaseListFile = dataOutputDirectory.resolve(PhaseListWriter.FILENAME).toFile()
         if (showPhases) {
             println("Writing list of leaf phases to \"${phaseListFile.absolutePath}\".")
-            PhaseListWriter.output(phaseListFile, cliState.executionModel.rootPhase, selectedPhases, cliState)
+            PhaseListWriter.output(
+                phaseListFile,
+                cliState.executionModel.rootPhase,
+                selectedPhases,
+                cliState.phaseList,
+                cliState.time
+            )
         }
 
         // Output list of leaf phase types, if needed
@@ -174,7 +180,7 @@ object PlotMetricCommand : Command(
         // Output list of metrics
         val metricListFile = dataOutputDirectory.resolve(MetricListWriter.FILENAME).toFile()
         println("Writing list of metrics to \"${metricListFile.absolutePath}\".")
-        MetricListWriter.output(metricListFile, listOf(metric), cliState)
+        MetricListWriter.output(metricListFile, listOf(metric), cliState.metricList)
 
         // Write raw metric data
         val metricDataFile = dataOutputDirectory.resolve(MetricDataWriter.FILENAME).toFile()
