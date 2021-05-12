@@ -28,7 +28,6 @@ object CommandRegistry {
             FilterPhasesCommand,
             FilterResourcesCommand,
             FilterMetricsCommand,
-            FitMetricCommand,
             HelpCommand,
             PlotMetricCommand,
             PlotOverviewCommand
