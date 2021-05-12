@@ -23,7 +23,7 @@ class MetricData(
         var startIdx = timestamps.binarySearch(startTime)
         if (startIdx < 0) startIdx = maxOf(startIdx.inv() - 1, 0)
         var endIdx = timestamps.binarySearch(endTime)
-        if (endIdx < 0) endIdx = minOf(endIdx.inv() - 1, timestamps.lastIndex)
+        if (endIdx < 0) endIdx = minOf(endIdx.inv(), timestamps.lastIndex)
 
         val selectedTimestamps = timestamps.copyOfRange(startIdx, endIdx + 1)
         val selectedValues = values.copyOfRange(startIdx, endIdx)
