@@ -1,6 +1,7 @@
 package science.atlarge.grademl.input.airflow
 
 import science.atlarge.grademl.core.input.InputSource
+import science.atlarge.grademl.core.models.Environment
 import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.models.execution.ExecutionPhase
 import science.atlarge.grademl.core.models.resource.ResourceModel
@@ -14,7 +15,8 @@ object Airflow : InputSource {
     override fun parseJobData(
         jobDataDirectories: Iterable<Path>,
         unifiedExecutionModel: ExecutionModel,
-        unifiedResourceModel: ResourceModel
+        unifiedResourceModel: ResourceModel,
+        jobEnvironment: Environment
     ): Boolean {
         // Find Airflow log directories
         val airflowLogDirectories = jobDataDirectories
@@ -87,7 +89,12 @@ fun main(args: Array<String>) {
     }
 
     val executionModel = ExecutionModel()
-    val foundAirflowLogs = Airflow.parseJobData(args.map { Paths.get(it) }, executionModel, ResourceModel())
+    val foundAirflowLogs = Airflow.parseJobData(
+        args.map { Paths.get(it) },
+        executionModel,
+        ResourceModel(),
+        Environment()
+    )
     require(foundAirflowLogs) {
         "Cannot find Airflow logs in any of the given jobLogDirectories"
     }

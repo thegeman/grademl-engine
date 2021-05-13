@@ -1,6 +1,7 @@
 package science.atlarge.grademl.input.spark
 
 import science.atlarge.grademl.core.input.InputSource
+import science.atlarge.grademl.core.models.Environment
 import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.models.execution.ExecutionPhase
 import science.atlarge.grademl.core.models.resource.ResourceModel
@@ -13,7 +14,8 @@ object Spark : InputSource {
     override fun parseJobData(
         jobDataDirectories: Iterable<Path>,
         unifiedExecutionModel: ExecutionModel,
-        unifiedResourceModel: ResourceModel
+        unifiedResourceModel: ResourceModel,
+        jobEnvironment: Environment
     ): Boolean {
         // Find Spark log directories
         val sparkLogDirectories = jobDataDirectories
@@ -105,7 +107,7 @@ fun main(args: Array<String>) {
     }
 
     val executionModel = ExecutionModel()
-    val foundSparkLogs = Spark.parseJobData(args.map { Paths.get(it) }, executionModel, ResourceModel())
+    val foundSparkLogs = Spark.parseJobData(args.map { Paths.get(it) }, executionModel, ResourceModel(), Environment())
     require(foundSparkLogs) {
         "Cannot find Spark logs in any of the given jobLogDirectories"
     }

@@ -3,6 +3,7 @@ package science.atlarge.grademl.core
 import science.atlarge.grademl.core.attribution.ResourceAttribution
 import science.atlarge.grademl.core.attribution.ResourceAttributionRuleProvider
 import science.atlarge.grademl.core.input.InputSource
+import science.atlarge.grademl.core.models.Environment
 import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.models.resource.ResourceModel
 import java.nio.file.Path
@@ -17,6 +18,7 @@ class GradeMLJobProcessor private constructor(
 
     private val executionModel = ExecutionModel()
     private val resourceModel = ResourceModel()
+    private val jobEnvironment = Environment()
     private lateinit var resourceAttribution: ResourceAttribution
 
     fun run(): GradeMLJob {
@@ -25,7 +27,7 @@ class GradeMLJobProcessor private constructor(
         // Parse logs
         progressReport(GradeMLJobStatusUpdate.LOG_PARSING_STARTING)
         for (inputSource in inputSources) {
-            inputSource.parseJobData(inputDirectories, executionModel, resourceModel)
+            inputSource.parseJobData(inputDirectories, executionModel, resourceModel, jobEnvironment)
         }
         progressReport(GradeMLJobStatusUpdate.LOG_PARSING_COMPLETED)
 

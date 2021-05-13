@@ -1,6 +1,7 @@
 package science.atlarge.grademl.input.resource_monitor
 
 import science.atlarge.grademl.core.input.InputSource
+import science.atlarge.grademl.core.models.Environment
 import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.models.resource.Metric
 import science.atlarge.grademl.core.models.resource.MetricData
@@ -18,7 +19,8 @@ object ResourceMonitor : InputSource {
     override fun parseJobData(
         jobDataDirectories: Iterable<Path>,
         unifiedExecutionModel: ExecutionModel,
-        unifiedResourceModel: ResourceModel
+        unifiedResourceModel: ResourceModel,
+        jobEnvironment: Environment
     ): Boolean {
         // Find Resource Monitor metric directories
         val resourceMonitorMetricDirectories = jobDataDirectories
@@ -217,7 +219,8 @@ fun main(args: Array<String>) {
     val foundResourceMonitorMetrics = ResourceMonitor.parseJobData(
         args.map { Paths.get(it) },
         ExecutionModel(),
-        resourceModel
+        resourceModel,
+        Environment()
     )
     require(foundResourceMonitorMetrics) {
         "Cannot find Resource Monitor logs in any of the given jobLogDirectories"
