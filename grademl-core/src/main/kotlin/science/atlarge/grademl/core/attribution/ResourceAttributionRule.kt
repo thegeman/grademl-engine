@@ -10,7 +10,7 @@ sealed class ResourceAttributionRule {
 }
 
 interface ResourceAttributionRuleProvider {
-    fun forPhaseAndMetric(phase: ExecutionPhase, metric: Metric): ResourceAttributionRule
+    fun forPhaseAndMetric(phase: ExecutionPhase, metric: Metric): ResourceAttributionRule?
 }
 
 object DefaultResourceAttributionRuleProvider : ResourceAttributionRuleProvider {

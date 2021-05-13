@@ -21,17 +21,17 @@ class BestFitAttributionRuleProvider(
 
     private val cachedRules = mutableMapOf<Metric, Map<ExecutionPhase, ResourceAttributionRule>>()
 
-    override fun forPhaseAndMetric(phase: ExecutionPhase, metric: Metric): ResourceAttributionRule {
+    override fun forPhaseAndMetric(phase: ExecutionPhase, metric: Metric): ResourceAttributionRule? {
         // Sanity check the arguments
         if (phase !in phases || metric !in metrics) return ResourceAttributionRule.None
         // Return from cache if available
         val cachedMetric = cachedRules[metric]
         if (cachedMetric != null) {
-            return cachedMetric[phase] ?: ResourceAttributionRule.None
+            return cachedMetric[phase]
         }
         // Otherwise, fit attribution rules to observed resource usage and phase activity
         computeFitForMetric(metric)
-        return cachedRules[metric]!![phase] ?: ResourceAttributionRule.None
+        return cachedRules[metric]!![phase]
     }
 
     private fun computeFitForMetric(metric: Metric) {

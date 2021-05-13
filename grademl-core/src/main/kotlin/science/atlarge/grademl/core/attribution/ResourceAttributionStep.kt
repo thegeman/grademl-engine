@@ -35,7 +35,7 @@ class ResourceAttributionStep(
             return MetricData(longArrayOf(phase.startTime), doubleArrayOf(), metric.data.maxValue)
         }
         // Get attribution rule for phase to determine how to attribute resource usage to the phase
-        val attributionRule = attributionRuleProvider.forPhaseAndMetric(phase, metric)
+        val attributionRule = attributionRuleProvider.forPhaseAndMetric(phase, metric) ?: ResourceAttributionRule.None
         // Return a flat attributed value of zero if the phase does not use the given resource
         if (attributionRule is ResourceAttributionRule.None) {
             return MetricData(
