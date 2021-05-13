@@ -19,6 +19,8 @@ class Environment {
             if (idx < 0) idx.inv() else idx
         }
         _machines.add(positionToInsert, machine)
+        machinesById[machine.canonicalId] = machine
+        for (altId in machine.alternativeIds) machinesById[altId] = machine
     }
 
 }
