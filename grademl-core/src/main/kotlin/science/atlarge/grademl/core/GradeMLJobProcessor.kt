@@ -37,7 +37,7 @@ class GradeMLJobProcessor private constructor(
         )
 
         progressReport(GradeMLJobStatusUpdate.JOB_ANALYSIS_COMPLETED)
-        return GradeMLJob(executionModel, resourceModel, resourceAttribution)
+        return GradeMLJob(executionModel, resourceModel, jobEnvironment, resourceAttribution)
     }
 
     companion object {
