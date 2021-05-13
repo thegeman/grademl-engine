@@ -12,7 +12,7 @@ class GradeMLJobProcessor private constructor(
     private val inputDirectories: Iterable<Path>,
     private val outputDirectory: Path,
     private val inputSources: Iterable<InputSource>,
-    private val attributionRuleProvider: (ExecutionModel, ResourceModel) -> ResourceAttributionRuleProvider,
+    private val attributionRuleProvider: (ExecutionModel, ResourceModel, Environment) -> ResourceAttributionRuleProvider,
     private val progressReport: (GradeMLJobStatusUpdate) -> Unit
 ) {
 
@@ -33,7 +33,7 @@ class GradeMLJobProcessor private constructor(
 
         // Configure resource attribution
         resourceAttribution = ResourceAttribution(
-            executionModel, resourceModel, attributionRuleProvider(executionModel, resourceModel)
+            executionModel, resourceModel, attributionRuleProvider(executionModel, resourceModel, jobEnvironment)
         )
 
         progressReport(GradeMLJobStatusUpdate.JOB_ANALYSIS_COMPLETED)
@@ -45,7 +45,7 @@ class GradeMLJobProcessor private constructor(
             inputDirectories: Iterable<Path>,
             outputDirectory: Path,
             inputSources: Iterable<InputSource>,
-            attributionRuleProvider: (ExecutionModel, ResourceModel) -> ResourceAttributionRuleProvider,
+            attributionRuleProvider: (ExecutionModel, ResourceModel, Environment) -> ResourceAttributionRuleProvider,
             progressReport: (GradeMLJobStatusUpdate) -> Unit = { }
         ): GradeMLJob {
             return GradeMLJobProcessor(
