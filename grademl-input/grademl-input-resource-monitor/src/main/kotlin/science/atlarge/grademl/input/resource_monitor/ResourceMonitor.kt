@@ -1,6 +1,7 @@
 package science.atlarge.grademl.input.resource_monitor
 
 import science.atlarge.grademl.core.input.InputSource
+import science.atlarge.grademl.core.models.CommonMetadata
 import science.atlarge.grademl.core.models.Environment
 import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.models.resource.Metric
@@ -38,6 +39,7 @@ object ResourceMonitor : InputSource {
             unifiedResourceModel.addResource(
                 name = "machine",
                 tags = mapOf("hostname" to hostname),
+                metadata = mapOf(CommonMetadata.MACHINE_ID to hostname),
                 parent = clusterResource
             )
         }

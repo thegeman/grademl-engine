@@ -1,6 +1,7 @@
 package science.atlarge.grademl.input.spark
 
 import science.atlarge.grademl.core.input.InputSource
+import science.atlarge.grademl.core.models.CommonMetadata
 import science.atlarge.grademl.core.models.Environment
 import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.models.execution.ExecutionPhase
@@ -70,6 +71,9 @@ object Spark : InputSource {
                             "attempt" to taskAttemptId.attempt.toString()
                         ),
                         typeTags = emptySet(),
+                        metadata = mapOf(
+                            CommonMetadata.MACHINE_ID to taskAttempt.host
+                        ),
                         startTime = taskAttempt.startTime,
                         endTime = taskAttempt.endTime,
                         parent = stagePhase

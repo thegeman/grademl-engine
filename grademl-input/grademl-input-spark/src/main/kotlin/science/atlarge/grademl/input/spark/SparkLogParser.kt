@@ -244,8 +244,9 @@ class SparkLogParser private constructor(
 
             val startTime = (startEvent["Launch Time"] as JsonPrimitive).content.toLong() * 1_000_000
             val endTime = (endEvent["Finish Time"] as JsonPrimitive).content.toLong() * 1_000_000
+            val host = (startEvent["Host"] as JsonPrimitive).content
 
-            SparkTaskInfo(taskId, startTime, endTime)
+            SparkTaskInfo(taskId, startTime, endTime, host)
         } to stageToTaskMap
     }
 
@@ -328,5 +329,6 @@ class SparkStageInfo(
 class SparkTaskInfo(
     val attemptId: SparkTaskAttemptId,
     val startTime: TimestampNs,
-    val endTime: TimestampNs
+    val endTime: TimestampNs,
+    val host: String
 )
