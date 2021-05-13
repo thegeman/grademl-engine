@@ -33,7 +33,7 @@ class ResourceAttribution(
         { metric -> upsamplingStep.upsampleMetric(metric)!! }
     )
 
-    fun attributeMetricToPhase(metric: Metric, phase: ExecutionPhase): MetricData? {
+    fun attributeMetricToPhase(metric: Metric, phase: ExecutionPhase): ResourceAttributionResult {
         return attributionStep.attributeMetricToPhase(metric, phase)
     }
 
@@ -46,3 +46,9 @@ class ResourceAttribution(
     }
 
 }
+
+sealed class ResourceAttributionResult
+
+class AttributedResourceData(val metricData: MetricData) : ResourceAttributionResult()
+
+object NoAttributedData : ResourceAttributionResult()

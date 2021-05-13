@@ -7,8 +7,8 @@ import science.atlarge.grademl.cli.util.parseMetricPathExpression
 import science.atlarge.grademl.cli.util.tryMatchMetricPath
 import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.TimestampNsRange
-import science.atlarge.grademl.core.attribution.BestFitAttributionRuleProvider
-import science.atlarge.grademl.core.attribution.ResourceAttribution
+import science.atlarge.grademl.core.attribution.AttributedResourceData
+import science.atlarge.grademl.core.attribution.NoAttributedData
 import science.atlarge.grademl.core.models.resource.Metric
 import science.atlarge.grademl.core.models.resource.sum
 import science.atlarge.grademl.core.util.asRPathString
@@ -141,11 +141,15 @@ object PlotMetricCommand : Command(
 
         // Compute attributed resource usage for each leaf phase
         println("Computing resource attribution for metric \"${metric.path}\".")
-        val phaseAttribution = cliState.resourceAttribution.leafPhases.associateWith {
-            val attributionResult = cliState.resourceAttribution.attributeMetricToPhase(metric, it)!!
-            if (zoomTime != null) attributionResult.slice(zoomTime.first, zoomTime.last)
-            else attributionResult
-        }
+        val phaseAttribution = cliState.resourceAttribution.leafPhases.mapNotNull { phase ->
+            val attributionResult = cliState.resourceAttribution.attributeMetricToPhase(metric, phase)
+            when {
+                attributionResult is NoAttributedData -> null
+                zoomTime != null -> phase to (attributionResult as AttributedResourceData).metricData
+                    .slice(zoomTime.first, zoomTime.last)
+                else -> phase to (attributionResult as AttributedResourceData).metricData
+            }
+        }.toMap()
 
         // Output list of leaf phases, if needed
         val selectedPhases = cliState.resourceAttribution.leafPhases

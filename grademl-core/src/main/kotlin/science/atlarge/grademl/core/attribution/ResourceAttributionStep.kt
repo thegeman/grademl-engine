@@ -15,33 +15,31 @@ class ResourceAttributionStep(
     private val upsampledMetricData: (Metric) -> MetricData
 ) {
 
-    private val cachedAttributedUsage = mutableMapOf<ExecutionPhase, MutableMap<Metric, MetricData>>()
+    private val cachedAttributedUsage = mutableMapOf<ExecutionPhase, MutableMap<Metric, ResourceAttributionResult>>()
 
-    fun attributeMetricToPhase(metric: Metric, phase: ExecutionPhase): MetricData? {
+    fun attributeMetricToPhase(metric: Metric, phase: ExecutionPhase): ResourceAttributionResult {
         // Return cached outcome if it exists
         cachedAttributedUsage[phase]?.get(metric)?.let { return it }
         // Otherwise, check arguments for validity
-        if (metric !in metrics) return null
-        if (phase !in phases) return null
+        if (metric !in metrics) return NoAttributedData
+        if (phase !in phases) return NoAttributedData
         // Perform attribution step
         val newAttributedUsage = computeAttributedUsage(metric, phase)
         cachedAttributedUsage.getOrPut(phase) { mutableMapOf() }[metric] = newAttributedUsage
         return newAttributedUsage
     }
 
-    private fun computeAttributedUsage(metric: Metric, phase: ExecutionPhase): MetricData {
-        // Return an empty metric if the phase has no duration
-        if (phase.duration == 0L) {
-            return MetricData(longArrayOf(phase.startTime), doubleArrayOf(), metric.data.maxValue)
-        }
+    private fun computeAttributedUsage(metric: Metric, phase: ExecutionPhase): ResourceAttributionResult {
         // Get attribution rule for phase to determine how to attribute resource usage to the phase
         val attributionRule = attributionRuleProvider.forPhaseAndMetric(phase, metric) ?: ResourceAttributionRule.None
         // Return a flat attributed value of zero if the phase does not use the given resource
         if (attributionRule is ResourceAttributionRule.None) {
-            return MetricData(
-                longArrayOf(phase.startTime, phase.endTime),
-                doubleArrayOf(0.0),
-                metric.data.maxValue
+            return NoAttributedData
+        }
+        // Return an empty metric if the phase has no duration
+        if (phase.duration == 0L) {
+            return AttributedResourceData(
+                MetricData(longArrayOf(phase.startTime), doubleArrayOf(), metric.data.maxValue)
             )
         }
         // Determine the phase's demand for the resource
@@ -55,10 +53,12 @@ class ResourceAttributionStep(
         val upsampledMetric = upsampledMetricData(metric)
         val estimatedDemand = resourceDemandEstimates(metric)
         // Perform the resource attribution step
-        return ResourceAttributionComputation(
-            upsampledMetric, estimatedDemand.exactDemandOverTime, estimatedDemand.variableDemandOverTime,
-            phaseDemand, isExactDemand, phase.startTime, phase.endTime
-        ).getAttributedUsage()
+        return AttributedResourceData(
+            ResourceAttributionComputation(
+                upsampledMetric, estimatedDemand.exactDemandOverTime, estimatedDemand.variableDemandOverTime,
+                phaseDemand, isExactDemand, phase.startTime, phase.endTime
+            ).getAttributedUsage()
+        )
     }
 
 }
