@@ -20,11 +20,12 @@ class ResourceModel {
     fun addResource(
         name: String,
         tags: Map<String, String> = emptyMap(),
+        metadata: Map<String, String> = emptyMap(),
         description: String? = null,
         parent: Resource = rootResource
     ): Resource {
         require(parent in _resources) { "Cannot add resource with parent that is not part of this ResourceModel" }
-        val resource = SubResource(name, tags, description, this)
+        val resource = SubResource(name, tags, metadata, description, this)
         _resources.add(resource)
         resourceParents[resource] = parent
         resourceChildren.getOrPut(parent) { mutableSetOf() }.add(resource)
@@ -72,6 +73,7 @@ class ResourceModel {
 sealed class Resource(
     val name: String,
     val tags: Map<String, String>,
+    val metadata: Map<String, String>,
     val description: String?,
     private val model: ResourceModel
 ) {
@@ -128,7 +130,7 @@ sealed class Resource(
 
 private class RootResource(
     model: ResourceModel
-) : Resource("", emptyMap(), null, model) {
+) : Resource("", emptyMap(), emptyMap(), null, model) {
 
     override fun addMetric(name: String, data: MetricData): Metric {
         throw IllegalArgumentException("Cannot add metrics to the root resource")
@@ -139,9 +141,10 @@ private class RootResource(
 private class SubResource(
     name: String,
     tags: Map<String, String>,
+    metadata: Map<String, String>,
     description: String?,
     model: ResourceModel
-) : Resource(name, tags, description, model)
+) : Resource(name, tags, metadata, description, model)
 
 interface Metric {
     val name: String

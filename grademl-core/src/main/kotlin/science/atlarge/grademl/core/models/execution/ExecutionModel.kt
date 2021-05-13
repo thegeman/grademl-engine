@@ -39,13 +39,14 @@ class ExecutionModel {
         name: String,
         tags: Map<String, String> = emptyMap(),
         typeTags: Set<String> = tags.keys,
+        metadata: Map<String, String> = emptyMap(),
         description: String? = null,
         startTime: TimestampNs,
         endTime: TimestampNs,
         parent: ExecutionPhase = rootPhase
     ): ExecutionPhase {
         require(parent in _phases) { "Cannot add phase with parent that is not part of this ExecutionModel" }
-        val phase = SubExecutionPhase(name, tags, typeTags, description, startTime, endTime, this)
+        val phase = SubExecutionPhase(name, tags, typeTags, metadata, description, startTime, endTime, this)
         _phases.add(phase)
         phaseParents[phase] = parent
         phaseChildren.getOrPut(parent) { mutableSetOf() }.add(phase)
@@ -128,6 +129,7 @@ sealed class ExecutionPhase(
     abstract val name: String
     abstract val tags: Map<String, String>
     abstract val typeTags: Set<String>
+    abstract val metadata: Map<String, String>
     abstract val description: String?
     abstract val startTime: TimestampNs
     abstract val endTime: TimestampNs
@@ -202,6 +204,8 @@ private class RootExecutionPhase(
         get() = emptyMap()
     override val typeTags: Set<String>
         get() = emptySet()
+    override val metadata: Map<String, String>
+        get() = emptyMap()
     override val description: String?
         get() = null
     override val startTime: TimestampNs
@@ -214,6 +218,7 @@ private class SubExecutionPhase(
     override val name: String,
     override val tags: Map<String, String>,
     override val typeTags: Set<String>,
+    override val metadata: Map<String, String>,
     override val description: String?,
     override val startTime: TimestampNs,
     override val endTime: TimestampNs,
