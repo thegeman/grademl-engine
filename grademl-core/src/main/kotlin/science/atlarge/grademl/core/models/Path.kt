@@ -102,7 +102,7 @@ data class Path(
                     when {
                         newPathComponents.isNotEmpty() -> newPathComponents.removeAt(newPathComponents.size - 1)
                         isRelative -> newPathComponents.add("..")
-                        else -> throw InvalidPathException(this, "${SEPARATOR}..")
+                        else -> throw InvalidPathException(this, "$SEPARATOR..")
                     }
                 }
                 else -> newPathComponents.add(pathComponent)
@@ -132,7 +132,10 @@ data class Path(
 
     override fun toString(): String {
         val separatorString = SEPARATOR.toString()
-        return pathComponents.joinToString(separator = separatorString, prefix = if (isRelative) "" else separatorString)
+        return pathComponents.joinToString(
+            separator = separatorString,
+            prefix = if (isRelative) "" else separatorString
+        )
     }
 
     companion object {

@@ -1,6 +1,5 @@
 package science.atlarge.grademl.input.spark
 
-import kotlin.jvm.JvmInline
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -25,6 +24,7 @@ value class SparkStageAttemptId(private val compoundId: ULong) {
 
     constructor(stageId: SparkStageId, attempt: UInt) : this(attempt.toULong().shl(32).or(stageId.toULong()))
 }
+
 @JvmInline
 value class SparkTaskAttemptId(private val compoundId: ULong) {
     val taskId: SparkTaskId

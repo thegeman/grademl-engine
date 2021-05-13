@@ -1,8 +1,8 @@
 package science.atlarge.grademl.input.spark
 
+import science.atlarge.grademl.core.input.InputSource
 import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.models.execution.ExecutionPhase
-import science.atlarge.grademl.core.input.InputSource
 import science.atlarge.grademl.core.models.resource.ResourceModel
 import java.nio.file.Path
 import java.nio.file.Paths

@@ -1,8 +1,8 @@
 package science.atlarge.grademl.input.airflow
 
+import science.atlarge.grademl.core.input.InputSource
 import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.models.execution.ExecutionPhase
-import science.atlarge.grademl.core.input.InputSource
 import science.atlarge.grademl.core.models.resource.ResourceModel
 import science.atlarge.grademl.input.airflow.connections.AirflowConnections
 import java.nio.file.Path

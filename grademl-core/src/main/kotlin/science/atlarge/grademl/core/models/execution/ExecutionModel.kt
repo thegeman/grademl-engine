@@ -1,6 +1,7 @@
 package science.atlarge.grademl.core.models.execution
 
-import science.atlarge.grademl.core.*
+import science.atlarge.grademl.core.DurationNs
+import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.models.Path
 import science.atlarge.grademl.core.models.PathMatchResult
 import science.atlarge.grademl.core.models.PathMatcher
@@ -138,7 +139,7 @@ sealed class ExecutionPhase(
             "$name[${tags.entries.sortedBy { it.key }.joinToString(separator = ", ") { "${it.key}=${it.value}" }}]"
         }
     }
-    
+
     val typeIdentifier: String by lazy {
         require(tags.keys.containsAll(typeTags)) { "Type tags must be a subset of tags" }
         if (typeTags.isEmpty()) {

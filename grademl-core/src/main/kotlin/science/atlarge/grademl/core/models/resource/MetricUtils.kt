@@ -43,7 +43,8 @@ fun mergeTimestamps(timestamps: List<TimestampNsArray>): TimestampNsArray {
     return outTimestamps.toArray()
 }
 
-private class PeekingTimestampIterator(private val timestamps: TimestampNsArray) : Comparable<PeekingTimestampIterator> {
+private class PeekingTimestampIterator(private val timestamps: TimestampNsArray) :
+    Comparable<PeekingTimestampIterator> {
 
     private val size = timestamps.size
     private var index = 0

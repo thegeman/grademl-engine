@@ -179,8 +179,9 @@ class AirflowLogParser private constructor(
         // Find the run ID for this task
         val runId = logLines.first { it.startsWith("AIRFLOW_CTX_DAG_RUN_ID=") }
             .split("=", limit = 2)[1].trim()
-        require(runId in runIdsPerDag[dagId].orEmpty()) { "Found task log for unknown run: \"$runId\" " +
-                "(DAG: \"$dagId\")" }
+        require(runId in runIdsPerDag[dagId].orEmpty()) {
+            "Found task log for unknown run: \"$runId\" (DAG: \"$dagId\")"
+        }
 
         // Find the task ID for this task
         val taskId = logLines.first { it.startsWith("AIRFLOW_CTX_TASK_ID=") }

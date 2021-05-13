@@ -1,6 +1,5 @@
 package science.atlarge.grademl.cli.util
 
-import science.atlarge.grademl.core.models.resource.Metric
 import science.atlarge.grademl.core.models.resource.Resource
 import science.atlarge.grademl.core.models.resource.ResourceModel
 import science.atlarge.grademl.core.util.computeGraphClosure

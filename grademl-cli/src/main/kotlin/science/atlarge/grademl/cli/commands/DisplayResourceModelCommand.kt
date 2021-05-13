@@ -4,7 +4,10 @@ import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.terminal.Option
 import science.atlarge.grademl.cli.terminal.ParsedCommand
 import science.atlarge.grademl.cli.util.toDisplayString
-import science.atlarge.grademl.core.models.resource.*
+import science.atlarge.grademl.core.models.resource.Metric
+import science.atlarge.grademl.core.models.resource.MetricData
+import science.atlarge.grademl.core.models.resource.Resource
+import science.atlarge.grademl.core.models.resource.ResourceModel
 
 object DisplayResourceModelCommand : Command(
     name = "display-resource-model",

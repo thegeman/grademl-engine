@@ -15,8 +15,7 @@ fun InputStream.tryReadLELong(): Long? {
 }
 
 fun InputStream.readLELong(): Long {
-    return tryReadLELong()
-            ?: throw IOException("Reached end-of-stream before reaching the end of the Long value")
+    return tryReadLELong() ?: throw IOException("Reached end-of-stream before reaching the end of the Long value")
 }
 
 fun InputStream.readLEB128Int(): Int {

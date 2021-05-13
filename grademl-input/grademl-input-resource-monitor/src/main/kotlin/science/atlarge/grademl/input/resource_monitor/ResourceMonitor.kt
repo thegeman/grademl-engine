@@ -1,7 +1,7 @@
 package science.atlarge.grademl.input.resource_monitor
 
-import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.input.InputSource
+import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.models.resource.Metric
 import science.atlarge.grademl.core.models.resource.MetricData
 import science.atlarge.grademl.core.models.resource.Resource
