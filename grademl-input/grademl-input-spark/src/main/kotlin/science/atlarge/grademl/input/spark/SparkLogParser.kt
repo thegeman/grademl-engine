@@ -123,6 +123,7 @@ class SparkLogParser private constructor(
     }
 
     private fun parseAppInfo(groupedSparkEvents: Map<String, List<JsonObject>>): SparkAppInfo {
+        // Find the application start and end event
         val startEvent = groupedSparkEvents["SparkListenerApplicationStart"]!![0]
         val endEvent = groupedSparkEvents["SparkListenerApplicationEnd"]!!.let { events ->
             require(events.size == 1) {
@@ -134,7 +135,18 @@ class SparkLogParser private constructor(
         val appId = (startEvent["App ID"] as JsonPrimitive).content
         val startTime = (startEvent["Timestamp"] as JsonPrimitive).content.toLong() * 1_000_000
         val endTime = (endEvent["Timestamp"] as JsonPrimitive).content.toLong() * 1_000_000
-        return SparkAppInfo(appId, startTime, endTime)
+        // Find a block manager event to identify the driver's host
+        val driverHost = groupedSparkEvents["SparkListenerBlockManagerAdded"]!!
+            .map { it["Block Manager ID"] as JsonObject }
+            .filter { (it["Executor ID"] as JsonPrimitive).content == "driver" }
+            .map { (it["Host"] as JsonPrimitive).content }
+            .let { options ->
+                require(options.size == 1) {
+                    "Found ${options.size} SparkListenerBlockManagerAdded events for the Spark driver, expected 1"
+                }
+                options.first()
+            }
+        return SparkAppInfo(appId, startTime, endTime, driverHost)
     }
 
     private fun parseSparkJobs(groupedSparkEvents: Map<String, List<JsonObject>>): List<SparkJobInfo> {
@@ -310,6 +322,7 @@ class SparkAppInfo(
     val id: SparkAppId,
     val startTime: TimestampNs,
     val endTime: TimestampNs,
+    val driverHost: String
 )
 
 class SparkJobInfo(

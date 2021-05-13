@@ -39,6 +39,9 @@ object Spark : InputSource {
             // Add leaf phase for driver
             unifiedExecutionModel.addPhase(
                 name = "Driver",
+                metadata = mapOf(
+                    CommonMetadata.MACHINE_ID to appLog.appInfo.driverHost
+                ),
                 startTime = appLog.appInfo.startTime,
                 endTime = appLog.appInfo.endTime,
                 parent = appPhase
