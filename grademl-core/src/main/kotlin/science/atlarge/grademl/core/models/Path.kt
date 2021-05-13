@@ -1,4 +1,4 @@
-package science.atlarge.grademl.core
+package science.atlarge.grademl.core.models
 
 /**
  * Single component of a [Path].

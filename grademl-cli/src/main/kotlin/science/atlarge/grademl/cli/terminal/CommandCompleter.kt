@@ -5,8 +5,8 @@ import org.jline.reader.Completer
 import org.jline.reader.LineReader
 import org.jline.reader.ParsedLine
 import science.atlarge.grademl.cli.CommandRegistry
-import science.atlarge.grademl.core.Path
-import science.atlarge.grademl.core.PathMatches
+import science.atlarge.grademl.core.models.Path
+import science.atlarge.grademl.core.models.PathMatches
 import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.models.resource.ResourceModel
 

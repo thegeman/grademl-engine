@@ -1,8 +1,8 @@
 package science.atlarge.grademl.cli.util
 
 import science.atlarge.grademl.cli.CliState
-import science.atlarge.grademl.core.PathMatchException
-import science.atlarge.grademl.core.PathMatches
+import science.atlarge.grademl.core.models.PathMatchException
+import science.atlarge.grademl.core.models.PathMatches
 import science.atlarge.grademl.core.models.execution.ExecutionPhase
 import science.atlarge.grademl.core.models.execution.ExecutionPhasePath
 import science.atlarge.grademl.core.models.resource.Metric

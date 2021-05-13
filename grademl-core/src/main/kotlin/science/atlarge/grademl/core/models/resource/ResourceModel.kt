@@ -1,6 +1,6 @@
 package science.atlarge.grademl.core.models.resource
 
-import science.atlarge.grademl.core.*
+import science.atlarge.grademl.core.models.*
 
 class ResourceModel {
 

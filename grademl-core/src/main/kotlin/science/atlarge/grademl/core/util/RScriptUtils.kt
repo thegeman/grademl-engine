@@ -1,6 +1,6 @@
 package science.atlarge.grademl.core.util
 
-import science.atlarge.grademl.core.Path
+import science.atlarge.grademl.core.models.Path
 import java.io.File
 import java.io.InputStream
 

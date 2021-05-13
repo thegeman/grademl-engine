@@ -1,4 +1,4 @@
-package science.atlarge.grademl.core
+package science.atlarge.grademl.core.models
 
 class PathMatcher<T : Any>(
     private val rootNode: T,

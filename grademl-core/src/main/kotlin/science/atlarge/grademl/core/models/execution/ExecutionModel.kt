@@ -1,6 +1,9 @@
 package science.atlarge.grademl.core.models.execution
 
 import science.atlarge.grademl.core.*
+import science.atlarge.grademl.core.models.Path
+import science.atlarge.grademl.core.models.PathMatchResult
+import science.atlarge.grademl.core.models.PathMatcher
 import science.atlarge.grademl.core.util.computeGraphClosure
 import java.util.*
 
