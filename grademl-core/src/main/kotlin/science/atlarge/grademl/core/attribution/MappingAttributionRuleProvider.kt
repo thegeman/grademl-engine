@@ -32,7 +32,7 @@ class MappingAttributionRuleProvider(
         }
 
         // If metadata does not match, disable resource attribution using the None rule
-        return if (metadataMatches) {
+        return if (!metadataMatches) {
             ResourceAttributionRule.None
         } else {
             null
