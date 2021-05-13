@@ -1,12 +1,15 @@
 package science.atlarge.grademl.core
 
 import science.atlarge.grademl.core.attribution.BestFitAttributionRuleProvider
+import science.atlarge.grademl.core.input.EnvironmentParser
 import science.atlarge.grademl.core.input.InputSource
 import java.nio.file.Path
 
 object GradeMLEngine {
 
-    private val knownInputSources = mutableSetOf<InputSource>()
+    private val knownInputSources = mutableSetOf<InputSource>(
+        EnvironmentParser
+    )
 
     fun analyzeJob(
         jobDataDirectories: Iterable<Path>,
