@@ -63,16 +63,9 @@ object PlotMetricCommand : Command(
             .flatten()
             .toSet()
 
-        // Configure resource attribution process
-        val resourceAttribution = ResourceAttribution(
-            cliState.executionModel,
-            cliState.resourceModel,
-            BestFitAttributionRuleProvider.from(cliState.executionModel, cliState.resourceModel, cliState.outputPath)
-        )
-
         // Plot each metric
         for (metric in metrics) {
-            plotMetric(metric, resourceAttribution, showPhases, zoomTime, cliState)
+            plotMetric(metric, showPhases, zoomTime, cliState)
         }
     }
 
@@ -137,7 +130,6 @@ object PlotMetricCommand : Command(
 
     private fun plotMetric(
         metric: Metric,
-        resourceAttribution: ResourceAttribution,
         showPhases: Boolean,
         zoomTime: TimestampNsRange?,
         cliState: CliState
@@ -149,14 +141,14 @@ object PlotMetricCommand : Command(
 
         // Compute attributed resource usage for each leaf phase
         println("Computing resource attribution for metric \"${metric.path}\".")
-        val phaseAttribution = resourceAttribution.leafPhases.associateWith {
-            val attributionResult = resourceAttribution.attributeMetricToPhase(metric, it)!!
+        val phaseAttribution = cliState.resourceAttribution.leafPhases.associateWith {
+            val attributionResult = cliState.resourceAttribution.attributeMetricToPhase(metric, it)!!
             if (zoomTime != null) attributionResult.slice(zoomTime.first, zoomTime.last)
             else attributionResult
         }
 
         // Output list of leaf phases, if needed
-        val selectedPhases = resourceAttribution.leafPhases
+        val selectedPhases = cliState.resourceAttribution.leafPhases
         val phaseListFile = dataOutputDirectory.resolve(PhaseListWriter.FILENAME).toFile()
         if (showPhases) {
             println("Writing list of leaf phases to \"${phaseListFile.absolutePath}\".")
@@ -203,8 +195,12 @@ object PlotMetricCommand : Command(
             listOf(metric),
             cliState,
             metricDataSelector = {
-                if (zoomTime != null) resourceAttribution.upsampleMetric(it)!!.slice(zoomTime.first, zoomTime.last)
-                else resourceAttribution.upsampleMetric(it)!!
+                if (zoomTime != null) {
+                    cliState.resourceAttribution.upsampleMetric(it)!!
+                        .slice(zoomTime.first, zoomTime.last)
+                } else {
+                    cliState.resourceAttribution.upsampleMetric(it)!!
+                }
             }
         )
 
