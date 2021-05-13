@@ -1,7 +1,7 @@
 package science.atlarge.grademl.cli.data
 
 import science.atlarge.grademl.cli.CliState
-import science.atlarge.grademl.core.execution.ExecutionPhaseType
+import science.atlarge.grademl.core.models.execution.ExecutionPhaseType
 import java.io.File
 
 object PhaseTypeListWriter {

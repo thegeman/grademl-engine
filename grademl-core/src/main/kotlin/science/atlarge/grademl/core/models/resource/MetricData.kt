@@ -1,4 +1,4 @@
-package science.atlarge.grademl.core.resources
+package science.atlarge.grademl.core.models.resource
 
 import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.TimestampNsArray

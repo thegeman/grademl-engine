@@ -1,7 +1,7 @@
 package science.atlarge.grademl.core.input
 
-import science.atlarge.grademl.core.execution.ExecutionModel
-import science.atlarge.grademl.core.resources.ResourceModel
+import science.atlarge.grademl.core.models.execution.ExecutionModel
+import science.atlarge.grademl.core.models.resource.ResourceModel
 import java.nio.file.Path
 
 interface InputSource {

@@ -1,7 +1,7 @@
 package science.atlarge.grademl.cli.util
 
-import science.atlarge.grademl.core.execution.ExecutionModel
-import science.atlarge.grademl.core.execution.ExecutionPhase
+import science.atlarge.grademl.core.models.execution.ExecutionModel
+import science.atlarge.grademl.core.models.execution.ExecutionPhase
 import science.atlarge.grademl.core.util.computeGraphClosure
 
 class PhaseFilter(

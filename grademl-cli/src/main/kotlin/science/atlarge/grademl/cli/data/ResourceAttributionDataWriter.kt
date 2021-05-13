@@ -2,9 +2,9 @@ package science.atlarge.grademl.cli.data
 
 import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.core.TimestampNs
-import science.atlarge.grademl.core.execution.ExecutionPhase
-import science.atlarge.grademl.core.resources.Metric
-import science.atlarge.grademl.core.resources.MetricData
+import science.atlarge.grademl.core.models.execution.ExecutionPhase
+import science.atlarge.grademl.core.models.resource.Metric
+import science.atlarge.grademl.core.models.resource.MetricData
 import java.io.File
 
 object ResourceAttributionDataWriter {

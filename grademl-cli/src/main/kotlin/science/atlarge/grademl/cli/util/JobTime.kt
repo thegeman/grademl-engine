@@ -1,7 +1,7 @@
 package science.atlarge.grademl.cli.util
 
 import science.atlarge.grademl.core.TimestampNs
-import science.atlarge.grademl.core.execution.ExecutionModel
+import science.atlarge.grademl.core.models.execution.ExecutionModel
 
 class JobTime(
     executionModel: ExecutionModel

@@ -1,8 +1,8 @@
 package science.atlarge.grademl.cli.util
 
-import science.atlarge.grademl.core.execution.ExecutionModel
-import science.atlarge.grademl.core.execution.ExecutionPhase
-import science.atlarge.grademl.core.execution.ExecutionPhaseType
+import science.atlarge.grademl.core.models.execution.ExecutionModel
+import science.atlarge.grademl.core.models.execution.ExecutionPhase
+import science.atlarge.grademl.core.models.execution.ExecutionPhaseType
 
 // Create a deterministic mapping from an execution model's phase types to internally unique identifiers
 class PhaseTypeList private constructor(

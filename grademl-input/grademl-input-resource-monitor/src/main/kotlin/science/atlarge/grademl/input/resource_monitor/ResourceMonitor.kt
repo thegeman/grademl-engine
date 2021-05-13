@@ -1,11 +1,11 @@
 package science.atlarge.grademl.input.resource_monitor
 
-import science.atlarge.grademl.core.execution.ExecutionModel
+import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.input.InputSource
-import science.atlarge.grademl.core.resources.Metric
-import science.atlarge.grademl.core.resources.MetricData
-import science.atlarge.grademl.core.resources.Resource
-import science.atlarge.grademl.core.resources.ResourceModel
+import science.atlarge.grademl.core.models.resource.Metric
+import science.atlarge.grademl.core.models.resource.MetricData
+import science.atlarge.grademl.core.models.resource.Resource
+import science.atlarge.grademl.core.models.resource.ResourceModel
 import science.atlarge.grademl.input.resource_monitor.procfs.CpuUtilizationData
 import science.atlarge.grademl.input.resource_monitor.procfs.DiskUtilizationData
 import science.atlarge.grademl.input.resource_monitor.procfs.NetworkUtilizationData

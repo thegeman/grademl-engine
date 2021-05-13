@@ -9,8 +9,8 @@ import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.TimestampNsRange
 import science.atlarge.grademl.core.attribution.BestFitAttributionRuleProvider
 import science.atlarge.grademl.core.attribution.ResourceAttribution
-import science.atlarge.grademl.core.resources.Metric
-import science.atlarge.grademl.core.resources.sum
+import science.atlarge.grademl.core.models.resource.Metric
+import science.atlarge.grademl.core.models.resource.sum
 import science.atlarge.grademl.core.util.asRPathString
 import science.atlarge.grademl.core.util.instantiateRScript
 import science.atlarge.grademl.core.util.runRScript

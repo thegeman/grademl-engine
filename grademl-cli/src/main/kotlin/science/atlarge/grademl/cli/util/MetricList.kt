@@ -1,8 +1,8 @@
 package science.atlarge.grademl.cli.util
 
-import science.atlarge.grademl.core.resources.Metric
-import science.atlarge.grademl.core.resources.Resource
-import science.atlarge.grademl.core.resources.ResourceModel
+import science.atlarge.grademl.core.models.resource.Metric
+import science.atlarge.grademl.core.models.resource.Resource
+import science.atlarge.grademl.core.models.resource.ResourceModel
 
 // Create a deterministic mapping from a resource model's metrics to internally unique identifiers
 class MetricList private constructor(

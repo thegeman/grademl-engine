@@ -1,7 +1,7 @@
 package science.atlarge.grademl.core.attribution
 
-import science.atlarge.grademl.core.execution.ExecutionPhase
-import science.atlarge.grademl.core.resources.Metric
+import science.atlarge.grademl.core.models.execution.ExecutionPhase
+import science.atlarge.grademl.core.models.resource.Metric
 
 sealed class ResourceAttributionRule {
     object None : ResourceAttributionRule()

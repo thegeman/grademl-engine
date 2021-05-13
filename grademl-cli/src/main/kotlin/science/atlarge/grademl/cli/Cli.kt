@@ -7,8 +7,8 @@ import science.atlarge.grademl.core.GradeMLEngine
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.core.GradeMLJobStatusUpdate
 import science.atlarge.grademl.core.attribution.ResourceAttribution
-import science.atlarge.grademl.core.execution.ExecutionModel
-import science.atlarge.grademl.core.resources.ResourceModel
+import science.atlarge.grademl.core.models.execution.ExecutionModel
+import science.atlarge.grademl.core.models.resource.ResourceModel
 import science.atlarge.grademl.input.airflow.Airflow
 import science.atlarge.grademl.input.resource_monitor.ResourceMonitor
 import science.atlarge.grademl.input.spark.Spark

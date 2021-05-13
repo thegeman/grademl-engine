@@ -3,12 +3,12 @@ package science.atlarge.grademl.cli.util
 import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.core.PathMatchException
 import science.atlarge.grademl.core.PathMatches
-import science.atlarge.grademl.core.execution.ExecutionPhase
-import science.atlarge.grademl.core.execution.ExecutionPhasePath
-import science.atlarge.grademl.core.resources.Metric
-import science.atlarge.grademl.core.resources.MetricPath
-import science.atlarge.grademl.core.resources.Resource
-import science.atlarge.grademl.core.resources.ResourcePath
+import science.atlarge.grademl.core.models.execution.ExecutionPhase
+import science.atlarge.grademl.core.models.execution.ExecutionPhasePath
+import science.atlarge.grademl.core.models.resource.Metric
+import science.atlarge.grademl.core.models.resource.MetricPath
+import science.atlarge.grademl.core.models.resource.Resource
+import science.atlarge.grademl.core.models.resource.ResourcePath
 
 fun parseExecutionPhasePathExpression(pathExpression: String): ExecutionPhasePath {
     return ExecutionPhasePath.parse(pathExpression)

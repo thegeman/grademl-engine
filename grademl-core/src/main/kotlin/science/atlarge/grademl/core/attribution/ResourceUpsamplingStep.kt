@@ -1,8 +1,8 @@
 package science.atlarge.grademl.core.attribution
 
 import science.atlarge.grademl.core.TimestampNs
-import science.atlarge.grademl.core.resources.Metric
-import science.atlarge.grademl.core.resources.MetricData
+import science.atlarge.grademl.core.models.resource.Metric
+import science.atlarge.grademl.core.models.resource.MetricData
 import science.atlarge.grademl.core.util.DoubleArrayBuilder
 import science.atlarge.grademl.core.util.LongArrayBuilder
 

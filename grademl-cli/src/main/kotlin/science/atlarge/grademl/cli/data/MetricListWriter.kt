@@ -2,7 +2,7 @@ package science.atlarge.grademl.cli.data
 
 import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.util.MetricList
-import science.atlarge.grademl.core.resources.Metric
+import science.atlarge.grademl.core.models.resource.Metric
 import java.io.File
 
 object MetricListWriter {

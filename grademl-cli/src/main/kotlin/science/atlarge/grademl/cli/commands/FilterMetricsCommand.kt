@@ -6,7 +6,7 @@ import science.atlarge.grademl.cli.terminal.ArgumentValueConstraint
 import science.atlarge.grademl.cli.terminal.ParsedCommand
 import science.atlarge.grademl.cli.util.parseMetricPathExpression
 import science.atlarge.grademl.cli.util.tryMatchMetricPath
-import science.atlarge.grademl.core.resources.MetricPath
+import science.atlarge.grademl.core.models.resource.MetricPath
 
 object FilterMetricsCommand : Command(
     name = "filter-metrics",

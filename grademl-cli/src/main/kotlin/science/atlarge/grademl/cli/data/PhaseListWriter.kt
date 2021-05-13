@@ -2,7 +2,7 @@ package science.atlarge.grademl.cli.data
 
 import science.atlarge.grademl.cli.util.JobTime
 import science.atlarge.grademl.cli.util.PhaseList
-import science.atlarge.grademl.core.execution.ExecutionPhase
+import science.atlarge.grademl.core.models.execution.ExecutionPhase
 import java.io.File
 
 object PhaseListWriter {

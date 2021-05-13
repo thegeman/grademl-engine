@@ -1,11 +1,11 @@
 package science.atlarge.grademl.core.attribution
 
 import science.atlarge.grademl.core.TimestampNsArray
-import science.atlarge.grademl.core.execution.ExecutionModel
-import science.atlarge.grademl.core.execution.ExecutionPhase
+import science.atlarge.grademl.core.models.execution.ExecutionModel
+import science.atlarge.grademl.core.models.execution.ExecutionPhase
 import science.atlarge.grademl.core.math.NonNegativeLeastSquares
-import science.atlarge.grademl.core.resources.Metric
-import science.atlarge.grademl.core.resources.ResourceModel
+import science.atlarge.grademl.core.models.resource.Metric
+import science.atlarge.grademl.core.models.resource.ResourceModel
 import java.nio.file.Path
 
 class BestFitAttributionRuleProvider(

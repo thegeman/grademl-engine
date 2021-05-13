@@ -1,10 +1,10 @@
 package science.atlarge.grademl.core.attribution
 
-import science.atlarge.grademl.core.execution.ExecutionModel
-import science.atlarge.grademl.core.execution.ExecutionPhase
-import science.atlarge.grademl.core.resources.Metric
-import science.atlarge.grademl.core.resources.MetricData
-import science.atlarge.grademl.core.resources.ResourceModel
+import science.atlarge.grademl.core.models.execution.ExecutionModel
+import science.atlarge.grademl.core.models.execution.ExecutionPhase
+import science.atlarge.grademl.core.models.resource.Metric
+import science.atlarge.grademl.core.models.resource.MetricData
+import science.atlarge.grademl.core.models.resource.ResourceModel
 
 class ResourceAttribution(
     executionModel: ExecutionModel,

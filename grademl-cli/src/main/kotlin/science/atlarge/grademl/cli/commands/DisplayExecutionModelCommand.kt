@@ -4,8 +4,8 @@ import science.atlarge.grademl.cli.CliState
 import science.atlarge.grademl.cli.terminal.*
 import science.atlarge.grademl.cli.util.toDisplayString
 import science.atlarge.grademl.cli.util.tryMatchExecutionPhasePath
-import science.atlarge.grademl.core.execution.ExecutionPhase
-import science.atlarge.grademl.core.execution.ExecutionPhasePath
+import science.atlarge.grademl.core.models.execution.ExecutionPhase
+import science.atlarge.grademl.core.models.execution.ExecutionPhasePath
 
 object DisplayExecutionModelCommand : Command(
     name = "display-execution-model",
