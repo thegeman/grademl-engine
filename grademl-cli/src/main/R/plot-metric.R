@@ -83,9 +83,9 @@ stepped_resource_attribution_data <- resource_attribution_data[, .(
 ), by = .(phase.path)][order(phase.path, timestamp)]
 
 # Clamp timestamps between the given start and end time
-stepped_metric_data[, timestamp := pmin(pmax(timestamp, start_time), end_time)]
-stepped_upsampled_metric_data[, timestamp := pmin(pmax(timestamp, start_time), end_time)]
-stepped_resource_attribution_data[, timestamp := pmin(pmax(timestamp, start_time), end_time)]
+stepped_metric_data[, timestamp := pmin(pmax(as.double(timestamp), start_time), end_time)]
+stepped_upsampled_metric_data[, timestamp := pmin(pmax(as.double(timestamp), start_time), end_time)]
+stepped_resource_attribution_data[, timestamp := pmin(pmax(as.double(timestamp), start_time), end_time)]
 
 # Convert timestamps from nanoseconds to seconds
 stepped_metric_data[, timestamp := timestamp / 1e9]
@@ -118,9 +118,13 @@ p_upsampled_metric <- ggplot(stepped_upsampled_metric_data) +
 
 # Plot resource attribution data
 phase_count <- length(unique(stepped_resource_attribution_data$phase.path))
-p_resource_attribution <- ggplot(stepped_resource_attribution_data) +
-  geom_line(data = stepped_upsampled_metric_data, aes(x = timestamp, y = value),
-            colour = "gray70", size = 0.05) +
+p_resource_attribution <- ggplot(stepped_resource_attribution_data)
+if (phase_count <= 50) {
+  p_resource_attribution <- p_resource_attribution +
+    geom_line(data = stepped_upsampled_metric_data, aes(x = timestamp, y = value),
+              colour = "gray70", size = 0.05)
+}
+p_resource_attribution <- p_resource_attribution +
   geom_line(aes(x = timestamp, y = value), size = 0.25) +
   scale_x_continuous(limits = c(start_time, end_time), expand = c(0, 0)) +
   expand_limits(y = c(0, 1)) +
