@@ -55,7 +55,7 @@ object PlotOverviewCommand : Command(
         // Output selected phases in the execution model
         val phaseListFile = dataOutputDirectory.resolve(PhaseListWriter.FILENAME).toFile()
         println("Writing list of selected execution phases to \"${phaseListFile.absolutePath}\".")
-        val selectedPhases = phase.descendants
+        val selectedPhases = phase.descendants.intersect(cliState.phaseFilter.includedPhases)
         PhaseListWriter.output(
             phaseListFile,
             phase,

@@ -64,7 +64,11 @@ object PlotMetricCommand : Command(
             .toSet()
 
         // Plot each metric
+        var isFirst = true
         for (metric in metrics) {
+            if (!isFirst) println()
+            isFirst = false
+            println("Plotting overview for metric: \"${metric.path}\".")
             plotMetric(metric, showPhases, zoomTime, cliState)
         }
     }

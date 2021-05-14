@@ -19,11 +19,13 @@ class OutputPaths(
     }
 
     fun pathForPhase(phase: ExecutionPhase): Path {
-        return outputDirectory.resolve(phaseList.phaseToIdentifier(phase))
+        return outputDirectory
+            .resolve("${phaseList.phaseToIdentifier(phase)}${if (phase.isRoot) "__root" else "__${phase.name}"}")
     }
 
     fun pathForMetric(metric: Metric): Path {
-        return outputDirectory.resolve(metricList.metricToIdentifier(metric))
+        return outputDirectory
+            .resolve("${metricList.metricToIdentifier(metric)}__${metric.resource.name}_${metric.name}")
     }
 
     fun writeIndex(executionModel: ExecutionModel, resourceModel: ResourceModel, jobTime: JobTime) {
