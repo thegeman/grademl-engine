@@ -16,6 +16,7 @@ import java.io.File
 import java.io.IOError
 import java.nio.file.Path
 import java.nio.file.Paths
+import kotlin.io.path.readLines
 import kotlin.system.exitProcess
 
 object Cli {
@@ -28,14 +29,21 @@ object Cli {
         println("Welcome to the GradeML CLI!")
         println()
 
-        if (args.size != 2) {
-            println("Usage: grademl-cli <jobLogDirectories> <jobAnalysisDirectory>")
+        if (args.size < 2 || args.size > 3) {
+            println("Usage: grademl-cli <jobLogDirectories> <jobAnalysisDirectory> [commandScript]")
             println("  jobLogDirectories may be separated by the ${File.pathSeparatorChar} character")
             exitProcess(1)
         }
 
         val inputPaths = args[0].split(File.pathSeparatorChar).map { Paths.get(it) }
         val outputPath = Paths.get(args[1])
+        val commandScript = if (args.size >= 3) Paths.get(args[2]) else null
+
+        if (commandScript != null) {
+            terminal.setScriptedInput(commandScript)
+        } else {
+            terminal.setInteractiveInput()
+        }
 
         GradeMLEngine.registerInputSource(ResourceMonitor)
         GradeMLEngine.registerInputSource(Spark)
@@ -72,19 +80,22 @@ object Cli {
             gradeMLJob.unifiedExecutionModel.addPhase("dummy_phase", startTime = startTime, endTime = endTime)
         }
 
-        println("Explore the job's performance data interactively by issuing commands.")
-        println("Enter \"help\" for a list of available commands.")
-        println()
-
-        runCli(CliState(gradeMLJob, outputPath), terminal)
+        runCli(CliState(gradeMLJob, outputPath), terminal, commandScript != null)
     }
 
-    private fun runCli(cliState: CliState, terminal: GradeMLTerminal) {
+    private fun runCli(cliState: CliState, terminal: GradeMLTerminal, isInteractive: Boolean) {
+        // Print introduction for user
+        if (isInteractive) {
+            println("Explore the job's performance data interactively by issuing commands.")
+            println("Enter \"help\" for a list of available commands.")
+            println()
+        }
+
         // Repeatedly read, parse, and execute commands until the users quits the application
         while (true) {
             // Read the next line
             val parsedLine = try {
-                terminal.readAndParseLine()
+                terminal.readAndParseLine() ?: break
             } catch (e: Exception) {
                 when (e) {
                     // End the CLI when the line reader is aborted
