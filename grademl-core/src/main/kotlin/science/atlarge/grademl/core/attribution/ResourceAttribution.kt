@@ -49,6 +49,9 @@ class ResourceAttribution(
 
 sealed class ResourceAttributionResult
 
-class AttributedResourceData(val metricData: MetricData) : ResourceAttributionResult()
+class AttributedResourceData(
+    val metricData: MetricData,
+    val availableCapacity: MetricData
+) : ResourceAttributionResult()
 
 object NoAttributedData : ResourceAttributionResult()

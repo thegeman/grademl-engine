@@ -39,6 +39,7 @@ class ResourceAttributionStep(
         // Return an empty metric if the phase has no duration
         if (phase.duration == 0L) {
             return AttributedResourceData(
+                MetricData(longArrayOf(phase.startTime), doubleArrayOf(), metric.data.maxValue),
                 MetricData(longArrayOf(phase.startTime), doubleArrayOf(), metric.data.maxValue)
             )
         }
@@ -53,12 +54,11 @@ class ResourceAttributionStep(
         val upsampledMetric = upsampledMetricData(metric)
         val estimatedDemand = resourceDemandEstimates(metric)
         // Perform the resource attribution step
-        return AttributedResourceData(
-            ResourceAttributionComputation(
-                upsampledMetric, estimatedDemand.exactDemandOverTime, estimatedDemand.variableDemandOverTime,
-                phaseDemand, isExactDemand, phase.startTime, phase.endTime
-            ).getAttributedUsage()
-        )
+        val (attributedUsage, attributedCapacity) = ResourceAttributionComputation(
+            upsampledMetric, estimatedDemand.exactDemandOverTime, estimatedDemand.variableDemandOverTime,
+            phaseDemand, isExactDemand, phase.startTime, phase.endTime
+        ).getAttributedUsageAndCapacity()
+        return AttributedResourceData(attributedUsage, attributedCapacity)
     }
 
 }
@@ -83,13 +83,17 @@ private class ResourceAttributionComputation(
 
     private val timestamps = LongArrayBuilder()
     private val values = DoubleArrayBuilder()
+    private val capacities = DoubleArrayBuilder()
     private val maxValue = if (isPhaseDemandExact) phaseDemand else upsampledMetric.maxValue
+    private val maxCapacity = upsampledMetric.maxValue
 
-    fun getAttributedUsage(): MetricData {
+    fun getAttributedUsageAndCapacity(): Pair<MetricData, MetricData> {
         if (timestamps.size == 0) {
             attributeResource()
         }
-        return MetricData(timestamps.toArray(), values.toArray(), maxValue)
+        val timestampArray = timestamps.toArray()
+        return MetricData(timestampArray, values.toArray(), maxValue) to
+                MetricData(timestampArray, capacities.toArray(), maxCapacity)
     }
 
     private fun attributeResource() {
@@ -107,8 +111,14 @@ private class ResourceAttributionComputation(
                 val leftOver = maxOf(metricIterator.currentValue - exactDemandIterator.currentValue, 0.0)
                 leftOver * phaseDemand / variableDemandIterator.currentValue
             }
+            val newCapacity = if (isPhaseDemandExact) {
+                minOf(maxCapacity * phaseDemand / exactDemandIterator.currentValue, phaseDemand)
+            } else {
+                val leftOver = maxOf(maxCapacity - exactDemandIterator.currentValue, 0.0)
+                leftOver * phaseDemand / variableDemandIterator.currentValue
+            }
             // Create a data point
-            emitDataPoint(newTime, newValue)
+            emitDataPoint(newTime, newValue, newCapacity)
             // Move to the next time period
             if (metricIterator.currentEndTime == newTime) {
                 metricIterator.next()
@@ -126,12 +136,16 @@ private class ResourceAttributionComputation(
         }
     }
 
-    private fun emitDataPoint(timestamp: TimestampNs, value: Double) {
-        if (values.size > 0 && value == values.last()) {
+    private fun emitDataPoint(timestamp: TimestampNs, value: Double, capacity: Double) {
+        if (value.isNaN()) {
+            println("Found NaN")
+        }
+        if (values.size > 0 && value == values.last() && capacity == capacities.last()) {
             timestamps.replaceLast(timestamp)
         } else {
             timestamps.append(timestamp)
             values.append(value)
+            capacities.append(capacity)
         }
     }
 

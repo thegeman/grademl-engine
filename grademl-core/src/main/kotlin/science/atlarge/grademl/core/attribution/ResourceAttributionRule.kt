@@ -5,8 +5,16 @@ import science.atlarge.grademl.core.models.resource.Metric
 
 sealed class ResourceAttributionRule {
     object None : ResourceAttributionRule()
-    data class Exact(val demand: Double) : ResourceAttributionRule()
-    data class Variable(val demand: Double) : ResourceAttributionRule()
+    data class Exact(val demand: Double) : ResourceAttributionRule() {
+        init {
+            require(demand.isFinite() && demand > 0.0) { "Demand must be a finite, positive, non-zero value" }
+        }
+    }
+    data class Variable(val demand: Double) : ResourceAttributionRule() {
+        init {
+            require(demand.isFinite() && demand > 0.0) { "Demand must be a finite, positive, non-zero value" }
+        }
+    }
 }
 
 interface ResourceAttributionRuleProvider {
