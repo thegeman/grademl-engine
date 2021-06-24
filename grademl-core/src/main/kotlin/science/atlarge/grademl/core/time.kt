@@ -5,3 +5,4 @@ typealias TimestampNsArray = LongArray
 typealias TimestampNsRange = LongRange
 typealias DurationNs = Long
 typealias FractionalDurationNs = Double
+typealias FractionalDurationNsArray = DoubleArray

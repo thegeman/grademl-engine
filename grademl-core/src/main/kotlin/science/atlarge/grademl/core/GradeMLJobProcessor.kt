@@ -1,5 +1,6 @@
 package science.atlarge.grademl.core
 
+import science.atlarge.grademl.core.analysis.BottleneckIdentification
 import science.atlarge.grademl.core.attribution.ResourceAttribution
 import science.atlarge.grademl.core.attribution.ResourceAttributionRuleProvider
 import science.atlarge.grademl.core.input.InputSource
@@ -36,8 +37,13 @@ class GradeMLJobProcessor private constructor(
             executionModel, resourceModel, attributionRuleProvider(executionModel, resourceModel, jobEnvironment)
         )
 
+        // Configure bottleneck identification
+        val bottleneckIdentification = BottleneckIdentification(
+            resourceAttribution
+        )
+
         progressReport(GradeMLJobStatusUpdate.JOB_ANALYSIS_COMPLETED)
-        return GradeMLJob(executionModel, resourceModel, jobEnvironment, resourceAttribution)
+        return GradeMLJob(executionModel, resourceModel, jobEnvironment, resourceAttribution, bottleneckIdentification)
     }
 
     companion object {
