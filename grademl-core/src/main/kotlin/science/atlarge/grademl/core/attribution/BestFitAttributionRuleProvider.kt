@@ -56,7 +56,11 @@ class BestFitAttributionRuleProvider(
 
         // Translate the obtained coefficients to attribution rules
         val rulePerPhaseType = orderedPhaseTypes.mapIndexed { i, phaseType ->
-            phaseType to ResourceAttributionRule.Variable(bestFit[i])
+            phaseType to if (bestFit[i] > 0.0) {
+                ResourceAttributionRule.Variable(bestFit[i])
+            } else {
+                ResourceAttributionRule.None
+            }
         }.toMap()
 
         // Scale overridden variable demand rules according to NNLS output

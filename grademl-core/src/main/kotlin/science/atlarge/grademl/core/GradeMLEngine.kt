@@ -1,6 +1,7 @@
 package science.atlarge.grademl.core
 
 import science.atlarge.grademl.core.attribution.BestFitAttributionRuleProvider
+import science.atlarge.grademl.core.attribution.CachingAttributionRuleProvider
 import science.atlarge.grademl.core.attribution.MappingAttributionRuleProvider
 import science.atlarge.grademl.core.attribution.ResourceAttributionRuleProvider
 import science.atlarge.grademl.core.input.EnvironmentParser
@@ -33,11 +34,14 @@ object GradeMLEngine {
                 if (machine1 != null && machine2 != null) machine1 === machine2
                 else id1 == id2
             }
-            return BestFitAttributionRuleProvider.from(
-                executionModel,
-                resourceModel,
+            return CachingAttributionRuleProvider(
                 jobOutputDirectory,
-                MappingAttributionRuleProvider(listOf(machineMapping))
+                BestFitAttributionRuleProvider.from(
+                    executionModel,
+                    resourceModel,
+                    jobOutputDirectory,
+                    MappingAttributionRuleProvider(listOf(machineMapping))
+                )
             )
         }
 
