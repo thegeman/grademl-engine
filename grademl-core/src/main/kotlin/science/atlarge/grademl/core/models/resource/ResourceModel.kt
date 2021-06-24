@@ -20,12 +20,13 @@ class ResourceModel {
     fun addResource(
         name: String,
         tags: Map<String, String> = emptyMap(),
+        typeTags: Set<String> = emptySet(),
         metadata: Map<String, String> = emptyMap(),
         description: String? = null,
         parent: Resource = rootResource
     ): Resource {
         require(parent in _resources) { "Cannot add resource with parent that is not part of this ResourceModel" }
-        val resource = SubResource(name, tags, metadata, description, this)
+        val resource = SubResource(name, tags, typeTags, metadata, description, this)
         _resources.add(resource)
         resourceParents[resource] = parent
         resourceChildren.getOrPut(parent) { mutableSetOf() }.add(resource)
@@ -73,6 +74,7 @@ class ResourceModel {
 sealed class Resource(
     val name: String,
     val tags: Map<String, String>,
+    val typeTags: Set<String>,
     val metadata: Map<String, String>,
     val description: String?,
     private val model: ResourceModel
@@ -94,10 +96,27 @@ sealed class Resource(
         }]"
     }
 
+    val typeIdentifier: String by lazy {
+        require(tags.keys.containsAll(typeTags)) { "Type tags must be a subset of tags" }
+        if (typeTags.isEmpty()) {
+            name
+        } else {
+            val ts = tags.entries.filter { it.key in typeTags }.sortedBy { it.key }
+            "$name[${ts.joinToString(separator = ", ") { "${it.key}=${it.value}" }}]"
+        }
+    }
+
     val path: ResourcePath by lazy {
         when {
             isRoot -> ResourcePath.ROOT
             else -> parent!!.path.resolve(identifier)
+        }
+    }
+
+    val type: ResourcePath by lazy {
+        when {
+            isRoot -> ResourcePath.ROOT
+            else -> parent!!.type.resolve(typeIdentifier)
         }
     }
 
@@ -130,7 +149,7 @@ sealed class Resource(
 
 private class RootResource(
     model: ResourceModel
-) : Resource("", emptyMap(), emptyMap(), null, model) {
+) : Resource("", emptyMap(), emptySet(), emptyMap(), null, model) {
 
     override fun addMetric(name: String, data: MetricData): Metric {
         throw IllegalArgumentException("Cannot add metrics to the root resource")
@@ -141,14 +160,16 @@ private class RootResource(
 private class SubResource(
     name: String,
     tags: Map<String, String>,
+    typeTags: Set<String>,
     metadata: Map<String, String>,
     description: String?,
     model: ResourceModel
-) : Resource(name, tags, metadata, description, model)
+) : Resource(name, tags, typeTags, metadata, description, model)
 
 interface Metric {
     val name: String
     val path: MetricPath
+    val type: MetricPath
     val data: MetricData
     val resource: Resource
 }
@@ -159,7 +180,13 @@ private class MetricImpl(
     override val resource: Resource
 ) : Metric {
 
-    override val path: MetricPath = MetricPath(resource.path, name)
+    override val path: MetricPath by lazy {
+        MetricPath(resource.path, name)
+    }
+
+    override val type: MetricPath by lazy {
+        MetricPath(resource.type, name)
+    }
 
 }
 
