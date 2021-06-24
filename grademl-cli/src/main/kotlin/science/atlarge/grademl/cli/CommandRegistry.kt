@@ -29,6 +29,7 @@ object CommandRegistry {
             FilterResourcesCommand,
             FilterMetricsCommand,
             HelpCommand,
+            IdentifyBottlenecksCommand,
             PlotMetricCommand,
             PlotOverviewCommand
         )

@@ -133,6 +133,8 @@ class CliState(
         get() = gradeMLJob.unifiedResourceModel
     val resourceAttribution: ResourceAttribution
         get() = gradeMLJob.resourceAttribution
+    val bottleneckIdentification: BottleneckIdentification
+        get() = gradeMLJob.bottleneckIdentification
 
     val phaseList = PhaseList.fromExecutionModel(executionModel)
     val phaseTypeList = PhaseTypeList.fromExecutionModel(executionModel)
