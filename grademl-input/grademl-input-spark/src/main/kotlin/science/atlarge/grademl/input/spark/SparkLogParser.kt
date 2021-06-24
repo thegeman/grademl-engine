@@ -1,5 +1,7 @@
 package science.atlarge.grademl.input.spark
 
+import jdk.jfr.Recording
+import jdk.jfr.consumer.RecordingFile
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -51,6 +53,7 @@ class SparkLogParser private constructor(
         for (logFile in appLogFiles) {
             parseSparkLogFile(logFile)
         }
+        JavaFlightRecorderParser.parseFromDirectories(sparkLogDirectories)
         return SparkLog(
             sparkApps.keys.map { appId ->
                 SparkAppLog(
@@ -69,7 +72,7 @@ class SparkLogParser private constructor(
         val logFiles = sparkLogDirectories.flatMap { directory ->
             Files.list(directory).use { fileList ->
                 fileList.map { it.toFile() }
-                    .filter { it.isFile }
+                    .filter { it.isFile && it.name.startsWith("app-") }
                     .toList()
             }
         }
