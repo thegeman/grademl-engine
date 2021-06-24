@@ -13,6 +13,7 @@ object ResourceAttributionDataWriter {
 
     fun output(
         outFile: File,
+        selectedPhases: Set<ExecutionPhase>,
         attributionData: Map<Metric, Map<ExecutionPhase, MetricData>>,
         cliState: CliState
     ) {
@@ -22,7 +23,7 @@ object ResourceAttributionDataWriter {
                 cliState.metricList.metricToIdentifier(metric) to phases
             }.sortedBy { it.first }
             for ((metricId, phases) in metricsById) {
-                val phasesById = phases.map { (phase, data) ->
+                val phasesById = phases.filter { it.key in selectedPhases }.map { (phase, data) ->
                     cliState.phaseList.phaseToIdentifier(phase) to data
                 }.sortedBy { it.first }
                 for ((phaseId, phaseData) in phasesById) {

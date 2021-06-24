@@ -156,7 +156,7 @@ object PlotMetricCommand : Command(
         }.toMap()
 
         // Output list of leaf phases, if needed
-        val selectedPhases = cliState.resourceAttribution.leafPhases
+        val selectedPhases = cliState.resourceAttribution.leafPhases.intersect(cliState.phaseFilter.includedPhases)
         val phaseListFile = dataOutputDirectory.resolve(PhaseListWriter.FILENAME).toFile()
         if (showPhases) {
             println("Writing list of leaf phases to \"${phaseListFile.absolutePath}\".")
@@ -218,6 +218,7 @@ object PlotMetricCommand : Command(
             println("Writing resource attribution data to \"${resourceAttributionDataFile.absolutePath}\".")
             ResourceAttributionDataWriter.output(
                 resourceAttributionDataFile,
+                selectedPhases,
                 mapOf(metric to phaseAttribution),
                 cliState
             )
