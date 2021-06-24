@@ -6,6 +6,7 @@ import science.atlarge.grademl.cli.util.*
 import science.atlarge.grademl.core.GradeMLEngine
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.core.GradeMLJobStatusUpdate
+import science.atlarge.grademl.core.analysis.BottleneckIdentification
 import science.atlarge.grademl.core.attribution.ResourceAttribution
 import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.models.resource.ResourceModel
@@ -80,7 +81,7 @@ object Cli {
             gradeMLJob.unifiedExecutionModel.addPhase("dummy_phase", startTime = startTime, endTime = endTime)
         }
 
-        runCli(CliState(gradeMLJob, outputPath), terminal, commandScript != null)
+        runCli(CliState(gradeMLJob, outputPath), terminal, commandScript == null)
     }
 
     private fun runCli(cliState: CliState, terminal: GradeMLTerminal, isInteractive: Boolean) {
