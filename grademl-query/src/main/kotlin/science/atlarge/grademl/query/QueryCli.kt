@@ -101,7 +101,14 @@ object QueryCli {
             }
 
             // Run the queries
-            queries.forEach { queryEngine.runStatement(it) }
+            queries.forEach {
+                try {
+                    queryEngine.runStatement(it)
+                } catch (t: Throwable) {
+                    println(t)
+                    println()
+                }
+            }
         }
     }
 
