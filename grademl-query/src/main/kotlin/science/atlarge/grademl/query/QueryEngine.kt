@@ -1,11 +1,14 @@
 package science.atlarge.grademl.query
 
+import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.DefaultTables
 import science.atlarge.grademl.query.model.Table
 
-class QueryEngine {
+class QueryEngine(
+    private val gradeMLJob: GradeMLJob
+) {
 
     private val tables = DefaultTables.create()
 
