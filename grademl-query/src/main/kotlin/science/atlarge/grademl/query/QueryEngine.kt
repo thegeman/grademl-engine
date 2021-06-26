@@ -12,7 +12,7 @@ class QueryEngine(
     private val gradeMLJob: GradeMLJob
 ) {
 
-    private val tables = DefaultTables.create()
+    private val tables = DefaultTables.create(gradeMLJob)
 
     fun runStatement(statement: Statement) {
         when (statement) {
