@@ -4,6 +4,7 @@ import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.execution.AliasedTable
 import science.atlarge.grademl.query.execution.ProjectedTable
+import science.atlarge.grademl.query.execution.TablePrinter
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.DefaultTables
 import science.atlarge.grademl.query.model.Table
@@ -38,7 +39,12 @@ class QueryEngine(
         val projectedTable = applySelect(selectStatement.select, groupedTable)
 
         // Display the result (with the LIMIT clause)
-        TODO()
+        TablePrinter.print(
+            projectedTable,
+            showFirst = selectStatement.limit?.limitFirst ?: 10,
+            showLast = selectStatement.limit?.limitLast ?: 10
+        )
+        println()
     }
 
     private fun applyFrom(fromClause: FromClause, tables: Map<String, Table>): Table {

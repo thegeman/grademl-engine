@@ -36,6 +36,7 @@ private class MetricsTableScanner(private val metrics: List<Metric>, private val
 
     override fun nextRow(): Row? {
         if (currentIterator == null || !currentIterator!!.hasNext) nextMetric()
+        currentIterator?.next()
         return currentRowWrapper
     }
 

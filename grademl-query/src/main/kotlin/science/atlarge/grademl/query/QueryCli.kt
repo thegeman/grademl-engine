@@ -105,7 +105,7 @@ object QueryCli {
                 try {
                     queryEngine.runStatement(it)
                 } catch (t: Throwable) {
-                    println(t)
+                    t.printStackTrace()
                     println()
                 }
             }
