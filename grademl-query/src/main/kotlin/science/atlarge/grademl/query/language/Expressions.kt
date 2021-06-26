@@ -21,6 +21,7 @@ class StringLiteral(val value: String) : Expression {
 
 class ColumnLiteral(val tableName: String?, val columnName: String) : Expression {
     val columnPath = if (tableName == null) columnName else "$tableName.$columnName"
+    var columnIndex = -1
 
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }

@@ -24,3 +24,13 @@ interface ASTVisitor {
     fun visit(c: SelectClause)
     fun visit(c: LimitClause)
 }
+
+interface ExpressionVisitor : ASTVisitor {
+    // Provide default implementations for unsupported statements and clauses
+    override fun visit(s: SelectStatement) { throw UnsupportedOperationException() }
+    override fun visit(c: FromClause) { throw UnsupportedOperationException() }
+    override fun visit(c: WhereClause) { throw UnsupportedOperationException() }
+    override fun visit(c: GroupByClause) { throw UnsupportedOperationException() }
+    override fun visit(c: SelectClause) { throw UnsupportedOperationException() }
+    override fun visit(c: LimitClause) { throw UnsupportedOperationException() }
+}
