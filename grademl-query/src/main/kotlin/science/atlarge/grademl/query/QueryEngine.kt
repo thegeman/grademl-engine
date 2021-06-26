@@ -79,12 +79,10 @@ class QueryEngine(
         // Select appropriate column names
         val columnNames = mutableListOf<String>()
         for (i in projections.indices) {
-            val columnName = if (selectClause.columnAliases[i] != null) {
-                selectClause.columnAliases[i]!!
-            } else if (projections[i] is ColumnLiteral) {
-                (projections[i] as ColumnLiteral).columnName
-            } else {
-                "_$i"
+            val columnName = when {
+                selectClause.columnAliases[i] != null -> selectClause.columnAliases[i]!!
+                projections[i] is ColumnLiteral -> (projections[i] as ColumnLiteral).columnName
+                else -> "_$i"
             }
             if (columnName in columnNames)
                 throw IllegalArgumentException("Duplicate column name in SELECT clause: $columnName")
