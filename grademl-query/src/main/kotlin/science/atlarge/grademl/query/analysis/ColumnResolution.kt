@@ -7,30 +7,35 @@ object ColumnResolution {
 
     fun resolveColumns(expression: Expression, columns: List<Column>) {
         val columnsByPath = columns.mapIndexed { index, column -> column.path to index }.toMap()
-        val visitor = object : ExpressionVisitor {
-            override fun visit(e: BooleanLiteral) {}
-            override fun visit(e: NumericLiteral) {}
-            override fun visit(e: StringLiteral) {}
+        expression.accept(Visitor(columnsByPath))
+    }
 
-            override fun visit(e: ColumnLiteral) {
-                require(e.columnPath in columnsByPath) { "Column with name ${e.columnPath} not found" }
-                e.columnIndex = columnsByPath[e.columnPath]!!
-            }
-
-            override fun visit(e: UnaryExpression) {
-                e.expr.accept(this)
-            }
-
-            override fun visit(e: BinaryExpression) {
-                e.lhs.accept(this)
-                e.rhs.accept(this)
-            }
-
-            override fun visit(e: FunctionCallExpression) {
-                e.arguments.forEach { it.accept(this) }
-            }
+    private class Visitor(private val columnIndicesByPath: Map<String, Int>) : ExpressionVisitor {
+        private fun Expression.recurse() {
+            accept(this@Visitor)
         }
-        expression.accept(visitor)
+
+        override fun visit(e: BooleanLiteral) {}
+        override fun visit(e: NumericLiteral) {}
+        override fun visit(e: StringLiteral) {}
+
+        override fun visit(e: ColumnLiteral) {
+            require(e.columnPath in columnIndicesByPath) { "Column with name ${e.columnPath} not found" }
+            e.columnIndex = columnIndicesByPath[e.columnPath]!!
+        }
+
+        override fun visit(e: UnaryExpression) {
+            e.expr.recurse()
+        }
+
+        override fun visit(e: BinaryExpression) {
+            e.lhs.recurse()
+            e.rhs.recurse()
+        }
+
+        override fun visit(e: FunctionCallExpression) {
+            e.arguments.forEach { it.recurse() }
+        }
     }
 
 }
