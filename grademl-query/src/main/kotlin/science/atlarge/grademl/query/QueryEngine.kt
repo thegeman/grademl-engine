@@ -3,6 +3,7 @@ package science.atlarge.grademl.query
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.execution.AliasedTable
+import science.atlarge.grademl.query.execution.FilteredTable
 import science.atlarge.grademl.query.execution.ProjectedTable
 import science.atlarge.grademl.query.execution.TablePrinter
 import science.atlarge.grademl.query.language.*
@@ -58,9 +59,12 @@ class QueryEngine(
     private fun applyWhere(whereClause: WhereClause, table: Table): Table {
         // Analyze the filter condition
         val filterExpression = ASTAnalysis.analyzeExpression(whereClause.conditionExpression, table.columns)
+        require(filterExpression.type == Type.BOOLEAN) {
+            "WHERE clause requires a BOOLEAN expression as condition"
+        }
 
         // Filter the input table
-        TODO()
+        return FilteredTable(table, filterExpression)
     }
 
     private fun applyGroupBy(groupByClause: GroupByClause, table: Table): Table {
