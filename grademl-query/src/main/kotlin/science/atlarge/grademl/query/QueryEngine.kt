@@ -2,6 +2,7 @@ package science.atlarge.grademl.query
 
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.query.analysis.ASTAnalysis
+import science.atlarge.grademl.query.execution.AliasedTable
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.DefaultTables
 import science.atlarge.grademl.query.model.Table
@@ -41,7 +42,9 @@ class QueryEngine(
 
     private fun applyFrom(fromClause: FromClause, tables: Map<String, Table>): Table {
         // Derive a virtual table from (an) existing table(s)
-        TODO()
+        val baseTable = tables[fromClause.tableName] ?: throw IllegalArgumentException(
+            "Table ${fromClause.tableName} does not exist")
+        return AliasedTable(baseTable, fromClause.alias ?: "")
     }
 
     private fun applyWhere(whereClause: WhereClause, table: Table): Table {
