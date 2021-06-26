@@ -1,8 +1,10 @@
 package science.atlarge.grademl.query.language
 
-sealed interface Expression : ASTNode
+sealed class Expression : ASTNode, Typed {
+    override lateinit var type: Type
+}
 
-class BooleanLiteral(val value: Boolean) : Expression {
+class BooleanLiteral(val value: Boolean) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 
     companion object {
@@ -11,22 +13,22 @@ class BooleanLiteral(val value: Boolean) : Expression {
     }
 }
 
-class NumericLiteral(val value: Double): Expression {
+class NumericLiteral(val value: Double): Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 
-class StringLiteral(val value: String) : Expression {
+class StringLiteral(val value: String) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 
-class ColumnLiteral(val tableName: String?, val columnName: String) : Expression {
+class ColumnLiteral(val tableName: String?, val columnName: String) : Expression() {
     val columnPath = if (tableName == null) columnName else "$tableName.$columnName"
     var columnIndex = -1
 
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 
-class UnaryExpression(val expr: Expression, val op: UnaryOp) : Expression {
+class UnaryExpression(val expr: Expression, val op: UnaryOp) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 
@@ -34,7 +36,7 @@ enum class UnaryOp {
     NOT
 }
 
-class BinaryExpression(val lhs: Expression, val rhs: Expression, val op: BinaryOp) : Expression {
+class BinaryExpression(val lhs: Expression, val rhs: Expression, val op: BinaryOp) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 
@@ -55,7 +57,7 @@ enum class BinaryOp {
     SMALLER_EQUAL
 }
 
-class FunctionCallExpression(val functionName: String, val arguments: List<Expression>) : Expression{
+class FunctionCallExpression(val functionName: String, val arguments: List<Expression>) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 
