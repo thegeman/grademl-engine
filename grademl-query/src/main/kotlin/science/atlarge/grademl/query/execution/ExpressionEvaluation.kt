@@ -9,16 +9,19 @@ object ExpressionEvaluation {
     private val visitor = Visitor()
 
     fun evaluateAsBoolean(e: Expression, row: Row): Boolean {
+        require(e.type == Type.BOOLEAN) { "Cannot evaluate ${e.type} expression as BOOLEAN" }
         visitor.row = row
         return visitor.evaluateAsBoolean(e)
     }
 
     fun evaluateAsNumeric(e: Expression, row: Row): Double {
+        require(e.type == Type.NUMERIC) { "Cannot evaluate ${e.type} expression as NUMERIC" }
         visitor.row = row
         return visitor.evaluateAsNumeric(e)
     }
 
     fun evaluateAsString(e: Expression, row: Row): String {
+        require(e.type == Type.STRING) { "Cannot evaluate ${e.type} expression as STRING" }
         visitor.row = row
         return visitor.evaluateAsString(e)
     }

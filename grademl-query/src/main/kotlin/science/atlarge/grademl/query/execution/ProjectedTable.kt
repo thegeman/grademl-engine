@@ -1,14 +1,12 @@
 package science.atlarge.grademl.query.execution
 
 import science.atlarge.grademl.query.language.Expression
-import science.atlarge.grademl.query.model.Column
-import science.atlarge.grademl.query.model.RowScanner
-import science.atlarge.grademl.query.model.Table
+import science.atlarge.grademl.query.model.*
 
 class ProjectedTable(
     val baseTable: Table,
     val columnExpressions: List<Expression>,
-    val columnNames: List<String>
+    columnNames: List<String>
 ) : Table {
 
     override val columns: List<Column>
@@ -21,7 +19,40 @@ class ProjectedTable(
     }
 
     override fun scan(): RowScanner {
-        TODO("Not yet implemented")
+        return ProjectedTableScanner(baseTable.scan(), columnExpressions)
+    }
+
+}
+
+private class ProjectedTableScanner(
+    private val baseScanner: RowScanner,
+    columnExpressions: List<Expression>
+) : RowScanner {
+
+    private val rowWrapper = ProjectedTableRow(columnExpressions)
+
+    override fun nextRow(): Row? {
+        val nextRow = baseScanner.nextRow() ?: return null
+        rowWrapper.inputRow = nextRow
+        return rowWrapper
+    }
+
+}
+
+private class ProjectedTableRow(private val columnExpressions: List<Expression>) : Row {
+
+    lateinit var inputRow: Row
+
+    override fun readBoolean(columnId: Int): Boolean {
+        return ExpressionEvaluation.evaluateAsBoolean(columnExpressions[columnId], inputRow)
+    }
+
+    override fun readNumeric(columnId: Int): Double {
+        return ExpressionEvaluation.evaluateAsNumeric(columnExpressions[columnId], inputRow)
+    }
+
+    override fun readString(columnId: Int): String {
+        return ExpressionEvaluation.evaluateAsString(columnExpressions[columnId], inputRow)
     }
 
 }
