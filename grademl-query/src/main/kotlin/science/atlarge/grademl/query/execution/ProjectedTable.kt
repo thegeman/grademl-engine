@@ -2,6 +2,7 @@ package science.atlarge.grademl.query.execution
 
 import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.model.Column
+import science.atlarge.grademl.query.model.RowScanner
 import science.atlarge.grademl.query.model.Table
 
 class ProjectedTable(
@@ -17,6 +18,10 @@ class ProjectedTable(
         columns = columnNames.mapIndexed { index, columnName ->
             Column(columnName, columnName, columnExpressions[index].type)
         }
+    }
+
+    override fun scan(): RowScanner {
+        TODO("Not yet implemented")
     }
 
 }
