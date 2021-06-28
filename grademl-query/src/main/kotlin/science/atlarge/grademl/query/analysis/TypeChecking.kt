@@ -79,7 +79,9 @@ object TypeChecking {
         }
 
         override fun visit(e: FunctionCallExpression) {
-            TODO("Not yet implemented")
+            val argTypes = e.arguments.map { it.checkType() }
+            e.functionDefinition.checkArgumentTypes(argTypes)
+            e.type = e.functionDefinition.resolveType(argTypes)
         }
     }
 

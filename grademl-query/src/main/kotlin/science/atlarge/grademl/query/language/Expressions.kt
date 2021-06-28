@@ -58,6 +58,6 @@ enum class BinaryOp {
 }
 
 class FunctionCallExpression(val functionName: String, val arguments: List<Expression>) : Expression() {
+    lateinit var functionDefinition: FunctionDefinition
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
-

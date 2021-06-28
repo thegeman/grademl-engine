@@ -7,6 +7,7 @@ object ASTAnalysis {
 
     fun analyzeExpression(expression: Expression, columns: List<Column>): Expression {
         ColumnResolution.resolveColumns(expression, columns)
+        FunctionResolution.resolveFunctionCalls(expression)
         TypeChecking.analyzeTypes(expression, columns)
         return expression
     }

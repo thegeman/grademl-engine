@@ -73,9 +73,14 @@ private class ClusteredTableScanner(
     private inner class ClusteredRowGroup : RowGroup {
 
         override fun nextRow(): Row? {
-            prefetchedRow = baseScanner.nextRow() ?: return null
-            if (!isInSameGroup(prefetchedRow!!)) return null
-            return prefetchedRow!!
+            val result = prefetchedRow ?: baseScanner.nextRow() ?: return null
+            return if (isInSameGroup(result)) {
+                prefetchedRow = null
+                result
+            } else {
+                prefetchedRow = result
+                null
+            }
         }
 
     }

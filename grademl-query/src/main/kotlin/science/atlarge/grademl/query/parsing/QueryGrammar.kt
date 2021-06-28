@@ -6,7 +6,6 @@ import com.github.h0tk3y.betterParse.grammar.parser
 import com.github.h0tk3y.betterParse.lexer.literalToken
 import com.github.h0tk3y.betterParse.lexer.regexToken
 import com.github.h0tk3y.betterParse.parser.Parser
-import science.atlarge.grademl.core.models.Path
 import science.atlarge.grademl.query.language.*
 
 object QueryGrammar : Grammar<List<Statement>>() {
@@ -110,14 +109,19 @@ object QueryGrammar : Grammar<List<Statement>>() {
             map { SelectClause(it.terms.map { t -> t.t1 }, it.terms.map { t -> t.t2 }) })
 
     private val limitClause by -limit * ((positiveInteger use { LimitClause(text.toInt(), null) }) or
-            (-first * positiveInteger * optional(-last * positiveInteger) use { LimitClause(t1.text.toInt(), t2?.text?.toInt()) }) or
+            (-first * positiveInteger * optional(-last * positiveInteger) use {
+                LimitClause(
+                    t1.text.toInt(),
+                    t2?.text?.toInt()
+                )
+            }) or
             (-last * positiveInteger use { LimitClause(null, text.toInt()) }))
 
     // Statements
     private val selectStatement by (fromClause * optional(whereClause) * optional(groupByClause) *
             selectClause * optional(limitClause)) map { (f, w, g, s, l) -> SelectStatement(f, w, g, s, l) }
 
-    override val rootParser by oneOrMore ((selectStatement) * -semicolon)
+    override val rootParser by oneOrMore((selectStatement) * -semicolon)
 
     private fun toBinaryOp(op: String): BinaryOp {
         return when (op) {
