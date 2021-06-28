@@ -2,10 +2,7 @@ package science.atlarge.grademl.query
 
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.query.analysis.ASTAnalysis
-import science.atlarge.grademl.query.execution.AliasedTable
-import science.atlarge.grademl.query.execution.FilteredTable
-import science.atlarge.grademl.query.execution.ProjectedTable
-import science.atlarge.grademl.query.execution.TablePrinter
+import science.atlarge.grademl.query.execution.*
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.DefaultTables
 import science.atlarge.grademl.query.model.Table
@@ -69,7 +66,8 @@ class QueryEngine(
 
     private fun applyGroupBy(groupByClause: GroupByClause, table: Table): Table {
         // Derive a clustered table
-        TODO()
+        val groupByColumns = groupByClause.columns.map { c -> ASTAnalysis.analyzeExpression(c, table.columns) }
+        return ClusteredTable(table, groupByColumns.map { (it as ColumnLiteral).columnIndex })
     }
 
     private fun applySelect(selectClause: SelectClause, table: Table): Table {
