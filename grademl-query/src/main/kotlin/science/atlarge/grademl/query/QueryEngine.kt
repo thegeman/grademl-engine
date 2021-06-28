@@ -39,8 +39,8 @@ class QueryEngine(
         // Display the result (with the LIMIT clause)
         TablePrinter.print(
             projectedTable,
-            showFirst = selectStatement.limit?.limitFirst ?: 10,
-            showLast = selectStatement.limit?.limitLast ?: 10
+            showFirst = selectStatement.limit?.run { limitFirst ?: 0 } ?: 10,
+            showLast = selectStatement.limit?.run { limitLast ?: 0 } ?: 10
         )
         println()
     }
