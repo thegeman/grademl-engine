@@ -48,4 +48,25 @@ class TypedValue {
             type = STRING
         }
 
+    fun clear() {
+        type = UNDEFINED
+    }
+
+    fun clone(): TypedValue {
+        return TypedValue().also { copyTo(it) }
+    }
+
+    fun copyTo(other: TypedValue) {
+        when (type) {
+            UNDEFINED -> other.clear()
+            BOOLEAN -> other.booleanValue = _booleanValue
+            NUMERIC -> other.numericValue = _numericValue
+            STRING -> other.stringValue = _stringValue
+        }.ensureExhaustive
+    }
+
+    fun copyFrom(other: TypedValue) {
+        other.copyTo(this)
+    }
+
 }
