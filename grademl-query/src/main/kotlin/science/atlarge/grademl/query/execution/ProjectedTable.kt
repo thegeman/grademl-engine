@@ -52,8 +52,9 @@ private class ProjectedTableScanner(
     private val firstRowValues: Array<TypedValue>
     private var firstGroupProcessed = false
 
-    private val inputRowWrapper: ConcatRow
-    private val computedRowWrapper: ConcatRow
+    private val firstRowWrapper: Row
+    private val inputRowProxy: Row.Proxy
+    private val computedRowWrapper: Row
     private val outputRowWrapper: ProjectedTableRow
 
     init {
@@ -93,8 +94,9 @@ private class ProjectedTableScanner(
         }
         this.firstRowValues = Array(inputColumns.size) { TypedValue() }
 
-        this.inputRowWrapper = ConcatRow(0, this.firstRowValues)
-        this.computedRowWrapper = ConcatRow(inputColumns.size, this.functionOutputs)
+        this.firstRowWrapper = Row.wrap(this.firstRowValues)
+        this.inputRowProxy = Row.Proxy()
+        this.computedRowWrapper = Row.concat(this.inputRowProxy, Row.wrap(this.functionOutputs))
         this.outputRowWrapper = ProjectedTableRow(this.columnExpressions, this.computedRowWrapper)
     }
 
@@ -102,7 +104,7 @@ private class ProjectedTableScanner(
         // For clustered inputs, produce one row per group
         if (hasClusteredInput) {
             if (!processNextRowGroup()) return null
-            computedRowWrapper.baseRow = inputRowWrapper
+            inputRowProxy.baseRow = firstRowWrapper
             return outputRowWrapper
         }
         // For non-clustered inputs, compute aggregate functions once and produce one row per input row
@@ -110,7 +112,7 @@ private class ProjectedTableScanner(
             if (!processNextRowGroup()) return null
             firstGroupProcessed = true
         }
-        computedRowWrapper.baseRow = topLevelScanner.nextRow() ?: return null
+        inputRowProxy.baseRow = topLevelScanner.nextRow() ?: return null
         return outputRowWrapper
     }
 
@@ -134,7 +136,7 @@ private class ProjectedTableScanner(
                 }
                 isFirstRow = false
                 // For every aggregating function, compute its arguments and add them in
-                computedRowWrapper.baseRow = row
+                inputRowProxy.baseRow = row
                 for (f in functionsAtDepth) {
                     val argumentArray = functionArgumentValues[f]
                     for (argId in argumentArray.indices) {
@@ -151,23 +153,6 @@ private class ProjectedTableScanner(
             }
         }
         return true
-    }
-
-}
-
-private class ConcatRow(
-    private val baseRowWidth: Int,
-    private val addedColumns: Array<TypedValue>
-) : Row {
-
-    override val columnCount = baseRowWidth + addedColumns.size
-
-    lateinit var baseRow: Row
-
-    override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
-        if (columnId >= baseRowWidth) addedColumns[columnId - baseRowWidth].copyTo(outValue)
-        else baseRow.readValue(columnId, outValue)
-        return outValue
     }
 
 }
