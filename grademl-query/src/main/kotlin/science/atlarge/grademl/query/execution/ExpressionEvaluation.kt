@@ -63,6 +63,7 @@ object ExpressionEvaluation {
 
         override fun visit(e: ColumnLiteral) {
             when (e.type) {
+                Type.UNDEFINED -> throw IllegalArgumentException()
                 Type.BOOLEAN -> booleanValue = row.readBoolean(e.columnIndex)
                 Type.NUMERIC -> numericValue = row.readNumeric(e.columnIndex)
                 Type.STRING -> stringValue = row.readString(e.columnIndex)
@@ -84,11 +85,13 @@ object ExpressionEvaluation {
                 BinaryOp.AND -> booleanValue = evaluateAsBoolean(e.lhs) && evaluateAsBoolean(e.rhs)
                 BinaryOp.OR -> booleanValue = evaluateAsBoolean(e.lhs) || evaluateAsBoolean(e.rhs)
                 BinaryOp.EQUAL -> booleanValue = when (e.lhs.type) {
+                    Type.UNDEFINED -> throw IllegalArgumentException()
                     Type.BOOLEAN -> evaluateAsBoolean(e.lhs) == evaluateAsBoolean(e.rhs)
                     Type.NUMERIC -> evaluateAsNumeric(e.lhs) == evaluateAsNumeric(e.rhs)
                     Type.STRING -> evaluateAsString(e.lhs) == evaluateAsString(e.rhs)
                 }
                 BinaryOp.NOT_EQUAL -> booleanValue = when (e.lhs.type) {
+                    Type.UNDEFINED -> throw IllegalArgumentException()
                     Type.BOOLEAN -> evaluateAsBoolean(e.lhs) != evaluateAsBoolean(e.rhs)
                     Type.NUMERIC -> evaluateAsNumeric(e.lhs) != evaluateAsNumeric(e.rhs)
                     Type.STRING -> evaluateAsString(e.lhs) != evaluateAsString(e.rhs)

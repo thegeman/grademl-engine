@@ -18,6 +18,7 @@ object TablePrinter {
             lines[lineIndex][0] = lineCount.toString()
             for (c in table.columns.indices) {
                 lines[lineIndex][c + 1] = when (table.columns[c].type) {
+                    Type.UNDEFINED -> ""
                     Type.BOOLEAN -> row.readBoolean(c).toString()
                     Type.NUMERIC -> row.readNumeric(c).toString()
                     Type.STRING -> "\"${row.readString(c)}\""

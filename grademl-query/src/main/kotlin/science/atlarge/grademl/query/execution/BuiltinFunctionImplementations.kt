@@ -54,6 +54,7 @@ object BuiltinFunctionImplementations {
     object MIN : AggregatingFunctionImplementation {
         override val definition: FunctionDefinition = BuiltinFunctions.MIN
         override fun newAggregator(argumentTypes: List<Type>) = when (argumentTypes[0]) {
+            Type.UNDEFINED -> throw IllegalArgumentException()
             Type.BOOLEAN -> object : Aggregator {
                 private var allAreTrue = true
                 override fun reset() {
@@ -104,6 +105,7 @@ object BuiltinFunctionImplementations {
     object MAX : AggregatingFunctionImplementation {
         override val definition: FunctionDefinition = BuiltinFunctions.MAX
         override fun newAggregator(argumentTypes: List<Type>) = when (argumentTypes[0]) {
+            Type.UNDEFINED -> throw IllegalArgumentException()
             Type.BOOLEAN -> object : Aggregator {
                 private var anyAreTrue = false
                 override fun reset() {

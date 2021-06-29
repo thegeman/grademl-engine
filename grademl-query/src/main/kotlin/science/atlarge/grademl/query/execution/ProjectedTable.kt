@@ -131,6 +131,7 @@ private class ProjectedTableScanner(
                 if (isFirstRow && hasClusteredInput && depth == 0) {
                     inputColumns.forEachIndexed { columnIndex, column ->
                         when (column.type) {
+                            Type.UNDEFINED -> {}
                             Type.BOOLEAN -> firstRowValues[columnIndex].booleanValue = row.readBoolean(columnIndex)
                             Type.NUMERIC -> firstRowValues[columnIndex].numericValue = row.readNumeric(columnIndex)
                             Type.STRING -> firstRowValues[columnIndex].stringValue = row.readString(columnIndex)
@@ -145,6 +146,7 @@ private class ProjectedTableScanner(
                     for (argId in argumentArray.indices) {
                         val argumentExpression = aggregateFunctionArguments[f][argId]
                         when (argumentExpression.type) {
+                            Type.UNDEFINED -> throw IllegalArgumentException()
                             Type.BOOLEAN -> argumentArray[argId].booleanValue =
                                 ExpressionEvaluation.evaluateAsBoolean(argumentExpression, computedRowWrapper)
                             Type.NUMERIC -> argumentArray[argId].numericValue =

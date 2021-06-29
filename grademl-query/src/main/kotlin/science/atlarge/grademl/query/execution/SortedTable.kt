@@ -78,6 +78,7 @@ private class SortedTableScanner(
     private val comparator = Comparator { leftRowIndex: Int, rightRowIndex: Int ->
         for (c in columnsToSort) {
             when (columnTypes[c]) {
+                Type.UNDEFINED -> continue
                 Type.BOOLEAN -> {
                     val lVal = booleanColumnValues[c][leftRowIndex]
                     val rVal = booleanColumnValues[c][rightRowIndex]
@@ -99,7 +100,7 @@ private class SortedTableScanner(
                     if (comparison == 0) continue
                     else return@Comparator comparison
                 }
-            }
+            }.ensureExhaustive
         }
         return@Comparator leftRowIndex.compareTo(rightRowIndex)
     }
@@ -143,6 +144,7 @@ private class SortedTableScanner(
         for (i in 0 until columnCount) {
             if (groupSize == 0 || !isPreSortedColumn[i]) {
                 when (columnTypes[i]) {
+                    Type.UNDEFINED -> {}
                     Type.BOOLEAN -> booleanColumnValues[i].add(row.readBoolean(i))
                     Type.NUMERIC -> numericColumnValues[i].add(row.readNumeric(i))
                     Type.STRING -> stringColumnValues[i].add(row.readString(i))
@@ -157,6 +159,7 @@ private class SortedTableScanner(
     private fun isRowInGroup(row: Row): Boolean {
         return preSortedColumns.all { columnId ->
             when (columnTypes[columnId]) {
+                Type.UNDEFINED -> true
                 Type.BOOLEAN -> booleanColumnValues[columnId][0] == row.readBoolean(columnId)
                 Type.NUMERIC -> numericColumnValues[columnId][0] == row.readNumeric(columnId)
                 Type.STRING -> stringColumnValues[columnId][0] == row.readString(columnId)

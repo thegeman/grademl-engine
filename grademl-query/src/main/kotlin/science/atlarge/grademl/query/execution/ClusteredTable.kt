@@ -52,6 +52,7 @@ private class ClusteredTableScanner(
         for (i in 0 until columnCount) {
             val columnId = groupingColumns[i]
             when (columnTypes[columnId]) {
+                Type.UNDEFINED -> {}
                 Type.BOOLEAN -> booleanColumnValues[i] = row.readBoolean(columnId)
                 Type.NUMERIC -> numericColumnValues[i] = row.readNumeric(columnId)
                 Type.STRING -> stringColumnValues[i] = row.readString(columnId)
@@ -63,6 +64,7 @@ private class ClusteredTableScanner(
         return (0 until columnCount).all { i ->
             val columnId = groupingColumns[i]
             when (columnTypes[columnId]) {
+                Type.UNDEFINED -> true
                 Type.BOOLEAN -> booleanColumnValues[i] == row.readBoolean(columnId)
                 Type.NUMERIC -> numericColumnValues[i] == row.readNumeric(columnId)
                 Type.STRING -> stringColumnValues[i] == row.readString(columnId)
