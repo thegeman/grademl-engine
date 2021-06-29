@@ -28,6 +28,7 @@ private class ClusteredTableScanner(
     private val columnValues = Array(columnCount) { TypedValue() }
     private var prefetchedRow: Row? = null
     private val rowGroup = ClusteredRowGroup()
+    private val scratch = TypedValue()
 
     override fun nextRowGroup(): RowGroup? {
         // Find the next row group
@@ -53,7 +54,7 @@ private class ClusteredTableScanner(
     private fun isInSameGroup(row: Row): Boolean {
         return (0 until columnCount).all { i ->
             val columnId = groupingColumns[i]
-            columnValues[i] == row.readValue(columnId)
+            columnValues[i] == row.readValue(columnId, scratch)
         }
     }
 

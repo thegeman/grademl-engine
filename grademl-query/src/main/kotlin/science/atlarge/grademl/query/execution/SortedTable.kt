@@ -72,6 +72,7 @@ private class SortedTableScanner(
     private var groupSize = 0
     private var prefetchedRow: Row? = null
     private val rowWrapper = SortedTableRow(columnValues, isPreSortedColumn)
+    private val scratch = TypedValue()
 
     private val comparator = Comparator { leftRowIndex: Int, rightRowIndex: Int ->
         for (c in columnsToSort) {
@@ -140,7 +141,7 @@ private class SortedTableScanner(
         val row = prefetchedRow!!
         for (i in 0 until columnCount) {
             if (groupSize == 0 || !isPreSortedColumn[i]) {
-                columnValues[i].add(row.readValue(i))
+                columnValues[i].add(row.readValue(i, TypedValue()))
             }
         }
         // Fetch next
@@ -150,7 +151,7 @@ private class SortedTableScanner(
 
     private fun isRowInGroup(row: Row): Boolean {
         return preSortedColumns.all { columnId ->
-            columnValues[columnId][0] == row.readValue(columnId)
+            columnValues[columnId][0] == row.readValue(columnId, scratch)
         }
     }
 
