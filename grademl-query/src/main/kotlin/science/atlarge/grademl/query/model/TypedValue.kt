@@ -3,7 +3,7 @@ package science.atlarge.grademl.query.model
 import science.atlarge.grademl.query.ensureExhaustive
 import science.atlarge.grademl.query.language.Type.*
 
-class TypedValue {
+class TypedValue() {
     private var _booleanValue = false
     private var _numericValue = 0.0
     private var _stringValue = ""
@@ -48,6 +48,18 @@ class TypedValue {
             type = STRING
         }
 
+    constructor(booleanValue: Boolean) : this() {
+        this.booleanValue = booleanValue
+    }
+
+    constructor(numericValue: Double) : this() {
+        this.numericValue = numericValue
+    }
+
+    constructor(stringValue: String) : this() {
+        this.stringValue = stringValue
+    }
+
     fun clear() {
         type = UNDEFINED
     }
@@ -67,6 +79,39 @@ class TypedValue {
 
     fun copyFrom(other: TypedValue) {
         other.copyTo(this)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as TypedValue
+
+        if (type != other.type) return false
+        return when (type) {
+            UNDEFINED -> true
+            BOOLEAN -> _booleanValue == other._booleanValue
+            NUMERIC -> _numericValue == other._numericValue
+            STRING -> _stringValue == other._stringValue
+        }
+    }
+
+    override fun hashCode(): Int {
+        return type.ordinal + 13 * when (type) {
+            UNDEFINED -> 0
+            BOOLEAN -> if (_booleanValue) 1 else 0
+            NUMERIC -> _numericValue.hashCode()
+            STRING -> _stringValue.hashCode()
+        }
+    }
+
+    override fun toString(): String {
+        return when (type) {
+            UNDEFINED -> "UNDEFINED"
+            BOOLEAN -> if (_booleanValue) "TRUE" else "FALSE"
+            NUMERIC -> _numericValue.toString()
+            STRING -> "\"$_stringValue\""
+        }
     }
 
 }
