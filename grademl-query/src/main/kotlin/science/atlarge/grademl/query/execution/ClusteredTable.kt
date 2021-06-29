@@ -1,7 +1,5 @@
 package science.atlarge.grademl.query.execution
 
-import science.atlarge.grademl.query.ensureExhaustive
-import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.*
 
 class ClusteredTable(inputTable: Table, groupingColumns: List<Int>) : Table {
@@ -16,21 +14,18 @@ class ClusteredTable(inputTable: Table, groupingColumns: List<Int>) : Table {
     }
 
     override fun scan(): RowGroupScanner {
-        return ClusteredTableScanner(sortedInputTable.scan(), columns.map { it.type }, distinctGroupingColumns)
+        return ClusteredTableScanner(sortedInputTable.scan(), distinctGroupingColumns)
     }
 
 }
 
 private class ClusteredTableScanner(
     private val baseScanner: RowScanner,
-    private val columnTypes: List<Type>,
     private val groupingColumns: List<Int>
 ) : RowGroupScanner {
 
     private val columnCount = groupingColumns.size
-    private val booleanColumnValues = BooleanArray(columnCount)
-    private val numericColumnValues = DoubleArray(columnCount)
-    private val stringColumnValues = Array(columnCount) { "" }
+    private val columnValues = Array(columnCount) { TypedValue() }
     private var prefetchedRow: Row? = null
     private val rowGroup = ClusteredRowGroup()
 
@@ -51,24 +46,14 @@ private class ClusteredTableScanner(
     private fun readGroupColumnsFrom(row: Row) {
         for (i in 0 until columnCount) {
             val columnId = groupingColumns[i]
-            when (columnTypes[columnId]) {
-                Type.UNDEFINED -> {}
-                Type.BOOLEAN -> booleanColumnValues[i] = row.readBoolean(columnId)
-                Type.NUMERIC -> numericColumnValues[i] = row.readNumeric(columnId)
-                Type.STRING -> stringColumnValues[i] = row.readString(columnId)
-            }.ensureExhaustive
+            row.readValue(columnId, columnValues[i])
         }
     }
 
     private fun isInSameGroup(row: Row): Boolean {
         return (0 until columnCount).all { i ->
             val columnId = groupingColumns[i]
-            when (columnTypes[columnId]) {
-                Type.UNDEFINED -> true
-                Type.BOOLEAN -> booleanColumnValues[i] == row.readBoolean(columnId)
-                Type.NUMERIC -> numericColumnValues[i] == row.readNumeric(columnId)
-                Type.STRING -> stringColumnValues[i] == row.readString(columnId)
-            }
+            columnValues[i] == row.readValue(columnId)
         }
     }
 
