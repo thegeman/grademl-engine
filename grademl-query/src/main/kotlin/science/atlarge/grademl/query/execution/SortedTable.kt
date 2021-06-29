@@ -5,6 +5,7 @@ import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.Row
 import science.atlarge.grademl.query.model.RowScanner
 import science.atlarge.grademl.query.model.Table
+import science.atlarge.grademl.query.model.TypedValue
 
 interface SortableTable : Table {
     fun canSortOnColumn(columnId: Int): Boolean
@@ -65,37 +66,35 @@ private class SortedTableScanner(
 
     private val columnCount = columnTypes.size
     private val isPreSortedColumn = (0 until columnCount).map { i -> i in preSortedColumns }
-    private val booleanColumnValues = (0 until columnCount).map { arrayListOf<Boolean>() }
-    private val numericColumnValues = (0 until columnCount).map { arrayListOf<Double>() }
-    private val stringColumnValues = (0 until columnCount).map { arrayListOf<String>() }
+    private val columnValues = (0 until columnCount).map { arrayListOf<TypedValue>() }
     private val rowOrderInGroup = arrayListOf<Int>()
     private var indexInGroup = 0
     private var groupSize = 0
     private var prefetchedRow: Row? = null
-    private val rowWrapper =
-        SortedTableRow(booleanColumnValues, numericColumnValues, stringColumnValues, isPreSortedColumn)
+    private val rowWrapper = SortedTableRow(columnValues, isPreSortedColumn)
 
     private val comparator = Comparator { leftRowIndex: Int, rightRowIndex: Int ->
         for (c in columnsToSort) {
             when (columnTypes[c]) {
-                Type.UNDEFINED -> continue
+                Type.UNDEFINED -> {
+                }
                 Type.BOOLEAN -> {
-                    val lVal = booleanColumnValues[c][leftRowIndex]
-                    val rVal = booleanColumnValues[c][rightRowIndex]
+                    val lVal = columnValues[c][leftRowIndex].booleanValue
+                    val rVal = columnValues[c][rightRowIndex].booleanValue
                     if (lVal == rVal) continue
                     else if (!lVal) return@Comparator -1
                     else return@Comparator 1
                 }
                 Type.NUMERIC -> {
-                    val lVal = numericColumnValues[c][leftRowIndex]
-                    val rVal = numericColumnValues[c][rightRowIndex]
+                    val lVal = columnValues[c][leftRowIndex].numericValue
+                    val rVal = columnValues[c][rightRowIndex].numericValue
                     val comparison = lVal.compareTo(rVal)
                     if (comparison == 0) continue
                     else return@Comparator comparison
                 }
                 Type.STRING -> {
-                    val lVal = stringColumnValues[c][leftRowIndex]
-                    val rVal = stringColumnValues[c][rightRowIndex]
+                    val lVal = columnValues[c][leftRowIndex].stringValue
+                    val rVal = columnValues[c][rightRowIndex].stringValue
                     val comparison = lVal.compareTo(rVal)
                     if (comparison == 0) continue
                     else return@Comparator comparison
@@ -117,9 +116,7 @@ private class SortedTableScanner(
 
     private fun sortNextGroup() {
         // Drop all values cached for the last group
-        booleanColumnValues.forEach { it.clear() }
-        numericColumnValues.forEach { it.clear() }
-        stringColumnValues.forEach { it.clear() }
+        columnValues.forEach { it.clear() }
         rowOrderInGroup.clear()
         indexInGroup = 0
         groupSize = 0
@@ -143,12 +140,7 @@ private class SortedTableScanner(
         val row = prefetchedRow!!
         for (i in 0 until columnCount) {
             if (groupSize == 0 || !isPreSortedColumn[i]) {
-                when (columnTypes[i]) {
-                    Type.UNDEFINED -> {}
-                    Type.BOOLEAN -> booleanColumnValues[i].add(row.readBoolean(i))
-                    Type.NUMERIC -> numericColumnValues[i].add(row.readNumeric(i))
-                    Type.STRING -> stringColumnValues[i].add(row.readString(i))
-                }.ensureExhaustive
+                columnValues[i].add(row.readValue(i))
             }
         }
         // Fetch next
@@ -158,48 +150,25 @@ private class SortedTableScanner(
 
     private fun isRowInGroup(row: Row): Boolean {
         return preSortedColumns.all { columnId ->
-            when (columnTypes[columnId]) {
-                Type.UNDEFINED -> true
-                Type.BOOLEAN -> booleanColumnValues[columnId][0] == row.readBoolean(columnId)
-                Type.NUMERIC -> numericColumnValues[columnId][0] == row.readNumeric(columnId)
-                Type.STRING -> stringColumnValues[columnId][0] == row.readString(columnId)
-            }
+            columnValues[columnId][0] == row.readValue(columnId)
         }
     }
 
 }
 
 private class SortedTableRow(
-    private val booleanColumnValues: List<List<Boolean>>,
-    private val numericColumnValues: List<List<Double>>,
-    private val stringColumnValues: List<List<String>>,
+    private val columnValues: List<List<TypedValue>>,
     private val isPreSortedColumn: List<Boolean>
 ) : Row {
 
+    override val columnCount = columnValues.size
+
     var rowId: Int = 0
 
-    override fun readBoolean(columnId: Int): Boolean {
-        return if (isPreSortedColumn[columnId]) {
-            booleanColumnValues[columnId][0]
-        } else {
-            booleanColumnValues[columnId][rowId]
-        }
-    }
-
-    override fun readNumeric(columnId: Int): Double {
-        return if (isPreSortedColumn[columnId]) {
-            numericColumnValues[columnId][0]
-        } else {
-            numericColumnValues[columnId][rowId]
-        }
-    }
-
-    override fun readString(columnId: Int): String {
-        return if (isPreSortedColumn[columnId]) {
-            stringColumnValues[columnId][0]
-        } else {
-            stringColumnValues[columnId][rowId]
-        }
+    override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
+        if (isPreSortedColumn[columnId]) outValue.copyFrom(columnValues[columnId][0])
+        else outValue.copyFrom(columnValues[columnId][rowId])
+        return outValue
     }
 
 }

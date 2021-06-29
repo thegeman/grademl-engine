@@ -59,28 +59,23 @@ private class MetricsTableRow(
     val deltaTs: TimestampNs
 ) : Row {
 
-    override fun readBoolean(columnId: Int): Boolean {
-        throw IllegalArgumentException()
-    }
+    override val columnCount: Int
+        get() = 8
 
-    override fun readNumeric(columnId: Int): Double {
-        return when (columnId) {
-            0 -> /* start_time */ (dataIterator.currentStartTime - deltaTs) * (1 / 1e9)
-            1 -> /* end_time */ (dataIterator.currentEndTime - deltaTs) * (1 / 1e9)
-            2 -> /* duration */ (dataIterator.currentEndTime - dataIterator.currentStartTime) * (1 / 1e9)
-            3 -> /* utilization */ dataIterator.currentValue / metric.data.maxValue
-            4 -> /* usage */ dataIterator.currentValue
-            5 -> /* capacity */ metric.data.maxValue
+    override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
+        when (columnId) {
+            0 -> /* start_time */ outValue.numericValue = (dataIterator.currentStartTime - deltaTs) * (1 / 1e9)
+            1 -> /* end_time */ outValue.numericValue = (dataIterator.currentEndTime - deltaTs) * (1 / 1e9)
+            2 -> /* duration */ outValue.numericValue =
+                (dataIterator.currentEndTime - dataIterator.currentStartTime) * (1 / 1e9)
+            3 -> /* utilization */ outValue.numericValue = dataIterator.currentValue / metric.data.maxValue
+            4 -> /* usage */ outValue.numericValue = dataIterator.currentValue
+            5 -> /* capacity */ outValue.numericValue = metric.data.maxValue
+            6 -> /* path */ outValue.stringValue = metric.path.toString()
+            7 -> /* type */ outValue.stringValue = metric.type.toString()
             else -> throw IllegalArgumentException()
         }
-    }
-
-    override fun readString(columnId: Int): String {
-        return when (columnId) {
-            6 -> /* path */ metric.path.toString()
-            7 -> /* type */ metric.type.toString()
-            else -> throw IllegalArgumentException()
-        }
+        return outValue
     }
 
 }

@@ -172,21 +172,17 @@ private class ConcatRow(
     private val baseRowWidth: Int,
     private val addedColumns: Array<TypedValue>
 ) : Row {
+
+    override val columnCount = baseRowWidth + addedColumns.size
+
     lateinit var baseRow: Row
-    override fun readBoolean(columnId: Int) = when {
-        columnId >= baseRowWidth -> addedColumns[columnId - baseRowWidth].booleanValue
-        else -> baseRow.readBoolean(columnId)
+
+    override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
+        if (columnId >= baseRowWidth) addedColumns[columnId - baseRowWidth].copyTo(outValue)
+        else baseRow.readValue(columnId, outValue)
+        return outValue
     }
 
-    override fun readNumeric(columnId: Int) = when {
-        columnId >= baseRowWidth -> addedColumns[columnId - baseRowWidth].numericValue
-        else -> baseRow.readNumeric(columnId)
-    }
-
-    override fun readString(columnId: Int) = when {
-        columnId >= baseRowWidth -> addedColumns[columnId - baseRowWidth].stringValue
-        else -> baseRow.readString(columnId)
-    }
 }
 
 private class ProjectedTableRow(
@@ -194,16 +190,19 @@ private class ProjectedTableRow(
     private val inputRow: Row
 ) : Row {
 
-    override fun readBoolean(columnId: Int): Boolean {
-        return ExpressionEvaluation.evaluateAsBoolean(columnExpressions[columnId], inputRow)
-    }
+    override val columnCount = columnExpressions.size
 
-    override fun readNumeric(columnId: Int): Double {
-        return ExpressionEvaluation.evaluateAsNumeric(columnExpressions[columnId], inputRow)
-    }
-
-    override fun readString(columnId: Int): String {
-        return ExpressionEvaluation.evaluateAsString(columnExpressions[columnId], inputRow)
+    override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
+        when (columnExpressions[columnId].type) {
+            Type.UNDEFINED -> outValue.clear()
+            Type.BOOLEAN -> outValue.booleanValue =
+                ExpressionEvaluation.evaluateAsBoolean(columnExpressions[columnId], inputRow)
+            Type.NUMERIC -> outValue.numericValue =
+                ExpressionEvaluation.evaluateAsNumeric(columnExpressions[columnId], inputRow)
+            Type.STRING -> outValue.stringValue =
+                ExpressionEvaluation.evaluateAsString(columnExpressions[columnId], inputRow)
+        }.ensureExhaustive
+        return outValue
     }
 
 }
