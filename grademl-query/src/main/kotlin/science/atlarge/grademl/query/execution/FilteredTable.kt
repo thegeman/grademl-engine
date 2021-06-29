@@ -5,6 +5,7 @@ import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.Row
 import science.atlarge.grademl.query.model.RowScanner
 import science.atlarge.grademl.query.model.Table
+import science.atlarge.grademl.query.model.TypedValue
 
 class FilteredTable(val baseTable: Table, val filterExpression: Expression) : Table {
 
@@ -20,10 +21,12 @@ class FilteredTable(val baseTable: Table, val filterExpression: Expression) : Ta
 
 private class FilteredTableScanner(val baseScanner: RowScanner, val filterExpression: Expression) : RowScanner {
 
+    private val scratch = TypedValue()
+
     override fun nextRow(): Row? {
         while (true) {
             val inputRow = baseScanner.nextRow() ?: return null
-            if (ExpressionEvaluation.evaluateAsBoolean(filterExpression, inputRow)) return inputRow
+            if (ExpressionEvaluation.evaluate(filterExpression, inputRow, scratch).booleanValue) return inputRow
         }
     }
 

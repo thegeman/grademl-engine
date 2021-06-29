@@ -3,107 +3,82 @@ package science.atlarge.grademl.query.execution
 import science.atlarge.grademl.query.ensureExhaustive
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.Row
+import science.atlarge.grademl.query.model.TypedValue
 
 object ExpressionEvaluation {
 
     private val visitor = Visitor()
 
-    fun evaluateAsBoolean(e: Expression, row: Row): Boolean {
-        require(e.type == Type.BOOLEAN) { "Cannot evaluate ${e.type} expression as BOOLEAN" }
+    fun evaluate(e: Expression, row: Row, outValue: TypedValue): TypedValue {
         visitor.row = row
-        return visitor.evaluateAsBoolean(e)
-    }
-
-    fun evaluateAsNumeric(e: Expression, row: Row): Double {
-        require(e.type == Type.NUMERIC) { "Cannot evaluate ${e.type} expression as NUMERIC" }
-        visitor.row = row
-        return visitor.evaluateAsNumeric(e)
-    }
-
-    fun evaluateAsString(e: Expression, row: Row): String {
-        require(e.type == Type.STRING) { "Cannot evaluate ${e.type} expression as STRING" }
-        visitor.row = row
-        return visitor.evaluateAsString(e)
+        return visitor.evaluate(e, outValue)
     }
 
     private class Visitor : ExpressionVisitor {
 
         lateinit var row: Row
 
-        private var booleanValue = false
-        private var numericValue = 0.0
-        private var stringValue = ""
+        private var lastValue = TypedValue()
+        private var scratch = Array(4) { TypedValue() }
 
-        fun evaluateAsBoolean(e: Expression): Boolean {
-            e.accept(this)
-            return booleanValue
+        private fun Expression.evaluate(): TypedValue {
+            accept(this@Visitor)
+            return lastValue
         }
 
-        fun evaluateAsNumeric(e: Expression): Double {
-            e.accept(this)
-            return numericValue
-        }
-
-        fun evaluateAsString(e: Expression): String {
-            e.accept(this)
-            return stringValue
+        fun evaluate(e: Expression, outValue: TypedValue): TypedValue {
+            e.evaluate().copyTo(outValue)
+            return outValue
         }
 
         override fun visit(e: BooleanLiteral) {
-            booleanValue = e.value
+            lastValue.booleanValue = e.value
         }
 
         override fun visit(e: NumericLiteral) {
-            numericValue = e.value
+            lastValue.numericValue = e.value
         }
 
         override fun visit(e: StringLiteral) {
-            stringValue = e.value
+            lastValue.stringValue = e.value
         }
 
         override fun visit(e: ColumnLiteral) {
-            when (e.type) {
-                Type.UNDEFINED -> throw IllegalArgumentException()
-                Type.BOOLEAN -> booleanValue = row.readBoolean(e.columnIndex)
-                Type.NUMERIC -> numericValue = row.readNumeric(e.columnIndex)
-                Type.STRING -> stringValue = row.readString(e.columnIndex)
-            }.ensureExhaustive
+            row.readValue(e.columnIndex, lastValue)
         }
 
         override fun visit(e: UnaryExpression) {
             when (e.op) {
-                UnaryOp.NOT -> booleanValue = !evaluateAsBoolean(e.expr)
+                UnaryOp.NOT -> lastValue.booleanValue = !e.expr.evaluate().booleanValue
             }.ensureExhaustive
         }
 
+        private var lhsValue = TypedValue()
         override fun visit(e: BinaryExpression) {
+            e.lhs.evaluate().copyTo(scratch[0])
             when (e.op) {
-                BinaryOp.ADD -> numericValue = evaluateAsNumeric(e.lhs) + evaluateAsNumeric(e.rhs)
-                BinaryOp.SUBTRACT -> numericValue = evaluateAsNumeric(e.lhs) - evaluateAsNumeric(e.rhs)
-                BinaryOp.MULTIPLY -> numericValue = evaluateAsNumeric(e.lhs) * evaluateAsNumeric(e.rhs)
-                BinaryOp.DIVIDE -> numericValue = evaluateAsNumeric(e.lhs) / evaluateAsNumeric(e.rhs)
-                BinaryOp.AND -> booleanValue = evaluateAsBoolean(e.lhs) && evaluateAsBoolean(e.rhs)
-                BinaryOp.OR -> booleanValue = evaluateAsBoolean(e.lhs) || evaluateAsBoolean(e.rhs)
-                BinaryOp.EQUAL -> booleanValue = when (e.lhs.type) {
-                    Type.UNDEFINED -> throw IllegalArgumentException()
-                    Type.BOOLEAN -> evaluateAsBoolean(e.lhs) == evaluateAsBoolean(e.rhs)
-                    Type.NUMERIC -> evaluateAsNumeric(e.lhs) == evaluateAsNumeric(e.rhs)
-                    Type.STRING -> evaluateAsString(e.lhs) == evaluateAsString(e.rhs)
-                }
-                BinaryOp.NOT_EQUAL -> booleanValue = when (e.lhs.type) {
-                    Type.UNDEFINED -> throw IllegalArgumentException()
-                    Type.BOOLEAN -> evaluateAsBoolean(e.lhs) != evaluateAsBoolean(e.rhs)
-                    Type.NUMERIC -> evaluateAsNumeric(e.lhs) != evaluateAsNumeric(e.rhs)
-                    Type.STRING -> evaluateAsString(e.lhs) != evaluateAsString(e.rhs)
-                }
-                BinaryOp.APPROX_EQUAL -> booleanValue = matchPathsWithWildcards(
-                    evaluateAsString(e.lhs), evaluateAsString(e.rhs))
-                BinaryOp.NOT_APPROX_EQUAL -> booleanValue = !matchPathsWithWildcards(
-                    evaluateAsString(e.lhs), evaluateAsString(e.rhs))
-                BinaryOp.GREATER -> booleanValue = evaluateAsNumeric(e.lhs) > evaluateAsNumeric(e.rhs)
-                BinaryOp.GREATER_EQUAL -> booleanValue = evaluateAsNumeric(e.lhs) >= evaluateAsNumeric(e.rhs)
-                BinaryOp.SMALLER -> booleanValue = evaluateAsNumeric(e.lhs) < evaluateAsNumeric(e.rhs)
-                BinaryOp.SMALLER_EQUAL -> booleanValue = evaluateAsNumeric(e.lhs) <= evaluateAsNumeric(e.rhs)
+                BinaryOp.ADD -> lastValue.numericValue = scratch[0].numericValue + e.rhs.evaluate().numericValue
+                BinaryOp.SUBTRACT -> lastValue.numericValue = scratch[0].numericValue - e.rhs.evaluate().numericValue
+                BinaryOp.MULTIPLY -> lastValue.numericValue = scratch[0].numericValue * e.rhs.evaluate().numericValue
+                BinaryOp.DIVIDE -> lastValue.numericValue = scratch[0].numericValue / e.rhs.evaluate().numericValue
+                BinaryOp.AND -> lastValue.booleanValue = scratch[0].booleanValue && e.rhs.evaluate().booleanValue
+                BinaryOp.OR -> lastValue.booleanValue = scratch[0].booleanValue || e.rhs.evaluate().booleanValue
+                BinaryOp.EQUAL -> lastValue.booleanValue = scratch[0] == e.rhs.evaluate()
+                BinaryOp.NOT_EQUAL -> lastValue.booleanValue = scratch[0] != e.rhs.evaluate()
+                BinaryOp.APPROX_EQUAL -> lastValue.booleanValue = matchPathsWithWildcards(
+                    scratch[0].stringValue, e.rhs.evaluate().stringValue
+                )
+                BinaryOp.NOT_APPROX_EQUAL -> lastValue.booleanValue = !matchPathsWithWildcards(
+                    scratch[0].stringValue, e.rhs.evaluate().stringValue
+                )
+                BinaryOp.GREATER -> lastValue.booleanValue =
+                    scratch[0].numericValue > e.rhs.evaluate().numericValue
+                BinaryOp.GREATER_EQUAL -> lastValue.booleanValue =
+                    scratch[0].numericValue >= e.rhs.evaluate().numericValue
+                BinaryOp.SMALLER -> lastValue.booleanValue =
+                    scratch[0].numericValue < e.rhs.evaluate().numericValue
+                BinaryOp.SMALLER_EQUAL -> lastValue.booleanValue =
+                    scratch[0].numericValue <= e.rhs.evaluate().numericValue
             }.ensureExhaustive
         }
 

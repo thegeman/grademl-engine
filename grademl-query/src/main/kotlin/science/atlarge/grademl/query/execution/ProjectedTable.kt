@@ -1,7 +1,6 @@
 package science.atlarge.grademl.query.execution
 
 import science.atlarge.grademl.query.analysis.AggregateFunctionDecomposition
-import science.atlarge.grademl.query.ensureExhaustive
 import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.*
@@ -130,12 +129,7 @@ private class ProjectedTableScanner(
                 // Cache the first row in the group for the top-level computation
                 if (isFirstRow && hasClusteredInput && depth == 0) {
                     inputColumns.forEachIndexed { columnIndex, column ->
-                        when (column.type) {
-                            Type.UNDEFINED -> {}
-                            Type.BOOLEAN -> firstRowValues[columnIndex].booleanValue = row.readBoolean(columnIndex)
-                            Type.NUMERIC -> firstRowValues[columnIndex].numericValue = row.readNumeric(columnIndex)
-                            Type.STRING -> firstRowValues[columnIndex].stringValue = row.readString(columnIndex)
-                        }.ensureExhaustive
+                        row.readValue(columnIndex, firstRowValues[columnIndex])
                     }
                 }
                 isFirstRow = false
@@ -145,15 +139,8 @@ private class ProjectedTableScanner(
                     val argumentArray = functionArgumentValues[f]
                     for (argId in argumentArray.indices) {
                         val argumentExpression = aggregateFunctionArguments[f][argId]
-                        when (argumentExpression.type) {
-                            Type.UNDEFINED -> throw IllegalArgumentException()
-                            Type.BOOLEAN -> argumentArray[argId].booleanValue =
-                                ExpressionEvaluation.evaluateAsBoolean(argumentExpression, computedRowWrapper)
-                            Type.NUMERIC -> argumentArray[argId].numericValue =
-                                ExpressionEvaluation.evaluateAsNumeric(argumentExpression, computedRowWrapper)
-                            Type.STRING -> argumentArray[argId].stringValue =
-                                ExpressionEvaluation.evaluateAsString(argumentExpression, computedRowWrapper)
-                        }.ensureExhaustive
+                        if (argumentExpression.type == Type.UNDEFINED) throw IllegalArgumentException()
+                        else ExpressionEvaluation.evaluate(argumentExpression, computedRowWrapper, argumentArray[argId])
                     }
                     functionAggregators[f].addRow(argumentArray)
                 }
@@ -193,15 +180,8 @@ private class ProjectedTableRow(
     override val columnCount = columnExpressions.size
 
     override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
-        when (columnExpressions[columnId].type) {
-            Type.UNDEFINED -> outValue.clear()
-            Type.BOOLEAN -> outValue.booleanValue =
-                ExpressionEvaluation.evaluateAsBoolean(columnExpressions[columnId], inputRow)
-            Type.NUMERIC -> outValue.numericValue =
-                ExpressionEvaluation.evaluateAsNumeric(columnExpressions[columnId], inputRow)
-            Type.STRING -> outValue.stringValue =
-                ExpressionEvaluation.evaluateAsString(columnExpressions[columnId], inputRow)
-        }.ensureExhaustive
+        if (columnExpressions[columnId].type == Type.UNDEFINED) outValue.clear()
+        else ExpressionEvaluation.evaluate(columnExpressions[columnId], inputRow, outValue)
         return outValue
     }
 
