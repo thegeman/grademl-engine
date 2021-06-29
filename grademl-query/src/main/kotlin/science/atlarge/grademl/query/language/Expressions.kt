@@ -1,7 +1,7 @@
 package science.atlarge.grademl.query.language
 
 sealed class Expression : ASTNode, Typed {
-    override lateinit var type: Type
+    override var type = Type.UNDEFINED
 }
 
 class BooleanLiteral(val value: Boolean) : Expression() {
