@@ -2,6 +2,7 @@ package science.atlarge.grademl.query.execution
 
 import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.Table
+import science.atlarge.grademl.query.model.TypedValue
 
 object TablePrinter {
 
@@ -11,18 +12,15 @@ object TablePrinter {
         var lineCount = 0
         var lineIndex = 0
         val sc = table.scan()
+        val cellValue = TypedValue()
         for (row in sc) {
             lineCount++
             if (lineIndex >= lines.size) continue
 
             lines[lineIndex][0] = lineCount.toString()
             for (c in table.columns.indices) {
-                lines[lineIndex][c + 1] = when (table.columns[c].type) {
-                    Type.UNDEFINED -> ""
-                    Type.BOOLEAN -> row.readBoolean(c).toString()
-                    Type.NUMERIC -> row.readNumeric(c).toString()
-                    Type.STRING -> "\"${row.readString(c)}\""
-                }
+                row.readValue(c, cellValue)
+                lines[lineIndex][c + 1] = cellValue.toString()
             }
 
             lineIndex++
