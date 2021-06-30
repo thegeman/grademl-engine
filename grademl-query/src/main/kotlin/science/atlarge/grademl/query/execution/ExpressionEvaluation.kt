@@ -99,7 +99,7 @@ object ExpressionEvaluation {
 
         override fun visit(e: CustomExpression) {
             while (scratch.size < e.arguments.size) scratch.add(TypedValue())
-            for (i in scratch.indices) {
+            for (i in e.arguments.indices) {
                 e.arguments[i].evaluate().copyTo(scratch[i])
             }
             e.evalFunction(scratch, lastValue)
