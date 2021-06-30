@@ -67,13 +67,13 @@ private class ClusteredTableScanner(
         // Find the next row group
         if (prefetchedRow == null) {
             prefetchedRow = baseScanner.nextOrNull() ?: return null
-            readGroupColumnsFrom(prefetchedRow!!)
         } else {
             while (isInSameGroup(prefetchedRow!!)) {
                 prefetchedRow = baseScanner.nextOrNull() ?: return null
             }
         }
 
+        readGroupColumnsFrom(prefetchedRow!!)
         return rowGroup
     }
 

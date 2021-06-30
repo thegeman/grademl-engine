@@ -68,6 +68,7 @@ private class MetricsTableScanner(private val metrics: List<Metric>, deltaTs: Ti
             nextMetric()
         }
         if (!rowWrapper.dataIterator.hasNext) return null
+        rowWrapper.dataIterator.next()
         return rowWrapper
     }
 
