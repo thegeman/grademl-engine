@@ -9,7 +9,7 @@ object ASTAnalysis {
         ColumnResolution.resolveColumns(expression, columns)
         FunctionResolution.resolveFunctionCalls(expression)
         TypeChecking.analyzeTypes(expression, columns)
-        return expression
+        return PatternMatchCompilationPass.rewriteExpression(expression)
     }
 
 }
