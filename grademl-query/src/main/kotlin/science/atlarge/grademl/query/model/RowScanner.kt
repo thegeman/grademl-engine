@@ -1,23 +1,22 @@
 package science.atlarge.grademl.query.model
 
-interface RowScanner : Iterable<Row> {
+abstract class RowScanner : Iterator<Row> {
 
-    fun nextRow(): Row?
+    private var prefetchedRow: Row? = null
 
-    override fun iterator() = object : Iterator<Row> {
-        private var upcomingRow: Row? = null
-        private fun prefetchRow(): Row? {
-            upcomingRow = nextRow()
-            return upcomingRow
-        }
+    protected abstract fun fetchRow(): Row?
 
-        override fun hasNext() = (upcomingRow ?: prefetchRow()) != null
+    override fun hasNext(): Boolean {
+        if (prefetchedRow != null) return true
+        prefetchedRow = fetchRow()
+        return prefetchedRow != null
+    }
 
-        override fun next(): Row {
-            val row = upcomingRow ?: prefetchRow() ?: throw NoSuchElementException()
-            upcomingRow = null
-            return row
-        }
+    override fun next(): Row {
+        if (!hasNext()) throw NoSuchElementException()
+        val result = prefetchedRow!!
+        prefetchedRow = null
+        return result
     }
 
 }

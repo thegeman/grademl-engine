@@ -4,6 +4,7 @@ import science.atlarge.grademl.query.analysis.AggregateFunctionDecomposition
 import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.*
+import science.atlarge.grademl.query.nextOrNull
 
 class ProjectedTable(
     val baseTable: Table,
@@ -13,6 +14,17 @@ class ProjectedTable(
 
     override val columns: List<Column>
 
+    override val isGrouped: Boolean
+        get() = false
+    override val supportsPushDownFilters: Boolean
+        get() = false
+    override val supportsPushDownProjections: Boolean
+        get() = false
+    override val supportsPushDownSort: Boolean
+        get() = false
+    override val supportsPushDownGroupBy: Boolean
+        get() = false
+
     init {
         require(columnExpressions.size == columnNames.size)
         columns = columnNames.mapIndexed { index, columnName ->
@@ -21,19 +33,19 @@ class ProjectedTable(
     }
 
     override fun scan(): RowScanner {
-        return ProjectedTableScanner({ baseTable.scan() }, columnExpressions, baseTable.columns)
+        return ProjectedTableScanner(baseTable, columnExpressions, baseTable.columns)
     }
 
 }
 
 private class ProjectedTableScanner(
-    scannerProvider: () -> RowScanner,
+    private val baseTable: Table,
     columnExpressions: List<Expression>,
     private val inputColumns: List<Column>
-) : RowScanner {
+) : RowScanner() {
 
-    private val topLevelScanner = scannerProvider()
-    private val hasClusteredInput = topLevelScanner is RowGroupScanner
+    private val hasClusteredInput = baseTable.isGrouped
+    private var nonClusteredScanner: RowScanner? = null
 
     private val columnExpressions: List<Expression>
     private val aggregateFunctions: List<AggregatingFunctionImplementation>
@@ -50,7 +62,6 @@ private class ProjectedTableScanner(
 
     private val rowGroupScanners: List<RowGroupScanner>
     private val firstRowValues: Array<TypedValue>
-    private var firstGroupProcessed = false
 
     private val firstRowWrapper: Row
     private val inputRowProxy: Row.Proxy
@@ -80,14 +91,14 @@ private class ProjectedTableScanner(
 
         this.rowGroupScanners = (0..this.maxFunctionDepth).map { i ->
             if (hasClusteredInput) {
-                (if (i == 0) topLevelScanner else scannerProvider()) as RowGroupScanner
+                baseTable.scanGroups() as RowGroupScanner
             } else {
-                object : RowGroupScanner {
+                object : RowGroupScanner() {
                     private var depleted = false
-                    override fun nextRowGroup(): RowGroup? {
+                    override fun fetchRowGroup(): RowGroup? {
                         if (depleted) return null
                         depleted = true
-                        return scannerProvider()
+                        return baseTable.scan()
                     }
                 }
             }
@@ -100,7 +111,7 @@ private class ProjectedTableScanner(
         this.outputRowWrapper = ProjectedTableRow(this.columnExpressions, this.computedRowWrapper)
     }
 
-    override fun nextRow(): Row? {
+    override fun fetchRow(): Row? {
         // For clustered inputs, produce one row per group
         if (hasClusteredInput) {
             if (!processNextRowGroup()) return null
@@ -108,18 +119,18 @@ private class ProjectedTableScanner(
             return outputRowWrapper
         }
         // For non-clustered inputs, compute aggregate functions once and produce one row per input row
-        if (!firstGroupProcessed) {
+        if (nonClusteredScanner == null) {
             if (!processNextRowGroup()) return null
-            firstGroupProcessed = true
+            nonClusteredScanner = baseTable.scan()
         }
-        inputRowProxy.baseRow = topLevelScanner.nextRow() ?: return null
+        inputRowProxy.baseRow = nonClusteredScanner!!.nextOrNull() ?: return null
         return outputRowWrapper
     }
 
     private fun processNextRowGroup(): Boolean {
         for (depth in maxFunctionDepth downTo 0) {
             // Start a new row group for the set of aggregating functions at a given depth
-            val rowGroup = rowGroupScanners[depth].nextRowGroup() ?: return false
+            val rowGroup = rowGroupScanners[depth].nextOrNull() ?: return false
             val functionsAtDepth = aggregateFunctionsByDepth[depth] ?: emptyList()
             // Initialize the aggregations at this level
             for (f in functionsAtDepth) {

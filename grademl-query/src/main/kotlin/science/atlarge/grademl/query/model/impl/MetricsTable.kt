@@ -1,10 +1,12 @@
-package science.atlarge.grademl.query.model
+package science.atlarge.grademl.query.model.impl
 
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.models.resource.Metric
 import science.atlarge.grademl.core.models.resource.MetricDataIterator
+import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.Type
+import science.atlarge.grademl.query.model.*
 
 class MetricsTable(private val gradeMLJob: GradeMLJob) : Table {
 
@@ -19,6 +21,17 @@ class MetricsTable(private val gradeMLJob: GradeMLJob) : Table {
         Column("type", "type", Type.STRING)
     )
 
+    override val isGrouped: Boolean
+        get() = false
+    override val supportsPushDownFilters: Boolean
+        get() = true
+    override val supportsPushDownProjections: Boolean
+        get() = true
+    override val supportsPushDownSort: Boolean
+        get() = true
+    override val supportsPushDownGroupBy: Boolean
+        get() = true
+
     override fun scan(): RowScanner {
         return MetricsTableScanner(
             gradeMLJob.unifiedResourceModel.rootResource.metricsInTree.toList(),
@@ -26,38 +39,54 @@ class MetricsTable(private val gradeMLJob: GradeMLJob) : Table {
         )
     }
 
+    override fun tryPushDownFilter(filterExpression: Expression): Table? {
+        TODO("Not yet implemented")
+    }
+
+    override fun tryPushDownProjection(projectionExpressions: List<Expression>): Table? {
+        TODO("Not yet implemented")
+    }
+
+    override fun tryPushDownSort(sortColumns: List<Int>): Table? {
+        TODO("Not yet implemented")
+    }
+
+    override fun tryPushDownGroupBy(groupColumns: List<Int>): Table? {
+        TODO("Not yet implemented")
+    }
+
 }
 
-private class MetricsTableScanner(private val metrics: List<Metric>, private val deltaTs: TimestampNs) : RowScanner {
+private class MetricsTableScanner(private val metrics: List<Metric>, deltaTs: TimestampNs) : RowScanner() {
 
     private var currentMetricIndex = -1
-    private var currentIterator: MetricDataIterator? = null
-    private var currentRowWrapper: MetricsTableRow? = null
+    private val rowWrapper = MetricsTableRow(deltaTs)
 
-    override fun nextRow(): Row? {
-        if (currentIterator == null || !currentIterator!!.hasNext) nextMetric()
-        currentIterator?.next()
-        return currentRowWrapper
+    override fun fetchRow(): Row? {
+        if (currentMetricIndex == -1) nextMetric()
+        while (currentMetricIndex < metrics.size && !rowWrapper.dataIterator.hasNext) {
+            nextMetric()
+        }
+        if (!rowWrapper.dataIterator.hasNext) return null
+        return rowWrapper
     }
 
     private fun nextMetric() {
-        if (currentMetricIndex + 1 < metrics.size) {
-            currentMetricIndex++
-            currentIterator = metrics[currentMetricIndex].data.iterator()
-            currentRowWrapper = MetricsTableRow(metrics[currentMetricIndex], currentIterator!!, deltaTs)
-        } else {
-            currentIterator = null
-            currentRowWrapper = null
+        currentMetricIndex++
+        if (currentMetricIndex < metrics.size) {
+            rowWrapper.metric = metrics[currentMetricIndex]
+            rowWrapper.dataIterator = rowWrapper.metric.data.iterator()
         }
     }
 
 }
 
 private class MetricsTableRow(
-    val metric: Metric,
-    val dataIterator: MetricDataIterator,
     val deltaTs: TimestampNs
 ) : Row {
+
+    lateinit var metric: Metric
+    lateinit var dataIterator: MetricDataIterator
 
     override val columnCount: Int
         get() = 8

@@ -1,27 +1,36 @@
 package science.atlarge.grademl.query.model
 
-interface RowGroupScanner : RowScanner {
-    fun nextRowGroup(): RowGroup?
+abstract class RowGroupScanner : Iterator<RowGroup> {
 
-    fun rowGroupIterator(): Iterator<RowGroup> = object : Iterator<RowGroup> {
-        private var upcomingRowGroup: RowGroup? = null
-        private fun prefetchRow(): RowGroup? {
-            upcomingRowGroup = nextRowGroup()
-            return upcomingRowGroup
-        }
+    private var prefetchedRowGroup: RowGroup? = null
 
-        override fun hasNext() = (upcomingRowGroup ?: prefetchRow()) != null
+    protected abstract fun fetchRowGroup(): RowGroup?
 
-        override fun next(): RowGroup {
-            val rowGroup = upcomingRowGroup ?: prefetchRow() ?: throw NoSuchElementException()
-            upcomingRowGroup = null
-            return rowGroup
+    override fun hasNext(): Boolean {
+        if (prefetchedRowGroup != null) return true
+        prefetchedRowGroup = fetchRowGroup()
+        return prefetchedRowGroup != null
+    }
+
+    override fun next(): RowGroup {
+        if (!hasNext()) throw NoSuchElementException()
+        val result = prefetchedRowGroup!!
+        prefetchedRowGroup = null
+        return result
+    }
+
+    fun asRowScanner(): RowScanner {
+        return object : RowScanner() {
+            private var currentGroup: RowGroup? = null
+            override fun fetchRow(): Row? {
+                if (currentGroup == null) {
+                    if (!this@RowGroupScanner.hasNext()) return null
+                    currentGroup = this@RowGroupScanner.next()
+                }
+                if (!currentGroup!!.hasNext()) return null
+                return currentGroup!!.next()
+            }
         }
     }
 
-    override fun nextRow(): Row? {
-        return nextRowGroup()?.nextRow()
-    }
 }
-
-typealias RowGroup = RowScanner

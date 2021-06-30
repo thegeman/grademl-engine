@@ -1,20 +1,53 @@
 package science.atlarge.grademl.query.execution
 
+import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.model.*
+import science.atlarge.grademl.query.nextOrNull
 
 class ClusteredTable(inputTable: Table, groupingColumns: List<Int>) : Table {
 
-    override val columns = inputTable.columns
-
     private val distinctGroupingColumns = groupingColumns.distinct()
     private val sortedInputTable = SortedTable(inputTable, distinctGroupingColumns)
+
+    override val columns = sortedInputTable.columns
+
+    override val isGrouped: Boolean
+        get() = true
+    override val supportsPushDownFilters: Boolean
+        get() = sortedInputTable.supportsPushDownFilters
+    override val supportsPushDownProjections: Boolean
+        get() = sortedInputTable.supportsPushDownProjections
+    override val supportsPushDownSort: Boolean
+        get() = true
+    override val supportsPushDownGroupBy: Boolean
+        get() = true
 
     init {
         require(distinctGroupingColumns.isNotEmpty())
     }
 
-    override fun scan(): RowGroupScanner {
+    override fun scan(): RowScanner {
+        return scanGroups().asRowScanner()
+    }
+
+    override fun scanGroups(): RowGroupScanner {
         return ClusteredTableScanner(sortedInputTable.scan(), distinctGroupingColumns)
+    }
+
+    override fun tryPushDownFilter(filterExpression: Expression): Table? {
+        TODO("Not yet implemented")
+    }
+
+    override fun tryPushDownProjection(projectionExpressions: List<Expression>): Table? {
+        TODO("Not yet implemented")
+    }
+
+    override fun tryPushDownSort(sortColumns: List<Int>): Table? {
+        TODO("Not yet implemented")
+    }
+
+    override fun tryPushDownGroupBy(groupColumns: List<Int>): Table? {
+        TODO("Not yet implemented")
     }
 
 }
@@ -22,7 +55,7 @@ class ClusteredTable(inputTable: Table, groupingColumns: List<Int>) : Table {
 private class ClusteredTableScanner(
     private val baseScanner: RowScanner,
     private val groupingColumns: List<Int>
-) : RowGroupScanner {
+) : RowGroupScanner() {
 
     private val columnCount = groupingColumns.size
     private val columnValues = Array(columnCount) { TypedValue() }
@@ -30,16 +63,16 @@ private class ClusteredTableScanner(
     private val rowGroup = ClusteredRowGroup()
     private val scratch = TypedValue()
 
-    override fun nextRowGroup(): RowGroup? {
+    override fun fetchRowGroup(): RowGroup? {
         // Find the next row group
         if (prefetchedRow == null) {
-            prefetchedRow = baseScanner.nextRow() ?: return null
+            prefetchedRow = baseScanner.nextOrNull() ?: return null
+            readGroupColumnsFrom(prefetchedRow!!)
         } else {
             while (isInSameGroup(prefetchedRow!!)) {
-                prefetchedRow = baseScanner.nextRow() ?: return null
+                prefetchedRow = baseScanner.nextOrNull() ?: return null
             }
         }
-        readGroupColumnsFrom(prefetchedRow!!)
 
         return rowGroup
     }
@@ -58,10 +91,10 @@ private class ClusteredTableScanner(
         }
     }
 
-    private inner class ClusteredRowGroup : RowGroup {
+    private inner class ClusteredRowGroup : RowGroup() {
 
-        override fun nextRow(): Row? {
-            val result = prefetchedRow ?: baseScanner.nextRow() ?: return null
+        override fun fetchRow(): Row? {
+            val result = prefetchedRow ?: baseScanner.nextOrNull() ?: return null
             return if (isInSameGroup(result)) {
                 prefetchedRow = null
                 result

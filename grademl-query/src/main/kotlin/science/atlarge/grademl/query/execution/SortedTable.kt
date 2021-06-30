@@ -1,20 +1,29 @@
 package science.atlarge.grademl.query.execution
 
 import science.atlarge.grademl.query.ensureExhaustive
+import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.Type
-import science.atlarge.grademl.query.model.Row
-import science.atlarge.grademl.query.model.RowScanner
-import science.atlarge.grademl.query.model.Table
-import science.atlarge.grademl.query.model.TypedValue
+import science.atlarge.grademl.query.model.*
+import science.atlarge.grademl.query.nextOrNull
 
 interface SortableTable : Table {
     fun canSortOnColumn(columnId: Int): Boolean
     fun sortedBy(columnIds: List<Int>): Table
 }
 
-class SortedTable(private val inputTable: Table, sortColumns: List<Int>) : SortableTable {
+class SortedTable(private val inputTable: Table, sortColumns: List<Int>) : Table {
 
     override val columns = inputTable.columns
+    override val isGrouped: Boolean
+        get() = false
+    override val supportsPushDownFilters: Boolean
+        get() = inputTable.supportsPushDownFilters
+    override val supportsPushDownProjections: Boolean
+        get() = inputTable.supportsPushDownProjections
+    override val supportsPushDownSort: Boolean
+        get() = true
+    override val supportsPushDownGroupBy: Boolean
+        get() = false
 
     private val distinctSortColumns = sortColumns.distinct()
     private val preSortedTable: Table
@@ -47,12 +56,17 @@ class SortedTable(private val inputTable: Table, sortColumns: List<Int>) : Sorta
         }
     }
 
-    override fun canSortOnColumn(columnId: Int): Boolean {
-        return columnId in columns.indices
+    override fun tryPushDownFilter(filterExpression: Expression): Table? {
+        val newInputTable = inputTable.tryPushDownFilter(filterExpression) ?: return null
+        return SortedTable(newInputTable, distinctSortColumns)
     }
 
-    override fun sortedBy(columnIds: List<Int>): Table {
-        return SortedTable(inputTable, columnIds + distinctSortColumns)
+    override fun tryPushDownProjection(projectionExpressions: List<Expression>): Table? {
+        TODO("Not yet implemented")
+    }
+
+    override fun tryPushDownSort(sortColumns: List<Int>): Table {
+        return SortedTable(inputTable, sortColumns + distinctSortColumns)
     }
 
 }
@@ -62,7 +76,7 @@ private class SortedTableScanner(
     private val columnTypes: List<Type>,
     private val preSortedColumns: List<Int>,
     private val columnsToSort: List<Int>
-) : RowScanner {
+) : RowScanner() {
 
     private val columnCount = columnTypes.size
     private val isPreSortedColumn = (0 until columnCount).map { i -> i in preSortedColumns }
@@ -105,7 +119,7 @@ private class SortedTableScanner(
         return@Comparator leftRowIndex.compareTo(rightRowIndex)
     }
 
-    override fun nextRow(): Row? {
+    override fun fetchRow(): Row? {
         if (indexInGroup >= groupSize) {
             sortNextGroup()
             if (groupSize == 0) return null
@@ -123,7 +137,7 @@ private class SortedTableScanner(
         groupSize = 0
 
         // Look at the first row in the next group to determine the value of each pre-sorted column
-        if (prefetchedRow == null) prefetchedRow = baseScanner.nextRow() ?: return
+        if (prefetchedRow == null) prefetchedRow = baseScanner.nextOrNull() ?: return
         appendAndFetchNextRow()
 
         // Add all rows with the same values for every pre-sorted column
@@ -146,7 +160,7 @@ private class SortedTableScanner(
         }
         // Fetch next
         groupSize++
-        prefetchedRow = baseScanner.nextRow()
+        prefetchedRow = baseScanner.nextOrNull()
     }
 
     private fun isRowInGroup(row: Row): Boolean {
