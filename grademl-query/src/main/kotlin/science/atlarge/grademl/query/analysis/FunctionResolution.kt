@@ -32,6 +32,10 @@ object FunctionResolution {
             def.checkArgumentCount(e.arguments.size)
             e.functionDefinition = def
         }
+
+        override fun visit(e: CustomExpression) {
+            e.arguments.forEach { it.accept(this) }
+        }
     }
 
 }

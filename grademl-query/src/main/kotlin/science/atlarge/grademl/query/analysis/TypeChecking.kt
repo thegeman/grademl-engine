@@ -11,6 +11,7 @@ object TypeChecking {
     }
 
     private class Visitor(private val columns: List<Column>) : ExpressionVisitor {
+
         private fun Expression.checkType(): Type {
             accept(this@Visitor)
             return type
@@ -83,6 +84,12 @@ object TypeChecking {
             e.functionDefinition.checkArgumentTypes(argTypes)
             e.type = e.functionDefinition.resolveType(argTypes)
         }
+
+        override fun visit(e: CustomExpression) {
+            e.arguments.forEach { it.checkType() }
+            e.type = e.originalExpression.checkType()
+        }
+
     }
 
 }

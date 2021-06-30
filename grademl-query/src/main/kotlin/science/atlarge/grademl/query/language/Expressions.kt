@@ -1,5 +1,7 @@
 package science.atlarge.grademl.query.language
 
+import science.atlarge.grademl.query.model.TypedValue
+
 sealed class Expression : ASTNode, Typed {
     override var type = Type.UNDEFINED
 }
@@ -59,5 +61,13 @@ enum class BinaryOp {
 
 class FunctionCallExpression(val functionName: String, val arguments: List<Expression>) : Expression() {
     lateinit var functionDefinition: FunctionDefinition
+    override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+}
+
+class CustomExpression(
+    val arguments: List<Expression>,
+    val originalExpression: Expression,
+    val evalFunction: (args: List<TypedValue>, outValue: TypedValue) -> TypedValue
+) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }

@@ -79,6 +79,14 @@ object AggregateFunctionDecomposition {
             }
         }
 
+        override fun visit(e: CustomExpression) {
+            val args = e.arguments.map { it.rewrite() }
+            rewrittenExpression = if (args.indices.all { i -> args[i] === e.arguments[i] }) e
+            else CustomExpression(args, e.originalExpression, e.evalFunction).apply {
+                type = e.type
+            }
+        }
+
     }
 
     class Result(

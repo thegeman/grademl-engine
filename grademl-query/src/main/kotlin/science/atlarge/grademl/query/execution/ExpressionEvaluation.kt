@@ -19,7 +19,7 @@ object ExpressionEvaluation {
         lateinit var row: Row
 
         private var lastValue = TypedValue()
-        private var scratch = Array(4) { TypedValue() }
+        private var scratch = arrayListOf(TypedValue(), TypedValue(), TypedValue(), TypedValue())
 
         private fun Expression.evaluate(): TypedValue {
             accept(this@Visitor)
@@ -95,6 +95,14 @@ object ExpressionEvaluation {
 
         override fun visit(e: FunctionCallExpression) {
             TODO("Not yet implemented")
+        }
+
+        override fun visit(e: CustomExpression) {
+            while (scratch.size < e.arguments.size) scratch.add(TypedValue())
+            for (i in scratch.indices) {
+                e.arguments[i].evaluate().copyTo(scratch[i])
+            }
+            e.evalFunction(scratch, lastValue)
         }
 
     }

@@ -11,10 +11,6 @@ object ColumnResolution {
     }
 
     private class Visitor(private val columnIndicesByPath: Map<String, Int>) : ExpressionVisitor {
-        private fun Expression.recurse() {
-            accept(this@Visitor)
-        }
-
         override fun visit(e: BooleanLiteral) {}
         override fun visit(e: NumericLiteral) {}
         override fun visit(e: StringLiteral) {}
@@ -25,16 +21,21 @@ object ColumnResolution {
         }
 
         override fun visit(e: UnaryExpression) {
-            e.expr.recurse()
+            e.expr.accept(this)
         }
 
         override fun visit(e: BinaryExpression) {
-            e.lhs.recurse()
-            e.rhs.recurse()
+            e.lhs.accept(this)
+            e.rhs.accept(this)
         }
 
         override fun visit(e: FunctionCallExpression) {
-            e.arguments.forEach { it.recurse() }
+            e.arguments.forEach { it.accept(this) }
+        }
+
+        override fun visit(e: CustomExpression) {
+            e.arguments.forEach { it.accept(this) }
+            e.originalExpression.accept(this)
         }
     }
 

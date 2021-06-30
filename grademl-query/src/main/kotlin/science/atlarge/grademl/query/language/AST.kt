@@ -13,6 +13,7 @@ interface ASTVisitor {
     fun visit(e: UnaryExpression)
     fun visit(e: BinaryExpression)
     fun visit(e: FunctionCallExpression)
+    fun visit(e: CustomExpression)
 
     // Statements
     fun visit(s: SelectStatement)
