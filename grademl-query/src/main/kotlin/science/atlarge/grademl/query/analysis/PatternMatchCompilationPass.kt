@@ -3,9 +3,9 @@ package science.atlarge.grademl.query.analysis
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.TypedValue
 
-object PatternMatchCompilationPass : ExpressionRewritePass() {
+object PatternMatchCompilationPass {
 
-    override fun createVisitor() = object : Visitor() {
+    fun rewrite(e: Expression): Expression = object : ExpressionRewritePass() {
         override fun rewrite(e: BinaryExpression): Expression {
             if (e.op != BinaryOp.APPROX_EQUAL && e.op != BinaryOp.NOT_APPROX_EQUAL) return super.rewrite(e)
             if (e.rhs !is StringLiteral) return super.rewrite(e)
@@ -25,6 +25,6 @@ object PatternMatchCompilationPass : ExpressionRewritePass() {
             }
             return CustomExpression(listOf(e.lhs), e, matchFn).apply { type = Type.BOOLEAN }
         }
-    }
+    }.rewriteExpression(e)
 
 }

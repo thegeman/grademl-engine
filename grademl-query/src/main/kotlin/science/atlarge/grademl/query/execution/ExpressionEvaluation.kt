@@ -53,7 +53,6 @@ object ExpressionEvaluation {
             }.ensureExhaustive
         }
 
-        private var lhsValue = TypedValue()
         override fun visit(e: BinaryExpression) {
             e.lhs.evaluate().copyTo(scratch[0])
             when (e.op) {
