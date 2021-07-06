@@ -1,6 +1,5 @@
-package science.atlarge.grademl.query.model.impl
+package science.atlarge.grademl.query.execution.data
 
-import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.Column
 import science.atlarge.grademl.query.model.RowScanner
@@ -23,32 +22,8 @@ class AttributedMetricsTable : Table {
 
     override val isGrouped: Boolean
         get() = false
-    override val supportsPushDownFilters: Boolean
-        get() = true
-    override val supportsPushDownProjections: Boolean
-        get() = true
-    override val supportsPushDownSort: Boolean
-        get() = true
-    override val supportsPushDownGroupBy: Boolean
-        get() = true
 
     override fun scan(): RowScanner {
-        TODO("Not yet implemented")
-    }
-
-    override fun tryPushDownFilter(filterExpression: Expression): Table? {
-        TODO("Not yet implemented")
-    }
-
-    override fun tryPushDownProjection(projectionExpressions: List<Expression>): Table? {
-        TODO("Not yet implemented")
-    }
-
-    override fun tryPushDownSort(sortColumns: List<Int>): Table? {
-        TODO("Not yet implemented")
-    }
-
-    override fun tryPushDownGroupBy(groupColumns: List<Int>): Table? {
         TODO("Not yet implemented")
     }
 

@@ -1,5 +1,7 @@
 package science.atlarge.grademl.query.execution
 
+import science.atlarge.grademl.query.analysis.ColumnReplacementPass
+import science.atlarge.grademl.query.language.ColumnLiteral
 import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.model.Column
 import science.atlarge.grademl.query.model.Table
@@ -12,36 +14,42 @@ class AliasedTable(val baseTable: Table, val aliasPath: String) : Table {
 
     override val isGrouped: Boolean
         get() = baseTable.isGrouped
-    override val supportsPushDownFilters: Boolean
-        get() = baseTable.supportsPushDownFilters
-    override val supportsPushDownProjections: Boolean
-        get() = baseTable.supportsPushDownProjections
-    override val supportsPushDownSort: Boolean
-        get() = baseTable.supportsPushDownSort
-    override val supportsPushDownGroupBy: Boolean
-        get() = baseTable.supportsPushDownGroupBy
 
     override fun scan() = baseTable.scan()
     override fun scanGroups() = baseTable.scanGroups()
 
-    override fun tryPushDownFilter(filterExpression: Expression): Table? {
-        val newBaseTable = baseTable.tryPushDownFilter(filterExpression) ?: return null
-        return AliasedTable(newBaseTable, aliasPath)
+    override fun withSubsetColumns(subsetColumns: List<ColumnLiteral>): Table? {
+        val renamedColumns = subsetColumns.map { convertExpression(it) as ColumnLiteral }
+        val subsetBaseTable = baseTable.withSubsetColumns(renamedColumns) ?: return null
+        return AliasedTable(subsetBaseTable, aliasPath)
     }
 
-    override fun tryPushDownProjection(projectionExpressions: List<Expression>): Table? {
-        val newBaseTable = baseTable.tryPushDownProjection(projectionExpressions) ?: return null
-        return AliasedTable(newBaseTable, aliasPath)
+    override val columnsOptimizedForFilter: List<Column>
+        get() = baseTable.columnsOptimizedForFilter
+
+    override fun filteredWith(condition: Expression): Table? {
+        val conditionWithRenamedColumns = convertExpression(condition)
+        val filteredBaseTable = baseTable.filteredWith(conditionWithRenamedColumns) ?: return null
+        return AliasedTable(filteredBaseTable, aliasPath)
     }
 
-    override fun tryPushDownSort(sortColumns: List<Int>): Table? {
-        val newBaseTable = baseTable.tryPushDownSort(sortColumns) ?: return null
-        return AliasedTable(newBaseTable, aliasPath)
+    override val columnsOptimizedForSort: List<Column>
+        get() = baseTable.columnsOptimizedForSort
+
+    override fun sortedBy(sortColumns: List<ColumnLiteral>): Table? {
+        val renamedColumns = sortColumns.map { convertExpression(it) as ColumnLiteral }
+        val sortedBaseTable = baseTable.sortedBy(renamedColumns) ?: return null
+        return AliasedTable(sortedBaseTable, aliasPath)
     }
 
-    override fun tryPushDownGroupBy(groupColumns: List<Int>): Table? {
-        val newBaseTable = baseTable.tryPushDownGroupBy(groupColumns) ?: return null
-        return AliasedTable(newBaseTable, aliasPath)
+    private fun convertExpression(expression: Expression): Expression {
+        return ColumnReplacementPass.replaceColumnLiterals(expression) { columnLiteral ->
+            val matchingColumn = baseTable.columns.find { it.name == columnLiteral.columnName }!!
+            ColumnLiteral(matchingColumn.path).also {
+                it.columnIndex = columnLiteral.columnIndex
+                it.type = columnLiteral.type
+            }
+        }
     }
 
 }

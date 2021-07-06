@@ -2,7 +2,9 @@ package science.atlarge.grademl.query.analysis
 
 import science.atlarge.grademl.query.language.*
 
-abstract class ExpressionRewritePass : ExpressionVisitor {
+abstract class ExpressionRewritePass(
+    private val rewriteOriginalOfCustomExpression: Boolean = false
+) : ExpressionVisitor {
 
     private lateinit var lastRewritten: Expression
 
@@ -49,8 +51,12 @@ abstract class ExpressionRewritePass : ExpressionVisitor {
 
     protected open fun rewrite(e: CustomExpression): Expression {
         val rewrittenArgs = e.arguments.map { it.rewrite() }
-        return if (e.arguments.indices.all { i -> rewrittenArgs[i] === e.arguments[i] }) e
-        else CustomExpression(rewrittenArgs, e.originalExpression, e.evalFunction)
+        val rewrittenOriginalExpression =
+            if (rewriteOriginalOfCustomExpression) e.originalExpression.rewrite()
+            else e.originalExpression
+        val hasChanged = rewrittenOriginalExpression !== e.originalExpression ||
+                e.arguments.indices.any { i -> rewrittenArgs[i] !== e.arguments[i] }
+        return if (hasChanged) CustomExpression(rewrittenArgs, rewrittenOriginalExpression, e.evalFunction) else e
     }
 
     override fun visit(e: BooleanLiteral) {

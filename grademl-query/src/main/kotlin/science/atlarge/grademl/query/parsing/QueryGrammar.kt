@@ -24,6 +24,7 @@ object QueryGrammar : Grammar<List<Statement>>() {
     private val group by regexToken("""[Gg][Rr][Oo][Uu][Pp]\b""")
     private val by by regexToken("""[Bb][Yy]\b""")
     private val select by regexToken("""[Ss][Ee][Ll][Ee][Cc][Tt]\b""")
+    private val order by regexToken("""[Oo][Rr][Dd][Ee][Rr]\b""")
     private val limit by regexToken("""[Ll][Ii][Mm][Ii][Tt]\b""")
     private val first by regexToken("""[Ff][Ii][Rr][Ss][Tt]\b""")
     private val last by regexToken("""[Ll][Aa][Ss][Tt]\b""")
@@ -61,7 +62,7 @@ object QueryGrammar : Grammar<List<Statement>>() {
 
     // Literals
     private val columnLit by (id * optional(-period * id) map { (l, r) ->
-        if (r != null) ColumnLiteral(l.text, r.text) else ColumnLiteral(null, l.text)
+        if (r != null) ColumnLiteral("${l.text}.${r.text}") else ColumnLiteral(l.text)
     })
 
     private val lit by columnLit or
@@ -108,6 +109,8 @@ object QueryGrammar : Grammar<List<Statement>>() {
     private val selectClause by (-select * separated(expression * optional(-`as` * id use { text }), comma)
             map { SelectClause(it.terms.map { t -> t.t1 }, it.terms.map { t -> t.t2 }) })
 
+    private val orderByClause by (-order * -by * separated(columnLit, comma) map { OrderByClause(it.terms) })
+
     private val limitClause by -limit * ((positiveInteger use { LimitClause(text.toInt(), null) }) or
             (-first * positiveInteger * optional(-last * positiveInteger) use {
                 LimitClause(
@@ -118,8 +121,8 @@ object QueryGrammar : Grammar<List<Statement>>() {
             (-last * positiveInteger use { LimitClause(null, text.toInt()) }))
 
     // Statements
-    private val selectStatement by (fromClause * optional(whereClause) * optional(groupByClause) *
-            selectClause * optional(limitClause)) map { (f, w, g, s, l) -> SelectStatement(f, w, g, s, l) }
+    private val selectStatement by (fromClause * optional(whereClause) * optional(groupByClause) * selectClause *
+            optional(orderByClause) * optional(limitClause)) map { (f, w, g, s, o, l) -> SelectStatement(f, w, g, s, o, l) }
 
     override val rootParser by oneOrMore((selectStatement) * -semicolon)
 

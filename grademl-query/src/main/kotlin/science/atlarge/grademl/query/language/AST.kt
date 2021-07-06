@@ -23,6 +23,7 @@ interface ASTVisitor {
     fun visit(c: WhereClause)
     fun visit(c: GroupByClause)
     fun visit(c: SelectClause)
+    fun visit(c: OrderByClause)
     fun visit(c: LimitClause)
 }
 
@@ -33,5 +34,6 @@ interface ExpressionVisitor : ASTVisitor {
     override fun visit(c: WhereClause) { throw UnsupportedOperationException() }
     override fun visit(c: GroupByClause) { throw UnsupportedOperationException() }
     override fun visit(c: SelectClause) { throw UnsupportedOperationException() }
+    override fun visit(c: OrderByClause) { throw UnsupportedOperationException() }
     override fun visit(c: LimitClause) { throw UnsupportedOperationException() }
 }

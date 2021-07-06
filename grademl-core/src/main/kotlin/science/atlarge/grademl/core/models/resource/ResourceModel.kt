@@ -193,6 +193,10 @@ private class MetricImpl(
 typealias ResourcePath = Path
 
 data class MetricPath(val resourcePath: ResourcePath, val metricName: String) {
+    val asPlainPath: Path = run {
+        val newLastComponent = "${resourcePath.pathComponents.last()}:$metricName"
+        Path(resourcePath.pathComponents.dropLast(1) + newLastComponent, resourcePath.isRelative)
+    }
     override fun toString(): String {
         return "${resourcePath.toCanonicalPath()}:$metricName"
     }

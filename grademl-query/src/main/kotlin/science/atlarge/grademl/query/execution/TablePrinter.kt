@@ -1,6 +1,5 @@
 package science.atlarge.grademl.query.execution
 
-import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.Table
 import science.atlarge.grademl.query.model.TypedValue
 
@@ -43,7 +42,7 @@ object TablePrinter {
 
         val columnWidths = header.indices.map { c ->
             val maxValueWidth = if (lineCount == 0) 0 else
-                    (0 until minOf(lineCount, lines.size)).maxOf { lines[it][c].length }
+                (0 until minOf(lineCount, lines.size)).maxOf { lines[it][c].length }
             maxOf(header[c].length, maxValueWidth)
         }
 

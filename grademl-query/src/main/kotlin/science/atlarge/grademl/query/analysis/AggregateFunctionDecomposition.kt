@@ -65,7 +65,7 @@ object AggregateFunctionDecomposition {
                 aggregateFunctionDepths.add(currentDepth)
                 aggregateFunctionTypes.add(e.type)
                 rewrittenFunctionArguments.add(args)
-                ColumnLiteral("", "__AGG_${e.functionName}_$newColumnIndex").apply {
+                ColumnLiteral("__AGG_${e.functionName}_$newColumnIndex").apply {
                     type = e.type
                     columnIndex = newColumnIndex
                 }

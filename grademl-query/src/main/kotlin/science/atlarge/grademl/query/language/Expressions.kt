@@ -4,10 +4,12 @@ import science.atlarge.grademl.query.model.TypedValue
 
 sealed class Expression : ASTNode, Typed {
     override var type = Type.UNDEFINED
+    abstract fun clone(): Expression
 }
 
 class BooleanLiteral(val value: Boolean) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+    override fun clone() = BooleanLiteral(value).also { it.type = type }
 
     companion object {
         val TRUE = BooleanLiteral(true)
@@ -17,21 +19,28 @@ class BooleanLiteral(val value: Boolean) : Expression() {
 
 class NumericLiteral(val value: Double): Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+    override fun clone() = NumericLiteral(value).also { it.type = type }
 }
 
 class StringLiteral(val value: String) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+    override fun clone() = StringLiteral(value).also { it.type = type }
 }
 
-class ColumnLiteral(val tableName: String?, val columnName: String) : Expression() {
-    val columnPath = if (tableName == null) columnName else "$tableName.$columnName"
+class ColumnLiteral(val columnPath: String) : Expression() {
+    val columnName = columnPath.split('.').last()
     var columnIndex = -1
 
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+    override fun clone() = ColumnLiteral(columnPath).also {
+        it.type = type
+        it.columnIndex = columnIndex
+    }
 }
 
 class UnaryExpression(val expr: Expression, val op: UnaryOp) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+    override fun clone() = UnaryExpression(expr.clone(), op).also { it.type = type }
 }
 
 enum class UnaryOp {
@@ -40,6 +49,7 @@ enum class UnaryOp {
 
 class BinaryExpression(val lhs: Expression, val rhs: Expression, val op: BinaryOp) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+    override fun clone() = BinaryExpression(lhs.clone(), rhs.clone(), op).also { it.type = type }
 }
 
 enum class BinaryOp {
@@ -60,8 +70,16 @@ enum class BinaryOp {
 }
 
 class FunctionCallExpression(val functionName: String, val arguments: List<Expression>) : Expression() {
-    lateinit var functionDefinition: FunctionDefinition
+    private var _functionDefinition: FunctionDefinition? = null
+    var functionDefinition: FunctionDefinition
+        get() = _functionDefinition!!
+        set(value) { _functionDefinition = value }
+
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+    override fun clone() = FunctionCallExpression(functionName, arguments.map { it.clone() }).also {
+        it.type = type
+        it._functionDefinition = _functionDefinition
+    }
 }
 
 class CustomExpression(
@@ -70,4 +88,6 @@ class CustomExpression(
     val evalFunction: (args: List<TypedValue>, outValue: TypedValue) -> TypedValue
 ) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+    override fun clone() = CustomExpression(arguments.map { it.clone() }, originalExpression.clone(), evalFunction)
+        .also { it.type = type }
 }

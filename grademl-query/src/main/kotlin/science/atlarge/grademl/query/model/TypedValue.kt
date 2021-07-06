@@ -3,7 +3,7 @@ package science.atlarge.grademl.query.model
 import science.atlarge.grademl.query.ensureExhaustive
 import science.atlarge.grademl.query.language.Type.*
 
-class TypedValue() {
+class TypedValue() : Comparable<TypedValue> {
     private var _booleanValue = false
     private var _numericValue = 0.0
     private var _stringValue = ""
@@ -79,6 +79,16 @@ class TypedValue() {
 
     fun copyFrom(other: TypedValue) {
         other.copyTo(this)
+    }
+
+    override fun compareTo(other: TypedValue): Int {
+        if (type != other.type) throw UnsupportedOperationException()
+        return when (type) {
+            UNDEFINED -> 0
+            BOOLEAN -> _booleanValue.compareTo(other._booleanValue)
+            NUMERIC -> _numericValue.compareTo(other._numericValue)
+            STRING -> _stringValue.compareTo(other._stringValue)
+        }
     }
 
     override fun equals(other: Any?): Boolean {

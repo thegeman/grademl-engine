@@ -138,6 +138,24 @@ data class Path(
         )
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Path
+
+        if (pathComponents != other.pathComponents) return false
+        if (isRelative != other.isRelative) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = pathComponents.hashCode()
+        result = 31 * result + isRelative.hashCode()
+        return result
+    }
+
     companion object {
         /**
          * Character used as delimiter between path components.

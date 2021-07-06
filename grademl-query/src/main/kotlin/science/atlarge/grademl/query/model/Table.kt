@@ -1,5 +1,6 @@
 package science.atlarge.grademl.query.model
 
+import science.atlarge.grademl.query.language.ColumnLiteral
 import science.atlarge.grademl.query.language.Expression
 
 interface Table {
@@ -15,28 +16,21 @@ interface Table {
         throw UnsupportedOperationException()
     }
 
-    // Push-down filter
-    val supportsPushDownFilters: Boolean
-    fun tryPushDownFilter(filterExpression: Expression): Table? {
-        throw UnsupportedOperationException()
+    // Optimizing transformations
+    fun withSubsetColumns(subsetColumns: List<ColumnLiteral>): Table? {
+        return null
     }
 
-    // Push-down projection
-    val supportsPushDownProjections: Boolean
-    fun tryPushDownProjection(projectionExpressions: List<Expression>): Table? {
-        throw UnsupportedOperationException()
+    val columnsOptimizedForFilter: List<Column>
+        get() = emptyList()
+    fun filteredWith(condition: Expression): Table? {
+        return null
     }
 
-    // Push-down sort
-    val supportsPushDownSort: Boolean
-    fun tryPushDownSort(sortColumns: List<Int>): Table? {
-        throw UnsupportedOperationException()
-    }
-
-    // Push-down group-by
-    val supportsPushDownGroupBy: Boolean
-    fun tryPushDownGroupBy(groupColumns: List<Int>): Table? {
-        throw UnsupportedOperationException()
+    val columnsOptimizedForSort: List<Column>
+        get() = emptyList()
+    fun sortedBy(sortColumns: List<ColumnLiteral>): Table? {
+        return null
     }
 
 }

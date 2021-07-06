@@ -1,9 +1,7 @@
-package science.atlarge.grademl.query.model
+package science.atlarge.grademl.query.execution.data
 
 import science.atlarge.grademl.core.GradeMLJob
-import science.atlarge.grademl.query.model.impl.AttributedMetricsTable
-import science.atlarge.grademl.query.model.impl.MetricsTable
-import science.atlarge.grademl.query.model.impl.PhasesTable
+import science.atlarge.grademl.query.model.Table
 
 object DefaultTables {
 

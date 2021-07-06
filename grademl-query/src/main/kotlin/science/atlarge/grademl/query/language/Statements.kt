@@ -8,6 +8,7 @@ class SelectStatement(
     val where: WhereClause?,
     val groupBy: GroupByClause?,
     val select: SelectClause,
+    val orderBy: OrderByClause?,
     val limit: LimitClause?
 ) : Statement {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
@@ -27,6 +28,10 @@ class GroupByClause(val columns: List<ColumnLiteral>) : Clause {
 
 class SelectClause(val columnExpressions: List<Expression>, val columnAliases: List<String?>) : Clause {
     init { require(columnExpressions.size == columnAliases.size) }
+    override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+}
+
+class OrderByClause(val columns: List<ColumnLiteral>) : Clause {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 
