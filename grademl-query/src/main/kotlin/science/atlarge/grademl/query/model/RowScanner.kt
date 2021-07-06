@@ -6,10 +6,13 @@ abstract class RowScanner : Iterator<Row> {
 
     protected abstract fun fetchRow(): Row?
 
+    fun peek(): Row? {
+        if (prefetchedRow == null) prefetchedRow = fetchRow()
+        return prefetchedRow
+    }
+
     override fun hasNext(): Boolean {
-        if (prefetchedRow != null) return true
-        prefetchedRow = fetchRow()
-        return prefetchedRow != null
+        return peek() != null
     }
 
     override fun next(): Row {

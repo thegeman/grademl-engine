@@ -14,7 +14,8 @@ class SelectStatement(
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 
-class FromClause(val tableName: String, val alias: String?) : Clause {
+class FromClause(val tableNames: List<String>, val aliases: List<String>) : Clause {
+    init { require(tableNames.size == aliases.size) }
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 

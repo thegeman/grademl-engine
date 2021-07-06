@@ -161,14 +161,14 @@ class MetricsTable private constructor(
 
     companion object {
         val COLUMNS = listOf(
-            Column("start_time", "start_time", Type.NUMERIC),
-            Column("end_time", "end_time", Type.NUMERIC),
-            Column("duration", "duration", Type.NUMERIC),
-            Column("utilization", "utilization", Type.NUMERIC),
-            Column("usage", "usage", Type.NUMERIC),
-            Column("capacity", "capacity", Type.NUMERIC),
-            Column("path", "path", Type.STRING),
-            Column("type", "type", Type.STRING)
+            Column("start_time", "start_time", Type.NUMERIC, ColumnFunction.TIME_START),
+            Column("end_time", "end_time", Type.NUMERIC, ColumnFunction.TIME_END),
+            Column("duration", "duration", Type.NUMERIC, ColumnFunction.TIME_DURATION),
+            Column("utilization", "utilization", Type.NUMERIC, ColumnFunction.OTHER),
+            Column("usage", "usage", Type.NUMERIC, ColumnFunction.OTHER),
+            Column("capacity", "capacity", Type.NUMERIC, ColumnFunction.OTHER),
+            Column("path", "path", Type.STRING, ColumnFunction.OTHER),
+            Column("type", "type", Type.STRING, ColumnFunction.OTHER)
         )
 
         private val STATIC_COLUMN_NAMES = setOf("path", "type", "capacity")

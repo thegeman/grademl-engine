@@ -20,6 +20,8 @@ object QueryGrammar : Grammar<List<Statement>>() {
 
     private val from by regexToken("""[Ff][Rr][Oo][Mm]\b""")
     private val `as` by regexToken("""[Aa][Ss]\b""")
+    private val temporal by regexToken("""[Tt][Ee][Mm][Pp][Oo][Rr][Aa][Ll]\b""")
+    private val join by regexToken("""[Jj][Oo][Ii][Nn]\b""")
     private val where by regexToken("""[Ww][Hh][Ee][Rr][Ee]\b""")
     private val group by regexToken("""[Gg][Rr][Oo][Uu][Pp]\b""")
     private val by by regexToken("""[Bb][Yy]\b""")
@@ -100,7 +102,11 @@ object QueryGrammar : Grammar<List<Statement>>() {
     private val expression by leftAssociative(andChain, or) { l, op, r -> BinaryExpression(l, r, toBinaryOp(op.text)) }
 
     // Clauses
-    private val fromClause by (-from * id * optional(-`as` * id) use { FromClause(t1.text, t2?.text) })
+    private val fromClause by -from * (
+            (separated(id * -`as` * id, temporal * join)
+                    use { FromClause(terms.map { it.t1.text }, terms.map { it.t2.text }) }) or
+            (id use { FromClause(listOf(text), listOf("")) })
+    )
 
     private val whereClause by (-where * expression map { WhereClause(it) })
 
