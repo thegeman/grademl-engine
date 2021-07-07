@@ -2,10 +2,10 @@ package science.atlarge.grademl.query.execution
 
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.FilterConditionSeparation
-import science.atlarge.grademl.query.execution.impl.FilteringScanner
-import science.atlarge.grademl.query.execution.impl.SortingScanner
-import science.atlarge.grademl.query.execution.impl.TemporalJoinScanner
-import science.atlarge.grademl.query.execution.impl.TemporalJoinScannerInput
+import science.atlarge.grademl.query.execution.scanners.FilteringScanner
+import science.atlarge.grademl.query.execution.scanners.SortingScanner
+import science.atlarge.grademl.query.execution.scanners.TemporalJoinScanner
+import science.atlarge.grademl.query.execution.scanners.TemporalJoinScannerInput
 import science.atlarge.grademl.query.language.ColumnLiteral
 import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.Type

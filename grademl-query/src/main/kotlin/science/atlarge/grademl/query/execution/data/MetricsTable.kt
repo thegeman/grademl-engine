@@ -7,9 +7,9 @@ import science.atlarge.grademl.core.models.resource.MetricDataIterator
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.FilterConditionSeparation
 import science.atlarge.grademl.query.execution.ExpressionEvaluation
-import science.atlarge.grademl.query.execution.impl.FilteringScanner
-import science.atlarge.grademl.query.execution.impl.RemappingScanner
-import science.atlarge.grademl.query.execution.impl.SortingScanner
+import science.atlarge.grademl.query.execution.scanners.FilteringScanner
+import science.atlarge.grademl.query.execution.scanners.RemappingScanner
+import science.atlarge.grademl.query.execution.scanners.SortingScanner
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.*
 

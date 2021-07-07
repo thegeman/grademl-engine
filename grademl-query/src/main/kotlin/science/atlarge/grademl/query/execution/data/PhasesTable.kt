@@ -5,8 +5,8 @@ import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.models.execution.ExecutionPhase
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.execution.ExpressionEvaluation
-import science.atlarge.grademl.query.execution.impl.FilteringScanner
-import science.atlarge.grademl.query.execution.impl.RemappingScanner
+import science.atlarge.grademl.query.execution.scanners.FilteringScanner
+import science.atlarge.grademl.query.execution.scanners.RemappingScanner
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.*
 import science.atlarge.grademl.query.nextOrNull

@@ -1,4 +1,4 @@
-package science.atlarge.grademl.query.execution.impl
+package science.atlarge.grademl.query.execution.scanners
 
 import science.atlarge.grademl.query.model.Row
 import science.atlarge.grademl.query.model.RowScanner
