@@ -14,8 +14,13 @@ class SelectStatement(
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 
-class FromClause(val tableNames: List<String>, val aliases: List<String>) : Clause {
-    init { require(tableNames.size == aliases.size) }
+sealed class TableIdentifier {
+    class NamedTable(val tableName: String) : TableIdentifier()
+    class AnonymousTable(val tableDefinition: SelectStatement) : TableIdentifier()
+}
+
+class FromClause(val tables: List<TableIdentifier>, val aliases: List<String>) : Clause {
+    init { require(tables.size == aliases.size) }
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 

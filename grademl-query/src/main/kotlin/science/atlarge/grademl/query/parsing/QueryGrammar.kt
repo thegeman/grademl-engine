@@ -108,10 +108,15 @@ object QueryGrammar : Grammar<List<Statement>>() {
     private val expression by leftAssociative(andChain, or) { l, op, r -> BinaryExpression(l, r, toBinaryOp(op.text)) }
 
     // Clauses
-    private val fromClause by -from * (
-            (separated(id * -`as` * id, temporal * join)
-                    use { FromClause(terms.map { it.t1.text }, terms.map { it.t2.text }) }) or
-                    (id use { FromClause(listOf(text), listOf("")) })
+    private val tableSelect: Parser<TableIdentifier> by (-leftParen * parser(this::selectStatement) * -rightParen map {
+        TableIdentifier.AnonymousTable(it)
+    }) or (id use { TableIdentifier.NamedTable(text) })
+
+    private val fromClause by (
+            -from * separated(tableSelect * -`as` * id, temporal * join) use {
+                FromClause(terms.map { it.t1 }, terms.map { it.t2.text })
+            }) or (
+                -from * tableSelect map { FromClause(listOf(it), listOf("")) }
             )
 
     private val whereClause by (-where * expression map { WhereClause(it) })
@@ -150,7 +155,7 @@ object QueryGrammar : Grammar<List<Statement>>() {
     // Putting it all together
     private val topLevelStatement by selectStatement or createTableStatement or deleteTableStatement or
             cacheTableStatement or dropTableFromCacheStatement
-    
+
     override val rootParser by oneOrMore((topLevelStatement) * -semicolon)
 
     private fun toBinaryOp(op: String): BinaryOp {

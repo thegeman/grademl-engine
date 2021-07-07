@@ -82,7 +82,7 @@ class QueryEngine(
 
     private fun createTableFromSelect(selectStatement: SelectStatement): Table {
         // Parse the from clause
-        require(selectStatement.from.tableNames.isNotEmpty()) { "Query must have at least one input" }
+        require(selectStatement.from.tables.isNotEmpty()) { "Query must have at least one input" }
         require(selectStatement.from.aliases.size == 1 || selectStatement.from.aliases.none { it.isBlank() }) {
             "All inputs of a join must have an alias"
         }
@@ -90,10 +90,16 @@ class QueryEngine(
             "All inputs of a join must have a unique alias"
         }
         // Find the input data source(s)
-        val inputTables = selectStatement.from.tableNames.map { tableName ->
-            tables[tableName] ?: throw IllegalArgumentException(
-                "Table ${selectStatement.from.tableNames[0]} does not exist"
-            )
+        val inputTables = selectStatement.from.tables.map { tableId ->
+            when (tableId) {
+                is TableIdentifier.AnonymousTable -> createTableFromSelect(tableId.tableDefinition)
+                is TableIdentifier.NamedTable -> {
+                    val tableName = tableId.tableName
+                    cachedTables[tableName] ?: tables[tableName] ?: throw IllegalArgumentException(
+                        "Table $tableName does not exist"
+                    )
+                }
+            }
         }
         // Alias the input table(s) if needed
         val aliasInputTables = inputTables.mapIndexed { index, table ->
@@ -139,7 +145,12 @@ class QueryEngine(
                 "duration" -> ColumnFunction.TIME_DURATION
                 else -> ColumnFunction.OTHER
             }
-            Column(columnNames[i], columnNames[i], projectionExpressions[i].type, columnFunction) to projectionExpressions[i]
+            Column(
+                columnNames[i],
+                columnNames[i],
+                projectionExpressions[i].type,
+                columnFunction
+            ) to projectionExpressions[i]
         }
 
         // Parse the order by clause
