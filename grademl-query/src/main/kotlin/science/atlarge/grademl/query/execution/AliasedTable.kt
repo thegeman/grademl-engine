@@ -12,11 +12,7 @@ class AliasedTable(val baseTable: Table, val aliasPath: String) : Table {
         Column(c.name, if (aliasPath.isEmpty()) c.name else "$aliasPath.${c.name}", c.type, c.function)
     }
 
-    override val isGrouped: Boolean
-        get() = baseTable.isGrouped
-
     override fun scan() = baseTable.scan()
-    override fun scanGroups() = baseTable.scanGroups()
 
     override fun withSubsetColumns(subsetColumns: List<ColumnLiteral>): Table? {
         val renamedColumns = subsetColumns.map { convertExpression(it) as ColumnLiteral }

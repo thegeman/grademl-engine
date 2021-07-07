@@ -41,8 +41,6 @@ class TemporalJoinTable private constructor(
         inputTables[index].columns.indexOf(column)
     }
 
-    override val isGrouped = false
-
     override val columns = listOf(
         Column("start_time", "start_time", Type.NUMERIC, ColumnFunction.TIME_START),
         Column("end_time", "end_time", Type.NUMERIC, ColumnFunction.TIME_END)

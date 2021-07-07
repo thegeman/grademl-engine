@@ -27,8 +27,6 @@ class MetricsTable private constructor(
     override val columnsOptimizedForSort
         get() = columnsOptimizedForFilter
 
-    override val isGrouped = false
-
     private val filterConditionOnMetricRows: Expression?
     private val filterConditionOnDataRows: Expression?
 

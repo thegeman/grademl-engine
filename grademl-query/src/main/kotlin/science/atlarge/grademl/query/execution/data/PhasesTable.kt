@@ -3,13 +3,10 @@ package science.atlarge.grademl.query.execution.data
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.core.TimestampNs
 import science.atlarge.grademl.core.models.execution.ExecutionPhase
-import science.atlarge.grademl.core.models.resource.Metric
-import science.atlarge.grademl.core.models.resource.MetricDataIterator
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.execution.ExpressionEvaluation
 import science.atlarge.grademl.query.execution.impl.FilteringScanner
 import science.atlarge.grademl.query.execution.impl.RemappingScanner
-import science.atlarge.grademl.query.execution.impl.SortingScanner
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.*
 import science.atlarge.grademl.query.nextOrNull
@@ -26,8 +23,6 @@ class PhasesTable private constructor(
     override val columnsOptimizedForFilter = COLUMNS
 
     override val columnsOptimizedForSort = COLUMNS
-
-    override val isGrouped = false
 
     constructor(gradeMLJob: GradeMLJob) : this(gradeMLJob, COLUMNS.indices.toList(), null, emptyList())
 

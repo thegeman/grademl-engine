@@ -21,9 +21,6 @@ class AttributedMetricsTable : Table {
         Column("phase_type", "phase_type", Type.STRING, ColumnFunction.OTHER)
     )
 
-    override val isGrouped: Boolean
-        get() = false
-
     override fun scan(): RowScanner {
         TODO("Not yet implemented")
     }

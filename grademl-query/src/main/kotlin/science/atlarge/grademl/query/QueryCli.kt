@@ -103,7 +103,7 @@ object QueryCli {
             // Run the queries
             queries.forEach {
                 try {
-                    queryEngine.runStatement(it)
+                    queryEngine.executeStatement(it)
                 } catch (t: Throwable) {
                     t.printStackTrace()
                     println()

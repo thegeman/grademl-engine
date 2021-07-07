@@ -20,8 +20,6 @@ class DerivedTable private constructor(
     private val sortByColumns: List<ColumnLiteral>
 ) : Table {
 
-    override val isGrouped: Boolean = false
-
     // Filter implementation
     private val filterResultValue = TypedValue()
 

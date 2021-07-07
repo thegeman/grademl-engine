@@ -39,3 +39,19 @@ class OrderByClause(val columns: List<ColumnLiteral>) : Clause {
 class LimitClause(val limitFirst: Int?, val limitLast: Int?) : Clause {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
+
+class CreateTableStatement(val tableName: String, val tableDefinition: SelectStatement) : Statement {
+    override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+}
+
+class DeleteTableStatement(val tableName: String) : Statement {
+    override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+}
+
+class CacheTableStatement(val tableName: String) : Statement {
+    override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+}
+
+class DropTableFromCacheStatement(val tableName: String) : Statement {
+    override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+}

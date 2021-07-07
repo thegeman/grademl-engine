@@ -10,12 +10,6 @@ interface Table {
     // Linear table scan
     fun scan(): RowScanner
 
-    // Grouped table scan
-    val isGrouped: Boolean
-    fun scanGroups(): RowGroupScanner {
-        throw UnsupportedOperationException()
-    }
-
     // Optimizing transformations
     fun withSubsetColumns(subsetColumns: List<ColumnLiteral>): Table? {
         return null

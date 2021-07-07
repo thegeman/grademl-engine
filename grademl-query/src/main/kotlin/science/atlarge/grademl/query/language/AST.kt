@@ -17,6 +17,10 @@ interface ASTVisitor {
 
     // Statements
     fun visit(s: SelectStatement)
+    fun visit(s: CreateTableStatement)
+    fun visit(s: DeleteTableStatement)
+    fun visit(s: CacheTableStatement)
+    fun visit(s: DropTableFromCacheStatement)
 
     // Clauses
     fun visit(c: FromClause)
@@ -30,6 +34,10 @@ interface ASTVisitor {
 interface ExpressionVisitor : ASTVisitor {
     // Provide default implementations for unsupported statements and clauses
     override fun visit(s: SelectStatement) { throw UnsupportedOperationException() }
+    override fun visit(s: CreateTableStatement) { throw UnsupportedOperationException() }
+    override fun visit(s: DeleteTableStatement) { throw UnsupportedOperationException() }
+    override fun visit(s: CacheTableStatement) { throw UnsupportedOperationException() }
+    override fun visit(s: DropTableFromCacheStatement) { throw UnsupportedOperationException() }
     override fun visit(c: FromClause) { throw UnsupportedOperationException() }
     override fun visit(c: WhereClause) { throw UnsupportedOperationException() }
     override fun visit(c: GroupByClause) { throw UnsupportedOperationException() }
