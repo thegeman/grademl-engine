@@ -8,6 +8,8 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     override fun iterator() = listOf(
         // Common aggregation functions
         COUNT, COUNT_IF, MIN, MAX, SUM, AVG, WEIGHTED_AVG,
+        // Data reshaping functions
+        FIND_OR_DEFAULT,
         // Helper functions for traversing hierarchical models
         IS_PARENT_OF, IS_CHILD_OF, IS_ANCESTOR_OF, IS_DESCENDANT_OF, PARENT_OF
     ).iterator()
@@ -129,6 +131,28 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
 
         override fun resolveType(argTypes: List<Type>): Type {
             return Type.NUMERIC
+        }
+    }
+
+    object FIND_OR_DEFAULT : FunctionDefinition {
+        override val functionName = "FIND_OR_DEFAULT"
+        override val isAggregatingFunction = true
+
+        override fun checkArgumentCount(argCount: Int) {
+            require(argCount == 3) { "$functionName requires 3 arguments (condition, value_if_true, default)" }
+        }
+
+        override fun checkArgumentTypes(argTypes: List<Type>) {
+            require(argTypes[0] == Type.BOOLEAN) {
+                "First argument of $functionName (\"condition\") must be BOOLEAN"
+            }
+            require(argTypes[1] == argTypes[2]) {
+                "Second and third argument of $functionName (\"value_if_true\", \"default\") must have identical types"
+            }
+        }
+
+        override fun resolveType(argTypes: List<Type>): Type {
+            return argTypes[1]
         }
     }
 

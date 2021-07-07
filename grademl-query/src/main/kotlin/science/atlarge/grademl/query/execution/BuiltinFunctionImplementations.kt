@@ -8,6 +8,8 @@ object BuiltinFunctionImplementations {
     private val allImplementations = listOf(
         // Common aggregation functions
         Count, CountIf, Min, Max, Sum, Average, WeightedAverage,
+        // Data reshaping functions
+        FindOrDefault,
         // Helper functions for traversing hierarchical models
         IsParentOf, IsChildOf, IsAncestorOf, IsDescendantOf, ParentOf
     ).associateBy { it.definition }
