@@ -53,7 +53,7 @@ object FilterConditionSeparation : ExpressionRewritePass() {
         return if (splitWithAllColumns >= 0) splitWithAllColumns else null
     }
 
-    private fun mergeExpressions(expressions: Iterable<Expression>): Expression? {
+    fun mergeExpressions(expressions: Iterable<Expression>): Expression? {
         var result: Expression? = null
         for (e in expressions) {
             if (result == null) result = e

@@ -8,7 +8,7 @@ object DefaultTables {
     fun create(gradeMLJob: GradeMLJob): Map<String, Table> {
         return mapOf(
             "metrics" to MetricsTable(gradeMLJob),
-            "phases" to PhasesTable(),
+            "phases" to PhasesTable(gradeMLJob),
             "attributed_metrics" to AttributedMetricsTable()
         )
     }
