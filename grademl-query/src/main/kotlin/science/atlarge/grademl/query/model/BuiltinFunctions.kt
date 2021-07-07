@@ -5,7 +5,12 @@ import science.atlarge.grademl.query.language.Type
 
 object BuiltinFunctions : Iterable<FunctionDefinition> {
 
-    override fun iterator() = listOf(COUNT, COUNT_IF, MIN, MAX, SUM, AVG, WEIGHTED_AVG).iterator()
+    override fun iterator() = listOf(
+        // Common aggregation functions
+        COUNT, COUNT_IF, MIN, MAX, SUM, AVG, WEIGHTED_AVG,
+        // Helper functions for traversing hierarchical models
+        IS_PARENT_OF, IS_CHILD_OF, IS_ANCESTOR_OF, IS_DESCENDANT_OF, PARENT_OF
+    ).iterator()
 
     object COUNT : FunctionDefinition {
         override val functionName = "COUNT"
@@ -124,6 +129,95 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
 
         override fun resolveType(argTypes: List<Type>): Type {
             return Type.NUMERIC
+        }
+    }
+
+    object IS_PARENT_OF : FunctionDefinition {
+        override val functionName = "IS_PARENT_OF"
+        override val isAggregatingFunction = false
+
+        override fun checkArgumentCount(argCount: Int) {
+            require(argCount == 2) { "$functionName requires 2 arguments (parent, path)" }
+        }
+
+        override fun checkArgumentTypes(argTypes: List<Type>) {
+            require(argTypes[0] == Type.STRING) { "First argument of $functionName (\"parent\") must be STRING" }
+            require(argTypes[1] == Type.STRING) { "Second argument of $functionName (\"path\") must be STRING" }
+        }
+
+        override fun resolveType(argTypes: List<Type>): Type {
+            return Type.BOOLEAN
+        }
+    }
+
+    object IS_CHILD_OF : FunctionDefinition {
+        override val functionName = "IS_CHILD_OF"
+        override val isAggregatingFunction = false
+
+        override fun checkArgumentCount(argCount: Int) {
+            require(argCount == 2) { "$functionName requires 2 arguments (child, path)" }
+        }
+
+        override fun checkArgumentTypes(argTypes: List<Type>) {
+            require(argTypes[0] == Type.STRING) { "First argument of $functionName (\"child\") must be STRING" }
+            require(argTypes[1] == Type.STRING) { "Second argument of $functionName (\"path\") must be STRING" }
+        }
+
+        override fun resolveType(argTypes: List<Type>): Type {
+            return Type.BOOLEAN
+        }
+    }
+
+    object IS_ANCESTOR_OF : FunctionDefinition {
+        override val functionName = "IS_ANCESTOR_OF"
+        override val isAggregatingFunction = false
+
+        override fun checkArgumentCount(argCount: Int) {
+            require(argCount == 2) { "$functionName requires 2 arguments (ancestor, path)" }
+        }
+
+        override fun checkArgumentTypes(argTypes: List<Type>) {
+            require(argTypes[0] == Type.STRING) { "First argument of $functionName (\"ancestor\") must be STRING" }
+            require(argTypes[1] == Type.STRING) { "Second argument of $functionName (\"path\") must be STRING" }
+        }
+
+        override fun resolveType(argTypes: List<Type>): Type {
+            return Type.BOOLEAN
+        }
+    }
+
+    object IS_DESCENDANT_OF : FunctionDefinition {
+        override val functionName = "IS_DESCENDANT_OF"
+        override val isAggregatingFunction = false
+
+        override fun checkArgumentCount(argCount: Int) {
+            require(argCount == 2) { "$functionName requires 2 arguments (descendant, path)" }
+        }
+
+        override fun checkArgumentTypes(argTypes: List<Type>) {
+            require(argTypes[0] == Type.STRING) { "First argument of $functionName (\"descendant\") must be STRING" }
+            require(argTypes[1] == Type.STRING) { "Second argument of $functionName (\"path\") must be STRING" }
+        }
+
+        override fun resolveType(argTypes: List<Type>): Type {
+            return Type.BOOLEAN
+        }
+    }
+
+    object PARENT_OF : FunctionDefinition {
+        override val functionName = "PARENT_OF"
+        override val isAggregatingFunction = false
+
+        override fun checkArgumentCount(argCount: Int) {
+            require(argCount == 1) { "$functionName requires 1 argument (path)" }
+        }
+
+        override fun checkArgumentTypes(argTypes: List<Type>) {
+            require(argTypes[0] == Type.STRING) { "First argument of $functionName (\"path\") must be STRING" }
+        }
+
+        override fun resolveType(argTypes: List<Type>): Type {
+            return Type.STRING
         }
     }
 

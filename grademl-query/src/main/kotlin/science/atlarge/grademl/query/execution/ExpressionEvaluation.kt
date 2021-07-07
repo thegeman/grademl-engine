@@ -93,7 +93,19 @@ object ExpressionEvaluation {
         }
 
         override fun visit(e: FunctionCallExpression) {
-            TODO("Not yet implemented")
+            // Lookup the evaluation function
+            val evalFunction = e.evalFunction ?: throw UnsupportedOperationException(
+                "Direct execution of function ${e.functionName.uppercase()} is not supported"
+            )
+
+            // Evaluate every argument
+            while (scratch.size < e.arguments.size) scratch.add(TypedValue())
+            for (i in e.arguments.indices) {
+                e.arguments[i].evaluate().copyTo(scratch[i])
+            }
+
+            // Evaluate the function
+            evalFunction(scratch, lastValue)
         }
 
         override fun visit(e: CustomExpression) {

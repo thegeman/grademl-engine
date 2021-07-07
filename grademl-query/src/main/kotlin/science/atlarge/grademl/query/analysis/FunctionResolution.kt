@@ -1,5 +1,7 @@
 package science.atlarge.grademl.query.analysis
 
+import science.atlarge.grademl.query.execution.BuiltinFunctionImplementations
+import science.atlarge.grademl.query.execution.MappingFunctionImplementation
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.BuiltinFunctions
 
@@ -27,10 +29,21 @@ object FunctionResolution {
 
         override fun visit(e: FunctionCallExpression) {
             e.arguments.forEach { it.accept(this) }
-            val def = BuiltinFunctions.find { it.functionName == e.functionName.uppercase().trim() }
-            requireNotNull(def) { "Function with name ${e.functionName} not found" }
-            def.checkArgumentCount(e.arguments.size)
-            e.functionDefinition = def
+
+            // Lookup the function definition
+            val definition = BuiltinFunctions.find { it.functionName.uppercase() == e.functionName.uppercase().trim() }
+            requireNotNull(definition) { "Function with name ${e.functionName} not found" }
+            definition.checkArgumentCount(e.arguments.size)
+            e.functionDefinition = definition
+
+            // Lookup the function implementation
+            val implementation = BuiltinFunctionImplementations.from(definition)
+            if (implementation is MappingFunctionImplementation) {
+                e.evalFunction = { args, outValue ->
+                    implementation.computeValue(args, outValue)
+                    outValue
+                }
+            }
         }
 
         override fun visit(e: CustomExpression) {
