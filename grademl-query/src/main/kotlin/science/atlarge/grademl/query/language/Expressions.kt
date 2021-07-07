@@ -41,6 +41,7 @@ class ColumnLiteral(val columnPath: String) : Expression() {
 class UnaryExpression(val expr: Expression, val op: UnaryOp) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
     override fun clone() = UnaryExpression(expr.clone(), op).also { it.type = type }
+    fun copy(newExpr: Expression = expr) = UnaryExpression(newExpr, op).also { it.type = type }
 }
 
 enum class UnaryOp {
@@ -50,6 +51,8 @@ enum class UnaryOp {
 class BinaryExpression(val lhs: Expression, val rhs: Expression, val op: BinaryOp) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
     override fun clone() = BinaryExpression(lhs.clone(), rhs.clone(), op).also { it.type = type }
+    fun copy(newLhs: Expression = lhs, newRhs: Expression = rhs) =
+        BinaryExpression(newLhs, newRhs, op).also { it.type = type }
 }
 
 enum class BinaryOp {
@@ -75,10 +78,19 @@ class FunctionCallExpression(val functionName: String, val arguments: List<Expre
         get() = _functionDefinition!!
         set(value) { _functionDefinition = value }
 
+    var evalFunction: ((args: List<TypedValue>, outValue: TypedValue) -> TypedValue)? = null
+
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
     override fun clone() = FunctionCallExpression(functionName, arguments.map { it.clone() }).also {
         it.type = type
         it._functionDefinition = _functionDefinition
+        it.evalFunction = evalFunction
+    }
+
+    fun copy(newArguments: List<Expression> = arguments) = FunctionCallExpression(functionName, newArguments).also {
+        it.type = type
+        it._functionDefinition = _functionDefinition
+        it.evalFunction = evalFunction
     }
 }
 
@@ -90,4 +102,7 @@ class CustomExpression(
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
     override fun clone() = CustomExpression(arguments.map { it.clone() }, originalExpression.clone(), evalFunction)
         .also { it.type = type }
+
+    fun copy(newArguments: List<Expression> = arguments, newOriginalExpression: Expression = originalExpression) =
+        CustomExpression(newArguments, newOriginalExpression, evalFunction).also { it.type = type }
 }

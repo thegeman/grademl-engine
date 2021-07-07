@@ -33,20 +33,20 @@ abstract class ExpressionRewritePass(
 
     protected open fun rewrite(e: UnaryExpression): Expression {
         val rewritten = e.expr.rewrite()
-        return if (rewritten === e.expr) e else UnaryExpression(rewritten, e.op)
+        return if (rewritten === e.expr) e else e.copy(newExpr = rewritten)
     }
 
     protected open fun rewrite(e: BinaryExpression): Expression {
         val lRewritten = e.lhs.rewrite()
         val rRewritten = e.rhs.rewrite()
         return if (lRewritten === e.lhs && rRewritten === e.rhs) e
-        else BinaryExpression(lRewritten, rRewritten, e.op)
+        else e.copy(newLhs = lRewritten, newRhs = rRewritten)
     }
 
     protected open fun rewrite(e: FunctionCallExpression): Expression {
         val rewrittenArgs = e.arguments.map { it.rewrite() }
         return if (e.arguments.indices.all { i -> rewrittenArgs[i] === e.arguments[i] }) e
-        else FunctionCallExpression(e.functionName, rewrittenArgs)
+        else e.copy(newArguments = rewrittenArgs)
     }
 
     protected open fun rewrite(e: CustomExpression): Expression {
@@ -56,7 +56,8 @@ abstract class ExpressionRewritePass(
             else e.originalExpression
         val hasChanged = rewrittenOriginalExpression !== e.originalExpression ||
                 e.arguments.indices.any { i -> rewrittenArgs[i] !== e.arguments[i] }
-        return if (hasChanged) CustomExpression(rewrittenArgs, rewrittenOriginalExpression, e.evalFunction) else e
+        return if (!hasChanged) e
+        else e.copy(newArguments = rewrittenArgs, newOriginalExpression = rewrittenOriginalExpression)
     }
 
     override fun visit(e: BooleanLiteral) {
