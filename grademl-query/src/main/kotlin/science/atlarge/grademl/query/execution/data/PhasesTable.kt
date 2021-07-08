@@ -73,7 +73,7 @@ class PhasesTable private constructor(
     override fun filteredWith(condition: Expression): Table {
         val newFilterCondition = ASTAnalysis.analyzeExpression(
             if (filterCondition == null) condition else BinaryExpression(condition, filterCondition, BinaryOp.AND),
-            MetricsTable.COLUMNS
+            COLUMNS
         )
         return PhasesTable(gradeMLJob, selectedColumnIds, newFilterCondition, sortColumnIds)
     }
@@ -118,7 +118,7 @@ private class PhasesTableRow(
             1 -> /* end_time */ outValue.numericValue = (phase.endTime - deltaTs) * (1 / 1e9)
             2 -> /* duration */ outValue.numericValue = phase.duration * (1 / 1e9)
             3 -> /* path */ outValue.stringValue = phase.path.toString()
-            4 -> /* type */ outValue.stringValue = phase.type.toString()
+            4 -> /* type */ outValue.stringValue = phase.type.path.toString()
             else -> {
                 require(columnId !in 0 until columnCount) {
                     "Mismatch between PhasesTableRow and PhasesTable.COLUMNS"

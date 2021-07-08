@@ -41,17 +41,13 @@ object AggregateFunctionDecomposition {
 
         override fun visit(e: UnaryExpression) {
             val inner = e.expr.rewrite()
-            rewrittenExpression = if (inner === e.expr) e else UnaryExpression(inner, e.op).apply { type = e.type }
+            rewrittenExpression = if (inner === e.expr) e else e.copy(newExpr = inner)
         }
 
         override fun visit(e: BinaryExpression) {
             val l = e.lhs.rewrite()
             val r = e.rhs.rewrite()
-            rewrittenExpression = if (l === e.lhs && r === e.rhs) {
-                e
-            } else {
-                BinaryExpression(l, r, e.op).apply { type = e.type }
-            }
+            rewrittenExpression = if (l === e.lhs && r === e.rhs) e else e.copy(newLhs = l, newRhs = r)
         }
 
         override fun visit(e: FunctionCallExpression) {
@@ -71,20 +67,14 @@ object AggregateFunctionDecomposition {
                 }
             } else {
                 val args = e.arguments.map { it.rewrite() }
-                if (args.indices.all { i -> args[i] === e.arguments[i] }) e
-                else FunctionCallExpression(e.functionName, args).apply {
-                    type = e.type
-                    functionDefinition = e.functionDefinition
-                }
+                if (args.indices.all { i -> args[i] === e.arguments[i] }) e else e.copy(newArguments = args)
             }
         }
 
         override fun visit(e: CustomExpression) {
             val args = e.arguments.map { it.rewrite() }
             rewrittenExpression = if (args.indices.all { i -> args[i] === e.arguments[i] }) e
-            else CustomExpression(args, e.originalExpression, e.evalFunction).apply {
-                type = e.type
-            }
+            else e.copy(newArguments = args)
         }
 
     }

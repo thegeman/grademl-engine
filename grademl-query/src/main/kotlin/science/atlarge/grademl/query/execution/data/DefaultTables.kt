@@ -9,7 +9,7 @@ object DefaultTables {
         return mapOf(
             "metrics" to MetricsTable(gradeMLJob),
             "phases" to PhasesTable(gradeMLJob),
-            "attributed_metrics" to AttributedMetricsTable()
+            "attributed_metrics" to AttributedMetricsTable(gradeMLJob)
         )
     }
 

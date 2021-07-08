@@ -7,7 +7,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
 
     override fun iterator() = listOf(
         // Common aggregation functions
-        COUNT, COUNT_IF, MIN, MAX, SUM, AVG, WEIGHTED_AVG,
+        COUNT, COUNT_IF, MIN, MAX, SUM, AVG, WEIGHTED_AVG, MIN_OF, MAX_OF,
         // Data reshaping functions
         FIND_OR_DEFAULT,
         // Helper functions for traversing hierarchical models
@@ -131,6 +131,40 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
 
         override fun resolveType(argTypes: List<Type>): Type {
             return Type.NUMERIC
+        }
+    }
+
+    object MIN_OF : FunctionDefinition {
+        override val functionName = "MIN_OF"
+        override val isAggregatingFunction = false
+
+        override fun checkArgumentCount(argCount: Int) {
+            require(argCount >= 2) { "$functionName requires at least 2 arguments" }
+        }
+
+        override fun checkArgumentTypes(argTypes: List<Type>) {
+            require(argTypes.all { it == argTypes[0] }) { "All arguments of $functionName must have identical types" }
+        }
+
+        override fun resolveType(argTypes: List<Type>): Type {
+            return argTypes[0]
+        }
+    }
+
+    object MAX_OF : FunctionDefinition {
+        override val functionName = "MAX_OF"
+        override val isAggregatingFunction = false
+
+        override fun checkArgumentCount(argCount: Int) {
+            require(argCount >= 2) { "$functionName requires at least 2 arguments" }
+        }
+
+        override fun checkArgumentTypes(argTypes: List<Type>) {
+            require(argTypes.all { it == argTypes[0] }) { "All arguments of $functionName must have identical types" }
+        }
+
+        override fun resolveType(argTypes: List<Type>): Type {
+            return argTypes[0]
         }
     }
 

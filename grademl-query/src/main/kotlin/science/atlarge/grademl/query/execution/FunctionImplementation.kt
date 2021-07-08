@@ -9,7 +9,7 @@ sealed interface FunctionImplementation {
 }
 
 interface MappingFunctionImplementation : FunctionImplementation {
-    fun computeValue(arguments: List<TypedValue>, outValue: TypedValue)
+    fun computeValue(arguments: List<TypedValue>, argumentCount: Int, outValue: TypedValue)
 }
 
 interface AggregatingFunctionImplementation : FunctionImplementation {

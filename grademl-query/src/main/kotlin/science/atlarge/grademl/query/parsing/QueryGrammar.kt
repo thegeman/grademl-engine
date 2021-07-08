@@ -39,7 +39,7 @@ object QueryGrammar : Grammar<List<Statement>>() {
 
     // Literals
     private val id by regexToken("""[a-zA-z_]\w*""")
-    private val positiveInteger by regexToken("""[0-9]+(?![Ee.])""")
+    private val positiveInteger by regexToken("""[0-9]+(?![A-Za-z0-9.])""")
     private val number by regexToken("""[+-]?(\d+\.)?\d+([Ee][+-]?\d+)?""")
     private val quotedString by regexToken(""""[^"]*"""")
 
@@ -123,8 +123,10 @@ object QueryGrammar : Grammar<List<Statement>>() {
 
     private val groupByClause by (-group * -by * separated(columnLit, comma) map { GroupByClause(it.terms) })
 
-    private val selectClause by (-select * separated(expression * optional(-`as` * id use { text }), comma)
-            map { SelectClause(it.terms.map { t -> t.t1 }, it.terms.map { t -> t.t2 }) })
+    private val selectTerm by (star map { SelectTerm.Wildcard }) or
+            (expression * optional(-`as` * id use { text }) map { SelectTerm.FromExpression(it.t1, it.t2) })
+
+    private val selectClause by (-select * separated(selectTerm, comma) map { SelectClause(it.terms) })
 
     private val orderByClause by (-order * -by * separated(columnLit, comma) map { OrderByClause(it.terms) })
 

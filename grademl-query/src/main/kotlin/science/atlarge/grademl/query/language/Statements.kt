@@ -32,8 +32,12 @@ class GroupByClause(val columns: List<ColumnLiteral>) : Clause {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 
-class SelectClause(val columnExpressions: List<Expression>, val columnAliases: List<String?>) : Clause {
-    init { require(columnExpressions.size == columnAliases.size) }
+sealed class SelectTerm {
+    class FromExpression(val expression: Expression, val alias: String?) : SelectTerm()
+    object Wildcard : SelectTerm()
+}
+
+class SelectClause(val terms: List<SelectTerm>) : Clause {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 

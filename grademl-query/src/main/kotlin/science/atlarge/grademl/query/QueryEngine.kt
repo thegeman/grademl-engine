@@ -123,14 +123,22 @@ class QueryEngine(
         val groupByColumns = if (selectStatement.groupBy == null) emptyList() else selectStatement.groupBy.columns
 
         // Parse the select clause
-        val projectionExpressions = selectStatement.select.columnExpressions.map {
-            ASTAnalysis.analyzeExpression(it, joinedInput.columns)
+        val resolvedSelectTerms = selectStatement.select.terms.flatMap {
+            when (it) {
+                is SelectTerm.FromExpression -> listOf(it)
+                SelectTerm.Wildcard -> joinedInput.columns.map { column ->
+                    SelectTerm.FromExpression(ColumnLiteral(column.path), null)
+                }
+            }
+        }
+        val projectionExpressions = resolvedSelectTerms.map {
+            ASTAnalysis.analyzeExpression(it.expression, joinedInput.columns)
         }
         val columnNames = mutableListOf<String>()
         // Select appropriate column names
         for (i in projectionExpressions.indices) {
             val columnName = when {
-                selectStatement.select.columnAliases[i] != null -> selectStatement.select.columnAliases[i]!!
+                resolvedSelectTerms[i].alias != null -> resolvedSelectTerms[i].alias!!
                 projectionExpressions[i] is ColumnLiteral -> (projectionExpressions[i] as ColumnLiteral).columnName
                 else -> "_$i"
             }

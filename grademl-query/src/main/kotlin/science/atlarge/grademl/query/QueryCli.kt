@@ -5,6 +5,8 @@ import com.github.h0tk3y.betterParse.parser.ErrorResult
 import com.github.h0tk3y.betterParse.parser.Parsed
 import science.atlarge.grademl.core.GradeMLEngine
 import science.atlarge.grademl.core.GradeMLJobStatusUpdate
+import science.atlarge.grademl.core.attribution.AttributedResourceData
+import science.atlarge.grademl.core.attribution.NoAttributedData
 import science.atlarge.grademl.input.airflow.Airflow
 import science.atlarge.grademl.input.resource_monitor.ResourceMonitor
 import science.atlarge.grademl.input.spark.Spark
@@ -87,8 +89,9 @@ object QueryCli {
             val queryLines = mutableListOf<String>()
             do {
                 val nextLine = readLine() ?: return
+                if (nextLine.trim().startsWith("//")) continue
                 queryLines.add(nextLine)
-            } while (!queryLines.last().endsWith(";"))
+            } while (queryLines.isEmpty() || !queryLines.last().endsWith(";"))
 
             // Parse the query/queries
             val queries = when (val parseResult = QueryGrammar.tryParseToEnd(queryLines.joinToString("\n"))) {

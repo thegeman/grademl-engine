@@ -50,7 +50,7 @@ class TemporalJoinTable private constructor(
         // Create an input for a temporal join scanner for every input table
         val joinInputs = inputTables.indices.map { createTemporalJoinInput(it) }
         // Construct a nested scanner from binary temporal joins
-        var compoundScanner = TemporalJoinScanner(joinInputs[0], joinInputs[1])
+        var compoundScanner: RowScanner = TemporalJoinScanner(joinInputs[0], joinInputs[1])
         for (i in 2 until joinInputs.size) {
             val nextInput = joinInputs[i]
             val leftColumnCount = 2 + columnsPerInput.take(i).sumOf { it.size }
@@ -60,6 +60,14 @@ class TemporalJoinTable private constructor(
                 ),
                 nextInput
             )
+        }
+        // Apply the global filter
+        if (globalFilterCondition != null) {
+            val filter = globalFilterCondition
+            val scratch = TypedValue()
+            compoundScanner = FilteringScanner(compoundScanner) { row ->
+                ExpressionEvaluation.evaluate(filter, row, scratch).booleanValue
+            }
         }
         return compoundScanner
     }

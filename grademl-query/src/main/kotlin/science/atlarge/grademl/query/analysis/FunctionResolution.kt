@@ -40,7 +40,7 @@ object FunctionResolution {
             val implementation = BuiltinFunctionImplementations.from(definition)
             if (implementation is MappingFunctionImplementation) {
                 e.evalFunction = { args, outValue ->
-                    implementation.computeValue(args, outValue)
+                    implementation.computeValue(args, e.arguments.size, outValue)
                     outValue
                 }
             }
