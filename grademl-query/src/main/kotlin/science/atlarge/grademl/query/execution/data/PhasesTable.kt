@@ -34,9 +34,8 @@ class PhasesTable private constructor(
             when (columnId) {
                 0 -> /* start_time */ phases.sortBy { it.startTime }
                 1 -> /* end_time */ phases.sortBy { it.endTime }
-                2 -> /* duration */ phases.sortBy { it.duration }
-                3 -> /* path */ phases.sortBy { it.path }
-                4 -> /* type */ phases.sortBy { it.type.path }
+                2 -> /* path */ phases.sortBy { it.path }
+                3 -> /* type */ phases.sortBy { it.type.path }
             }
         }
         // Wrap each phase in a Row object
@@ -95,11 +94,10 @@ class PhasesTable private constructor(
 
     companion object {
         val COLUMNS = listOf(
-            Column("start_time", "start_time", Type.NUMERIC, ColumnFunction.TIME_START),
-            Column("end_time", "end_time", Type.NUMERIC, ColumnFunction.TIME_END),
-            Column("duration", "duration", Type.NUMERIC, ColumnFunction.TIME_DURATION),
-            Column("path", "path", Type.STRING, ColumnFunction.OTHER),
-            Column("type", "type", Type.STRING, ColumnFunction.OTHER)
+            Column("_start_time", "_start_time", Type.NUMERIC, ColumnFunction.TIME_START),
+            Column("_end_time", "_end_time", Type.NUMERIC, ColumnFunction.TIME_END),
+            Column("path", "path", Type.STRING, ColumnFunction.KEY),
+            Column("type", "type", Type.STRING, ColumnFunction.METADATA)
         )
     }
 
@@ -116,9 +114,8 @@ private class PhasesTableRow(
         when (columnId) {
             0 -> /* start_time */ outValue.numericValue = (phase.startTime - deltaTs) * (1 / 1e9)
             1 -> /* end_time */ outValue.numericValue = (phase.endTime - deltaTs) * (1 / 1e9)
-            2 -> /* duration */ outValue.numericValue = phase.duration * (1 / 1e9)
-            3 -> /* path */ outValue.stringValue = phase.path.toString()
-            4 -> /* type */ outValue.stringValue = phase.type.path.toString()
+            2 -> /* path */ outValue.stringValue = phase.path.toString()
+            3 -> /* type */ outValue.stringValue = phase.type.path.toString()
             else -> {
                 require(columnId !in 0 until columnCount) {
                     "Mismatch between PhasesTableRow and PhasesTable.COLUMNS"
