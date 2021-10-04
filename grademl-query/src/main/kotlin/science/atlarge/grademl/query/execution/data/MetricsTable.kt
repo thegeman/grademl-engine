@@ -53,9 +53,9 @@ class MetricsTable private constructor(
         val staticSortColumns = sortColumnIds.takeWhile { COLUMNS[it] in STATIC_COLUMNS }
         for (columnId in staticSortColumns.asReversed()) {
             when (columnId) {
-                5 -> /* capacity */ metrics.sortBy { it.data.maxValue }
-                6 -> /* path */ metrics.sortBy { it.path.asPlainPath }
-                7 -> /* type */ metrics.sortBy { it.type.asPlainPath }
+                4 -> /* capacity */ metrics.sortBy { it.data.maxValue }
+                5 -> /* path */ metrics.sortBy { it.path.asPlainPath }
+                6 -> /* type */ metrics.sortBy { it.type.asPlainPath }
             }
         }
 
@@ -142,9 +142,9 @@ class MetricsTable private constructor(
             override val columnCount = COLUMNS.size
             override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
                 when (columnId) {
-                    5 -> /* capacity */ outValue.numericValue = metric.data.maxValue
-                    6 -> /* path */ outValue.stringValue = metric.path.toString()
-                    7 -> /* type */ outValue.stringValue = metric.type.toString()
+                    4 -> /* capacity */ outValue.numericValue = metric.data.maxValue
+                    5 -> /* path */ outValue.stringValue = metric.path.toString()
+                    6 -> /* type */ outValue.stringValue = metric.type.toString()
                     else -> throw IllegalArgumentException()
                 }
                 return outValue
@@ -159,14 +159,13 @@ class MetricsTable private constructor(
 
     companion object {
         val COLUMNS = listOf(
-            Column("start_time", "start_time", Type.NUMERIC, ColumnFunction.TIME_START),
-            Column("end_time", "end_time", Type.NUMERIC, ColumnFunction.TIME_END),
-            Column("duration", "duration", Type.NUMERIC, ColumnFunction.TIME_DURATION),
-            Column("utilization", "utilization", Type.NUMERIC, ColumnFunction.OTHER),
-            Column("usage", "usage", Type.NUMERIC, ColumnFunction.OTHER),
-            Column("capacity", "capacity", Type.NUMERIC, ColumnFunction.OTHER),
-            Column("path", "path", Type.STRING, ColumnFunction.OTHER),
-            Column("type", "type", Type.STRING, ColumnFunction.OTHER)
+            Column("_start_time", "_start_time", Type.NUMERIC, ColumnFunction.TIME_START),
+            Column("_end_time", "_end_time", Type.NUMERIC, ColumnFunction.TIME_END),
+            Column("utilization", "utilization", Type.NUMERIC, ColumnFunction.VALUE),
+            Column("usage", "usage", Type.NUMERIC, ColumnFunction.VALUE),
+            Column("capacity", "capacity", Type.NUMERIC, ColumnFunction.METADATA),
+            Column("path", "path", Type.STRING, ColumnFunction.KEY),
+            Column("type", "type", Type.STRING, ColumnFunction.METADATA)
         )
 
         private val STATIC_COLUMN_NAMES = setOf("path", "type", "capacity")
@@ -217,13 +216,11 @@ private class MetricsTableRow(
         when (columnId) {
             0 -> /* start_time */ outValue.numericValue = (dataIterator.currentStartTime - deltaTs) * (1 / 1e9)
             1 -> /* end_time */ outValue.numericValue = (dataIterator.currentEndTime - deltaTs) * (1 / 1e9)
-            2 -> /* duration */ outValue.numericValue =
-                (dataIterator.currentEndTime - dataIterator.currentStartTime) * (1 / 1e9)
-            3 -> /* utilization */ outValue.numericValue = dataIterator.currentValue / metric.data.maxValue
-            4 -> /* usage */ outValue.numericValue = dataIterator.currentValue
-            5 -> /* capacity */ outValue.numericValue = metric.data.maxValue
-            6 -> /* path */ outValue.stringValue = metric.path.toString()
-            7 -> /* type */ outValue.stringValue = metric.type.toString()
+            2 -> /* utilization */ outValue.numericValue = dataIterator.currentValue / metric.data.maxValue
+            3 -> /* usage */ outValue.numericValue = dataIterator.currentValue
+            4 -> /* capacity */ outValue.numericValue = metric.data.maxValue
+            5 -> /* path */ outValue.stringValue = metric.path.toString()
+            6 -> /* type */ outValue.stringValue = metric.type.toString()
             else -> {
                 require(columnId !in 0 until columnCount) {
                     "Mismatch between MetricsTableRow and MetricsTable.COLUMNS"
