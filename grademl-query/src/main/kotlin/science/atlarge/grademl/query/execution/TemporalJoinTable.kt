@@ -21,7 +21,7 @@ class TemporalJoinTable private constructor(
 
     private val columnsPerInput = inputTables.map { inputTable ->
         // Drop reserved columns for start and end time, which will be replaced by the join operation
-        inputTable.columns.filter { c -> c.path != "start_time" && c.path != "end_time" }
+        inputTable.columns.filter { c -> c.path != "_start_time" && c.path != "_end_time" }
     }
 
     private val columnOffsets: List<Int> = run {
@@ -42,8 +42,8 @@ class TemporalJoinTable private constructor(
     }
 
     override val columns = listOf(
-        Column("start_time", "start_time", Type.NUMERIC, ColumnFunction.TIME_START),
-        Column("end_time", "end_time", Type.NUMERIC, ColumnFunction.TIME_END)
+        Column("_start_time", "_start_time", Type.NUMERIC, ColumnFunction.TIME_START),
+        Column("_end_time", "_end_time", Type.NUMERIC, ColumnFunction.TIME_END)
     ) + columnsPerInput.flatten()
 
     override fun scan(): RowScanner {
@@ -96,7 +96,7 @@ class TemporalJoinTable private constructor(
             inputTables[tableIndex].columns.size,
             startTimeColumnIndices[tableIndex],
             endTimeColumnIndices[tableIndex],
-            inputStartTimeColumns[tableIndex].path == "start_time"
+            inputStartTimeColumns[tableIndex].path == "_start_time"
         )
     }
 
@@ -142,7 +142,7 @@ class TemporalJoinTable private constructor(
             val allColumnsByPath = mutableMapOf<String, Column>()
             for (inputTable in inputTables) {
                 for (column in inputTable.columns) {
-                    if (column.path == "start_time" || column.path == "end_time") continue
+                    if (column.path == "_start_time" || column.path == "_end_time") continue
                     require(column.path !in allColumnsByPath) {
                         "Cannot join tables with duplicate column: ${column.path}"
                     }
@@ -157,7 +157,7 @@ class TemporalJoinTable private constructor(
             // Sanity check the selected time columns; start and end time should either
             // both be given by reserved columns or both be given by columns with explicit function
             for (i in startTimeColumns.indices) {
-                require((startTimeColumns[i].path == "start_time") == (endTimeColumns[i].path == "end_time"))
+                require((startTimeColumns[i].path == "_start_time") == (endTimeColumns[i].path == "_end_time"))
             }
 
             return TemporalJoinTable(inputTables, startTimeColumns, endTimeColumns, inputTables.map { null }, null)
@@ -165,7 +165,7 @@ class TemporalJoinTable private constructor(
 
         private fun findStartColumn(columns: List<Column>): Column {
             // Find column by reserved name
-            val startTimeColumn = columns.find { it.path == "start_time" }
+            val startTimeColumn = columns.find { it.path == "_start_time" }
             if (startTimeColumn != null) return startTimeColumn
             // Otherwise, find all columns with the start time function
             val columnsWithFunction = columns.filter { it.function == ColumnFunction.TIME_START }
@@ -177,7 +177,7 @@ class TemporalJoinTable private constructor(
 
         private fun findEndColumn(columns: List<Column>): Column {
             // Find column by reserved name
-            val endTimeColumn = columns.find { it.path == "end_time" }
+            val endTimeColumn = columns.find { it.path == "_end_time" }
             if (endTimeColumn != null) return endTimeColumn
             // Otherwise, find all columns with the end time function
             val columnsWithFunction = columns.filter { it.function == ColumnFunction.TIME_END }
