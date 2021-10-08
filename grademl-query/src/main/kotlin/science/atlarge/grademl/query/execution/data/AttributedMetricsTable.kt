@@ -24,25 +24,56 @@ class AttributedMetricsTable private constructor(
 
     override val columns = selectedColumnIds.map { i -> COLUMNS[i] }
 
-    override val columnsOptimizedForFilter = columns.filter { it in STATIC_COLUMNS }
+    override val columnsOptimizedForFilter = columns.filter {
+        it.function in setOf(ColumnFunction.KEY, ColumnFunction.METADATA)
+    }
 
     override val columnsOptimizedForSort
         get() = columnsOptimizedForFilter
 
+    private val filterConditionOnPhaseColumns: Expression?
+    private val filterConditionOnMetricColumns: Expression?
     private val filterConditionOnStaticColumns: Expression?
     private val filterConditionOnDataRows: Expression?
 
     init {
         // Split the filter condition into terms and determine which can be computed from static columns
         if (filterCondition == null) {
+            filterConditionOnPhaseColumns = null
+            filterConditionOnMetricColumns = null
             filterConditionOnStaticColumns = null
             filterConditionOnDataRows = null
         } else {
+            // First split filter into static and data-dependant conditions
             val separationResult = FilterConditionSeparation.splitFilterConditionByColumns(
-                filterCondition, listOf(COLUMNS.indices.filter { COLUMNS[it] in STATIC_COLUMNS }.toSet())
+                filterCondition, listOf(COLUMNS.indices.filter {
+                    COLUMNS[it].function in setOf(ColumnFunction.KEY, ColumnFunction.METADATA)
+                }.toSet())
             )
-            filterConditionOnStaticColumns = separationResult.filterExpressionPerSplit[0]
             filterConditionOnDataRows = separationResult.remainingFilterExpression
+            // Split the static condition into separate conditions on phase and metric
+            val staticFilter = separationResult.filterExpressionPerSplit[0]
+            if (staticFilter != null) {
+                val phaseMetricSeparationResult = FilterConditionSeparation.splitFilterConditionByColumns(
+                    staticFilter, listOf(
+                        setOf(
+                            COLUMNS.indexOfFirst { it.name == "phase_path" },
+                            COLUMNS.indexOfFirst { it.name == "phase_type" }
+                        ),
+                        setOf(
+                            COLUMNS.indexOfFirst { it.name == "metric_path" },
+                            COLUMNS.indexOfFirst { it.name == "metric_type" }
+                        )
+                    )
+                )
+                filterConditionOnPhaseColumns = phaseMetricSeparationResult.filterExpressionPerSplit[0]
+                filterConditionOnMetricColumns = phaseMetricSeparationResult.filterExpressionPerSplit[1]
+                filterConditionOnStaticColumns = phaseMetricSeparationResult.remainingFilterExpression
+            } else {
+                filterConditionOnPhaseColumns = null
+                filterConditionOnMetricColumns = null
+                filterConditionOnStaticColumns = null
+            }
         }
     }
 
@@ -52,13 +83,13 @@ class AttributedMetricsTable private constructor(
         // Get list of metric-phase pairs after applying basic filter (if needed)
         val metricPhasePairs = listMetricPhasePairsMatchingFilter().toMutableList()
         // Sort list of metric-phase pairs (if needed)
-        val staticSortColumns = sortColumnIds.takeWhile { COLUMNS[it] in STATIC_COLUMNS }
+        val staticSortColumns = sortColumnIds.takeWhile { COLUMNS[it] in columnsOptimizedForSort }
         for (columnId in staticSortColumns.asReversed()) {
             when (columnId) {
-                6 -> /* metric_path */ metricPhasePairs.sortBy { it.first.path.asPlainPath }
-                7 -> /* metric_type */ metricPhasePairs.sortBy { it.first.type.asPlainPath }
-                8 -> /* phase_path */ metricPhasePairs.sortBy { it.second.path }
-                9 -> /* phase_type */ metricPhasePairs.sortBy { it.second.type.path }
+                5 -> /* metric_path */ metricPhasePairs.sortBy { it.first.path.asPlainPath }
+                6 -> /* metric_type */ metricPhasePairs.sortBy { it.first.type.asPlainPath }
+                7 -> /* phase_path */ metricPhasePairs.sortBy { it.second.path }
+                8 -> /* phase_type */ metricPhasePairs.sortBy { it.second.type.path }
             }
         }
 
@@ -143,12 +174,11 @@ class AttributedMetricsTable private constructor(
     }
 
     private fun listMetricPhasePairsMatchingFilter(): List<Pair<Metric, ExecutionPhase>> {
-        val allMetricPhasePairs = gradeMLJob.resourceAttribution.metrics.flatMap { metric ->
-            gradeMLJob.resourceAttribution.leafPhases.map { phase ->
-                metric to phase
-            }
-        }
+        val allMetrics = listMetricsMatchingFilter()
+        val allPhases = listPhasesMatchingFilter()
+        val allMetricPhasePairs = allMetrics.flatMap { metric -> allPhases.map { phase -> metric to phase } }
         if (filterConditionOnStaticColumns == null) return allMetricPhasePairs
+
         // Compute the filter condition for each metric-phase pair
         val metricPhaseRowWrapper = object : Row {
             lateinit var metric: Metric
@@ -156,10 +186,10 @@ class AttributedMetricsTable private constructor(
             override val columnCount = MetricsTable.COLUMNS.size
             override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
                 when (columnId) {
-                    6 -> /* metric_path */ outValue.stringValue = metric.path.toString()
-                    7 -> /* metric_type */ outValue.stringValue = metric.type.toString()
-                    8 -> /* phase_path */ outValue.stringValue = phase.path.toString()
-                    9 -> /* phase_type */ outValue.stringValue = phase.type.path.toString()
+                    5 -> /* metric_path */ outValue.stringValue = metric.path.toString()
+                    6 -> /* metric_type */ outValue.stringValue = metric.type.toString()
+                    7 -> /* phase_path */ outValue.stringValue = phase.path.toString()
+                    8 -> /* phase_type */ outValue.stringValue = phase.type.path.toString()
                     else -> throw IllegalArgumentException()
                 }
                 return outValue
@@ -175,23 +205,64 @@ class AttributedMetricsTable private constructor(
         }
     }
 
+    private fun listMetricsMatchingFilter(): List<Metric> {
+        val allMetrics = gradeMLJob.unifiedResourceModel.rootResource.metricsInTree.toList()
+        if (filterConditionOnMetricColumns == null) return allMetrics
+        // Compute the filter condition for each metric
+        val metricRowWrapper = object : Row {
+            lateinit var metric: Metric
+            override val columnCount = COLUMNS.size
+            override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
+                when (columnId) {
+                    5 -> /* metric_path */ outValue.stringValue = metric.path.toString()
+                    6 -> /* metric_type */ outValue.stringValue = metric.type.toString()
+                    else -> throw IllegalArgumentException()
+                }
+                return outValue
+            }
+        }
+        val filterResult = TypedValue()
+        return allMetrics.filter { metric ->
+            metricRowWrapper.metric = metric
+            ExpressionEvaluation.evaluate(filterConditionOnMetricColumns, metricRowWrapper, filterResult).booleanValue
+        }
+    }
+
+    private fun listPhasesMatchingFilter(): List<ExecutionPhase> {
+        val allPhases = gradeMLJob.unifiedExecutionModel.phases.toList()
+        if (filterConditionOnPhaseColumns == null) return allPhases
+        // Compute the filter condition for each phase
+        val phaseRowWrapper = object : Row {
+            lateinit var phase: ExecutionPhase
+            override val columnCount = COLUMNS.size
+            override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
+                when (columnId) {
+                    7 -> /* phase_path */ outValue.stringValue = phase.path.toString()
+                    8 -> /* phase_type */ outValue.stringValue = phase.type.path.toString()
+                    else -> throw IllegalArgumentException()
+                }
+                return outValue
+            }
+        }
+        val filterResult = TypedValue()
+        return allPhases.filter { phase ->
+            phaseRowWrapper.phase = phase
+            ExpressionEvaluation.evaluate(filterConditionOnPhaseColumns, phaseRowWrapper, filterResult).booleanValue
+        }
+    }
+
     companion object {
         val COLUMNS = listOf(
-            Column("start_time", "start_time", Type.NUMERIC, ColumnFunction.TIME_START),
-            Column("end_time", "end_time", Type.NUMERIC, ColumnFunction.TIME_END),
-            Column("duration", "duration", Type.NUMERIC, ColumnFunction.TIME_DURATION),
-            Column("utilization", "utilization", Type.NUMERIC, ColumnFunction.OTHER),
-            Column("usage", "usage", Type.NUMERIC, ColumnFunction.OTHER),
-            Column("capacity", "capacity", Type.NUMERIC, ColumnFunction.OTHER),
-            Column("metric_path", "metric_path", Type.STRING, ColumnFunction.OTHER),
-            Column("metric_type", "metric_type", Type.STRING, ColumnFunction.OTHER),
-            Column("phase_path", "phase_path", Type.STRING, ColumnFunction.OTHER),
-            Column("phase_type", "phase_type", Type.STRING, ColumnFunction.OTHER)
+            Column("_start_time", "_start_time", Type.NUMERIC, ColumnFunction.TIME_START),
+            Column("_end_time", "_end_time", Type.NUMERIC, ColumnFunction.TIME_END),
+            Column("utilization", "utilization", Type.NUMERIC, ColumnFunction.VALUE),
+            Column("usage", "usage", Type.NUMERIC, ColumnFunction.VALUE),
+            Column("capacity", "capacity", Type.NUMERIC, ColumnFunction.VALUE),
+            Column("metric_path", "metric_path", Type.STRING, ColumnFunction.KEY),
+            Column("metric_type", "metric_type", Type.STRING, ColumnFunction.METADATA),
+            Column("phase_path", "phase_path", Type.STRING, ColumnFunction.KEY),
+            Column("phase_type", "phase_type", Type.STRING, ColumnFunction.METADATA)
         )
-
-        private val STATIC_COLUMN_NAMES = setOf("metric_path", "metric_type", "phase_path", "phase_type")
-
-        private val STATIC_COLUMNS = COLUMNS.filter { it.name in STATIC_COLUMN_NAMES }.toSet()
     }
 
 }
@@ -250,17 +321,15 @@ private class AttributedMetricsTableRow(
 
     override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
         when (columnId) {
-            0 -> /* start_time */ outValue.numericValue = (dataIterator.currentStartTime - deltaTs) * (1 / 1e9)
-            1 -> /* end_time */ outValue.numericValue = (dataIterator.currentEndTime - deltaTs) * (1 / 1e9)
-            2 -> /* duration */ outValue.numericValue =
-                (dataIterator.currentEndTime - dataIterator.currentStartTime) * (1 / 1e9)
-            3 -> /* utilization */ outValue.numericValue = dataIterator.currentValue / capacityIterator.currentValue
-            4 -> /* usage */ outValue.numericValue = dataIterator.currentValue
-            5 -> /* capacity */ outValue.numericValue = capacityIterator.currentValue
-            6 -> /* metric_path */ outValue.stringValue = metric.path.toString()
-            7 -> /* metric_type */ outValue.stringValue = metric.type.toString()
-            8 -> /* phase_path */ outValue.stringValue = phase.path.toString()
-            9 -> /* phase_type */ outValue.stringValue = phase.type.path.toString()
+            0 -> /* _start_time */ outValue.numericValue = (dataIterator.currentStartTime - deltaTs) * (1 / 1e9)
+            1 -> /* _end_time */ outValue.numericValue = (dataIterator.currentEndTime - deltaTs) * (1 / 1e9)
+            2 -> /* utilization */ outValue.numericValue = dataIterator.currentValue / capacityIterator.currentValue
+            3 -> /* usage */ outValue.numericValue = dataIterator.currentValue
+            4 -> /* capacity */ outValue.numericValue = capacityIterator.currentValue
+            5 -> /* metric_path */ outValue.stringValue = metric.path.toString()
+            6 -> /* metric_type */ outValue.stringValue = metric.type.toString()
+            7 -> /* phase_path */ outValue.stringValue = phase.path.toString()
+            8 -> /* phase_type */ outValue.stringValue = phase.type.path.toString()
             else -> {
                 require(columnId !in 0 until columnCount) {
                     "Mismatch between AttributedMetricsTableRow and AttributedMetricsTable.COLUMNS"
