@@ -41,7 +41,7 @@ class DerivedTable private constructor(
             sortByColumns = groupColumnIndices,
             preSortedColumns = preSortedColumnIndices
         )
-        return GroupingScanner(sortingScanner, groupColumnIndices)
+        return GroupingScanner(sortingScanner, baseTable.columns, groupColumnIndices)
     }
 
     // Projection implementation

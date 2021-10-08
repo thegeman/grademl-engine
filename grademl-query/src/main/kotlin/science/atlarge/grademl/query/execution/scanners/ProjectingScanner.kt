@@ -68,14 +68,7 @@ class ProjectingScanner(
         this.functionOutputs = Array(this.aggregateFunctions.size) { TypedValue() }
 
         this.rowGroupScanners = (0..this.maxFunctionDepth).map {
-            baseGroupScanner?.invoke() ?: object : RowGroupScanner() {
-                    private var depleted = false
-                    override fun fetchRowGroup(): RowGroup? {
-                        if (depleted) return null
-                        depleted = true
-                        return baseScanner!!()
-                    }
-                }
+            baseGroupScanner?.invoke() ?: RowGroupScanner.from(baseScanner!!.invoke(), inputColumns)
         }
 
         this.firstRowValues = Array(inputColumns.size) { TypedValue() }

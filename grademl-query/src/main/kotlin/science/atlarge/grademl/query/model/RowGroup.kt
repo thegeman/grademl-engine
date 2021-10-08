@@ -1,3 +1,11 @@
 package science.atlarge.grademl.query.model
 
-typealias RowGroup = RowScanner
+abstract class RowGroup : RowScanner() {
+
+    abstract val columns: List<Column>
+
+    abstract val groupedColumnIndices: List<Int>
+
+    abstract fun readGroupColumnValue(columnId: Int, outValue: TypedValue): TypedValue
+
+}

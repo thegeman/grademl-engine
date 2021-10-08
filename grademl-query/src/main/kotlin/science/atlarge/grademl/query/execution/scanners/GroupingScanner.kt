@@ -5,11 +5,12 @@ import science.atlarge.grademl.query.nextOrNull
 
 class GroupingScanner(
     private val sortedInputScanner: RowScanner,
+    private val allColumns: List<Column>,
     private val groupByColumns: List<Int>
 ) : RowGroupScanner() {
 
-    private val columnCount = groupByColumns.size
-    private val columnValues = Array(columnCount) { TypedValue() }
+    private val groupByColumnCount = groupByColumns.size
+    private val groupByColumnValues = Array(groupByColumnCount) { TypedValue() }
     private var cachedRow: Row? = null
     private val rowGroup = GroupByRowGroup()
     private val scratch = TypedValue()
@@ -38,20 +39,33 @@ class GroupingScanner(
     }
 
     private fun readGroupColumnsFromCachedRow() {
-        for (i in 0 until columnCount) {
+        for (i in 0 until groupByColumnCount) {
             val columnId = groupByColumns[i]
-            cachedRow!!.readValue(columnId, columnValues[i])
+            cachedRow!!.readValue(columnId, groupByColumnValues[i])
         }
     }
 
     private fun cachedRowIsInSameGroup(): Boolean {
-        return (0 until columnCount).all { i ->
+        return (0 until groupByColumnCount).all { i ->
             val columnId = groupByColumns[i]
-            columnValues[i] == cachedRow!!.readValue(columnId, scratch)
+            groupByColumnValues[i] == cachedRow!!.readValue(columnId, scratch)
         }
     }
 
     private inner class GroupByRowGroup : RowGroup() {
+
+        override val columns = allColumns
+        override val groupedColumnIndices = groupByColumns
+
+        private val inverseColumnMap = Array(allColumns.size) { columnId ->
+            groupByColumns.indexOf(columnId)
+        }
+
+        override fun readGroupColumnValue(columnId: Int, outValue: TypedValue): TypedValue {
+            val groupColumnId = inverseColumnMap[columnId]
+            groupByColumnValues[groupColumnId].copyTo(outValue)
+            return outValue
+        }
 
         override fun fetchRow(): Row? {
             fetchNextRow() ?: return null

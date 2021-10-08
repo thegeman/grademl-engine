@@ -1,5 +1,7 @@
 package science.atlarge.grademl.query.model
 
+import science.atlarge.grademl.query.nextOrNull
+
 abstract class RowGroupScanner : Iterator<RowGroup> {
 
     private var prefetchedRowGroup: RowGroup? = null
@@ -31,6 +33,33 @@ abstract class RowGroupScanner : Iterator<RowGroup> {
                 return currentGroup!!.next()
             }
         }
+    }
+
+    companion object {
+
+        fun from(rowScanner: RowScanner, columns: List<Column>): RowGroupScanner {
+            val rowGroup = object : RowGroup() {
+                override val columns = columns
+                override val groupedColumnIndices = emptyList<Int>()
+
+                override fun readGroupColumnValue(columnId: Int, outValue: TypedValue): TypedValue {
+                    throw UnsupportedOperationException()
+                }
+
+                override fun fetchRow(): Row? {
+                    return rowScanner.nextOrNull()
+                }
+            }
+            return object : RowGroupScanner() {
+                private var nextRowGroup: RowGroup? = rowGroup
+                override fun fetchRowGroup(): RowGroup? {
+                    val result = nextRowGroup
+                    nextRowGroup = null
+                    return result
+                }
+            }
+        }
+
     }
 
 }
