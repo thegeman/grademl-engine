@@ -1,16 +1,23 @@
 package science.atlarge.grademl.query.execution
 
+import science.atlarge.grademl.query.execution.scanners.LimitScanner
 import science.atlarge.grademl.query.model.Table
 import science.atlarge.grademl.query.model.TypedValue
 
 object TablePrinter {
 
-    fun print(table: Table, showFirst: Int = 10, showLast: Int = 10) {
+    fun print(table: Table, limit: Int? = null) {
+        val showFirst = limit ?: 100
+        val showLast = if (limit == null) 100 else 0
         val header = listOf("ROW") + table.columns.map { it.name }
         val lines = Array(showFirst + showLast) { Array(table.columns.size + 1) { "" } }
         var lineCount = 0
         var lineIndex = 0
-        val sc = table.scan()
+        val sc = if (limit == null) {
+            table.scan()
+        } else {
+            LimitScanner(table.scan(), limit)
+        }
         val cellValue = TypedValue()
         for (row in sc) {
             lineCount++

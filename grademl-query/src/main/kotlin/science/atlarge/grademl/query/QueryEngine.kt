@@ -2,6 +2,7 @@ package science.atlarge.grademl.query
 
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.query.analysis.ASTAnalysis
+import science.atlarge.grademl.query.analysis.ASTUtils
 import science.atlarge.grademl.query.execution.*
 import science.atlarge.grademl.query.execution.data.DefaultTables
 import science.atlarge.grademl.query.language.*
@@ -22,8 +23,7 @@ class QueryEngine(
             is SelectStatement -> {
                 TablePrinter.print(
                     createTableFromSelect(statement),
-                    showFirst = statement.limit?.run { limitFirst ?: 0 } ?: 10,
-                    showLast = statement.limit?.run { limitLast ?: 0 } ?: 10
+                    limit = statement.limit?.limitFirst
                 )
                 println()
             }
@@ -147,17 +147,11 @@ class QueryEngine(
             columnNames.add(columnName)
         }
         val projections = projectionExpressions.indices.map { i ->
-            val columnFunction = when (columnNames[i]) {
-                "start_time" -> ColumnFunction.TIME_START
-                "end_time" -> ColumnFunction.TIME_END
-                "duration" -> ColumnFunction.TIME_DURATION
-                else -> ColumnFunction.OTHER
-            }
             Column(
                 columnNames[i],
                 columnNames[i],
                 projectionExpressions[i].type,
-                columnFunction
+                determineColumnFunction(columnNames[i], projectionExpressions[i], joinedInput.columns)
             ) to projectionExpressions[i]
         }
 
@@ -165,6 +159,26 @@ class QueryEngine(
         val sortColumns = if (selectStatement.orderBy == null) emptyList() else selectStatement.orderBy.columns
 
         return DerivedTable.from(joinedInput, filterExpression, groupByColumns, projections, sortColumns)
+    }
+
+    private fun determineColumnFunction(
+        name: String,
+        expression: Expression,
+        inputColumns: List<Column>
+    ): ColumnFunction {
+        // Check for reserved column names
+        if (name == "_start_time") return ColumnFunction.TIME_START
+        if (name == "_end_time") return ColumnFunction.TIME_END
+
+        // Otherwise, the column type is TAG iff all inputs are TAGs
+//        val usedColumns = ASTUtils.findColumnLiterals(expression)
+//        val allTags = usedColumns.all { inputColumns[it.columnIndex].function == ColumnFunction.TAG }
+//        return if (allTags) ColumnFunction.TAG else ColumnFunction.VALUE
+
+        // TODO: Determine column type
+        val usedColumns = ASTUtils.findColumnLiterals(expression)
+        val anyValueTag = usedColumns.any { inputColumns[it.columnIndex].function == ColumnFunction.VALUE }
+        return if (anyValueTag) ColumnFunction.VALUE else ColumnFunction.METADATA
     }
 
 }
