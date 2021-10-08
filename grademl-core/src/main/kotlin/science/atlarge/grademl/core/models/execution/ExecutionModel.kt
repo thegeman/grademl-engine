@@ -79,6 +79,62 @@ class ExecutionModel {
         phase.recomputePath()
     }
 
+    fun updatePhase(
+        phase: ExecutionPhase,
+        name: String = phase.name,
+        tags: Map<String, String> = phase.tags,
+        typeTags: Set<String> = phase.typeTags,
+        metadata: Map<String, String> = phase.metadata,
+        description: String? = phase.description,
+        startTime: TimestampNs = phase.startTime,
+        endTime: TimestampNs = phase.endTime
+    ): ExecutionPhase {
+        require(phase in _phases) { "Cannot update a phase that is not part of this ExecutionModel" }
+        require(!phase.isRoot) { "Cannot update the root phase of an ExecutionModel" }
+        // Create a new phase with the given parameters
+        val newPhase = addPhase(name, tags, typeTags, metadata, description, startTime, endTime, phase.parent!!)
+        // Swap any dataflow connections to use the new phase
+        val inFlows = phaseInFlows[phase]
+        if (inFlows != null) {
+            for (inFlow in inFlows.orEmpty()) {
+                phaseOutFlows[inFlow]!!.apply {
+                    remove(phase)
+                    add(newPhase)
+                }
+            }
+            phaseInFlows[newPhase] = inFlows
+            phaseInFlows.remove(phase)
+        }
+        val outFlows = phaseOutFlows[phase]
+        if (outFlows != null) {
+            for (outFlow in outFlows) {
+                phaseInFlows[outFlow]!!.apply {
+                    remove(phase)
+                    add(newPhase)
+                }
+            }
+            phaseOutFlows[newPhase] = outFlows
+            phaseOutFlows.remove(phase)
+        }
+        // Swap any children to use the new phase and reset their paths
+        val children = phaseChildren[phase]
+        if (children != null) {
+            phaseChildren[newPhase] = children
+            for (child in children) {
+                phaseParents[child] = newPhase
+                child.recomputePath()
+            }
+            phaseChildren.remove(phase)
+        }
+
+        // Delete the old phase
+        phaseChildren[phase.parent!!]!!.remove(phase)
+        phaseParents.remove(phase)
+        _phases.remove(phase)
+
+        return newPhase
+    }
+
     private val pathMatcher = PathMatcher(
         rootNode = rootPhase,
         namesOfNode = { phase -> listOf(phase.name, phase.identifier) },

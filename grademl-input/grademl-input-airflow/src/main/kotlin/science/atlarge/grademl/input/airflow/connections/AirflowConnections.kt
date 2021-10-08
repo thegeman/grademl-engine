@@ -11,7 +11,8 @@ import science.atlarge.grademl.input.airflow.AirflowTaskId
 object AirflowConnections {
 
     private val connections = listOf(
-        AirflowSparkConnection
+        AirflowSparkConnection,
+        AirflowTensorFlowConnection
     )
 
     fun processConnectionsForAirflowLogs(

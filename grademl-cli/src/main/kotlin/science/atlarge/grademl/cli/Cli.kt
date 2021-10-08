@@ -13,6 +13,7 @@ import science.atlarge.grademl.core.models.resource.ResourceModel
 import science.atlarge.grademl.input.airflow.Airflow
 import science.atlarge.grademl.input.resource_monitor.ResourceMonitor
 import science.atlarge.grademl.input.spark.Spark
+import science.atlarge.grademl.input.tensorflow.TensorFlow
 import java.io.File
 import java.io.IOError
 import java.nio.file.Path
@@ -48,6 +49,7 @@ object Cli {
 
         GradeMLEngine.registerInputSource(ResourceMonitor)
         GradeMLEngine.registerInputSource(Spark)
+        GradeMLEngine.registerInputSource(TensorFlow)
         GradeMLEngine.registerInputSource(Airflow)
 
         val gradeMLJob = GradeMLEngine.analyzeJob(inputPaths, outputPath) { update ->
