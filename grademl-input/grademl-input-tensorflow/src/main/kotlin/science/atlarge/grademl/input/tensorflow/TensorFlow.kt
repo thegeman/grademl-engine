@@ -47,6 +47,7 @@ object TensorFlow : InputSource {
                 val nextEpochPhase = unifiedExecutionModel.addPhase(
                     name = "Epoch",
                     tags = mapOf("id" to epochId),
+                    typeTags = emptySet(),
                     startTime = jobLog.epochStartTimes[i],
                     endTime = jobLog.epochEndTimes[i],
                     parent = appPhase

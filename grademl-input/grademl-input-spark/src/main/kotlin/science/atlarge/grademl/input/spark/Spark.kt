@@ -9,6 +9,7 @@ import science.atlarge.grademl.core.models.resource.ResourceModel
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.system.exitProcess
+import kotlin.system.measureNanoTime
 
 object Spark : InputSource {
 
@@ -25,7 +26,11 @@ object Spark : InputSource {
         if (sparkLogDirectories.isEmpty()) return false
 
         // Parse Spark log files
-        val sparkLog = SparkLogParser.parseFromDirectories(sparkLogDirectories)
+        val sparkLog: SparkLog
+        val t = measureNanoTime {
+            sparkLog = SparkLogParser.parseFromDirectories(sparkLogDirectories)
+        }
+        println("Spark log parsing took: ${String.format("%.2f", t / 1_000_000.0)} ms")
 
         // Iterate over Spark applications to build the execution model
         for (appLog in sparkLog.sparkApps) {

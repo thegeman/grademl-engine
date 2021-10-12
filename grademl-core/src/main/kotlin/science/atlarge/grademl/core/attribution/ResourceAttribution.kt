@@ -9,7 +9,8 @@ import science.atlarge.grademl.core.models.resource.ResourceModel
 class ResourceAttribution(
     executionModel: ExecutionModel,
     resourceModel: ResourceModel,
-    attributionRuleProvider: ResourceAttributionRuleProvider
+    attributionRuleProvider: ResourceAttributionRuleProvider,
+    resourceAttributionSettings: ResourceAttributionSettings = ResourceAttributionSettings()
 ) {
 
     val leafPhases = executionModel.rootPhase.descendants.filter { it.children.isEmpty() }.toSet()
@@ -18,19 +19,23 @@ class ResourceAttribution(
     private val demandEstimationStep = ResourceDemandEstimationStep(
         metrics,
         leafPhases,
-        attributionRuleProvider
+        attributionRuleProvider,
+        enableTimeSeriesCompression = resourceAttributionSettings.enableTimeSeriesCompression
     )
 
     private val upsamplingStep = ResourceUpsamplingStep(
-        metrics
-    ) { metric -> demandEstimationStep.estimatedDemandForMetric(metric)!! }
+        metrics,
+        { metric -> demandEstimationStep.estimatedDemandForMetric(metric)!! },
+        enableTimeSeriesCompression = resourceAttributionSettings.enableTimeSeriesCompression
+    )
 
     private val attributionStep = ResourceAttributionStep(
         leafPhases,
         metrics,
         attributionRuleProvider,
         { metric -> demandEstimationStep.estimatedDemandForMetric(metric)!! },
-        { metric -> upsamplingStep.upsampleMetric(metric)!! }
+        { metric -> upsamplingStep.upsampleMetric(metric)!! },
+        enableTimeSeriesCompression = resourceAttributionSettings.enableTimeSeriesCompression
     )
 
     fun attributeMetricToPhase(metric: Metric, phase: ExecutionPhase): ResourceAttributionResult {
@@ -55,3 +60,8 @@ class AttributedResourceData(
 ) : ResourceAttributionResult()
 
 object NoAttributedData : ResourceAttributionResult()
+
+class ResourceAttributionSettings(
+    val enableTimeSeriesCompression: Boolean = true,
+    val enableRuleCaching: Boolean = true
+)

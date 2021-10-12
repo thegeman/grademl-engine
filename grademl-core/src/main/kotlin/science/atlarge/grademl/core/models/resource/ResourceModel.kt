@@ -155,6 +155,10 @@ private class RootResource(
         throw IllegalArgumentException("Cannot add metrics to the root resource")
     }
 
+    override fun toString(): String {
+        return "Resource(\"/\")"
+    }
+
 }
 
 private class SubResource(
@@ -164,7 +168,13 @@ private class SubResource(
     metadata: Map<String, String>,
     description: String?,
     model: ResourceModel
-) : Resource(name, tags, typeTags, metadata, description, model)
+) : Resource(name, tags, typeTags, metadata, description, model) {
+
+    override fun toString(): String {
+        return "Resource(\"$path\")"
+    }
+
+}
 
 interface Metric {
     val name: String
@@ -186,6 +196,10 @@ private class MetricImpl(
 
     override val type: MetricPath by lazy {
         MetricPath(resource.type, name)
+    }
+
+    override fun toString(): String {
+        return "Metric(\"${path.asPlainPath}\")"
     }
 
 }

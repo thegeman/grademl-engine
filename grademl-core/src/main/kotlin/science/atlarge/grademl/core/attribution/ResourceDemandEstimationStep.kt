@@ -10,7 +10,8 @@ import science.atlarge.grademl.core.util.LongArrayBuilder
 class ResourceDemandEstimationStep(
     private val metrics: Set<Metric>,
     private val phases: Set<ExecutionPhase>,
-    private val attributionRuleProvider: ResourceAttributionRuleProvider
+    private val attributionRuleProvider: ResourceAttributionRuleProvider,
+    private val enableTimeSeriesCompression: Boolean
 ) {
 
     private val cachedDemandEstimates = mutableMapOf<Metric, ResourceDemandEstimate>()
@@ -86,7 +87,7 @@ class ResourceDemandEstimationStep(
                 nextChangePoint++
             }
             // If the demand has changed, add a data point
-            if (newDemand != currentDemand) {
+            if (!enableTimeSeriesCompression || newDemand != currentDemand) {
                 timestamps.append(newTime)
                 demandValues.append(currentDemand)
                 lastTimestamp = newTime

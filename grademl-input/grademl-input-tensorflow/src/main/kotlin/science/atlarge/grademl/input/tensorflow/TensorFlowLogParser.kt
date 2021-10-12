@@ -120,7 +120,7 @@ class TensorFlowLogParser private constructor(
 
     companion object {
         private val START_LINE_REGEX = """\[[0-9- :,]*] .* INFO -.*<stdout>:Epoch ([0-9]+)/[0-9+]+""".toRegex()
-        private val END_LINE_REGEX = """\[[0-9- :,]*] .* INFO -.*<stdout>:""".toRegex()
+        private val END_LINE_REGEX = """\[[0-9- :,]*] .* INFO .*""".toRegex()
 
         fun parseFromDirectories(tensorFlowLogDirectories: Iterable<Path>): TensorFlowLog {
             return TensorFlowLogParser(tensorFlowLogDirectories).parse()

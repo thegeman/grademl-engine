@@ -1,9 +1,6 @@
 package science.atlarge.grademl.core
 
-import science.atlarge.grademl.core.attribution.BestFitAttributionRuleProvider
-import science.atlarge.grademl.core.attribution.CachingAttributionRuleProvider
-import science.atlarge.grademl.core.attribution.MappingAttributionRuleProvider
-import science.atlarge.grademl.core.attribution.ResourceAttributionRuleProvider
+import science.atlarge.grademl.core.attribution.*
 import science.atlarge.grademl.core.input.EnvironmentParser
 import science.atlarge.grademl.core.input.InputSource
 import science.atlarge.grademl.core.models.CommonMetadata
@@ -21,6 +18,7 @@ object GradeMLEngine {
     fun analyzeJob(
         jobDataDirectories: Iterable<Path>,
         jobOutputDirectory: Path,
+        resourceAttributionSettings: ResourceAttributionSettings = ResourceAttributionSettings(),
         progressReport: (GradeMLJobStatusUpdate) -> Unit = { }
     ): GradeMLJob {
         fun createAttributionRuleProvider(
@@ -28,21 +26,26 @@ object GradeMLEngine {
             resourceModel: ResourceModel,
             environment: Environment
         ): ResourceAttributionRuleProvider {
+            // Provider 1: Limit resource attribution to the machine a phase runs on
             val machineMapping = MappingAttributionRuleProvider.Mapping(CommonMetadata.MACHINE_ID) { id1, id2 ->
                 val machine1 = environment.machineForId(id1)
                 val machine2 = environment.machineForId(id2)
                 if (machine1 != null && machine2 != null) machine1 === machine2
                 else id1 == id2
             }
-            return CachingAttributionRuleProvider(
+            // Provider 2: Regression fit of resource demand rules
+            val bestFitProvider = BestFitAttributionRuleProvider.from(
+                executionModel,
+                resourceModel,
                 jobOutputDirectory,
-                BestFitAttributionRuleProvider.from(
-                    executionModel,
-                    resourceModel,
-                    jobOutputDirectory,
-                    MappingAttributionRuleProvider(listOf(machineMapping))
-                )
+                MappingAttributionRuleProvider(listOf(machineMapping))
             )
+            // Provider 3: Cache attribution rules to disk (if enablde)
+            val cachedProvider = if (resourceAttributionSettings.enableRuleCaching) {
+                CachingAttributionRuleProvider(jobOutputDirectory, bestFitProvider)
+            } else bestFitProvider
+
+            return cachedProvider
         }
 
         return GradeMLJobProcessor.processJob(
@@ -50,6 +53,7 @@ object GradeMLEngine {
             jobOutputDirectory,
             knownInputSources,
             ::createAttributionRuleProvider,
+            resourceAttributionSettings,
             progressReport
         )
     }

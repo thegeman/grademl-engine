@@ -12,7 +12,8 @@ class ResourceAttributionStep(
     private val metrics: Set<Metric>,
     private val attributionRuleProvider: ResourceAttributionRuleProvider,
     private val resourceDemandEstimates: (Metric) -> ResourceDemandEstimate,
-    private val upsampledMetricData: (Metric) -> MetricData
+    private val upsampledMetricData: (Metric) -> MetricData,
+    private val enableTimeSeriesCompression: Boolean
 ) {
 
     private val cachedAttributedUsage = mutableMapOf<ExecutionPhase, MutableMap<Metric, ResourceAttributionResult>>()
@@ -56,7 +57,7 @@ class ResourceAttributionStep(
         // Perform the resource attribution step
         val (attributedUsage, attributedCapacity) = ResourceAttributionComputation(
             upsampledMetric, estimatedDemand.exactDemandOverTime, estimatedDemand.variableDemandOverTime,
-            phaseDemand, isExactDemand, phase.startTime, phase.endTime
+            phaseDemand, isExactDemand, phase.startTime, phase.endTime, enableTimeSeriesCompression
         ).getAttributedUsageAndCapacity()
         return AttributedResourceData(attributedUsage, attributedCapacity)
     }
@@ -70,7 +71,8 @@ private class ResourceAttributionComputation(
     private val phaseDemand: Double,
     private val isPhaseDemandExact: Boolean,
     private val startTime: TimestampNs,
-    private val endTime: TimestampNs
+    private val endTime: TimestampNs,
+    private val enableCompression: Boolean
 ) {
 
     private val metricIterator = upsampledMetric.iteratorFrom(startTime)
@@ -140,7 +142,7 @@ private class ResourceAttributionComputation(
         if (value.isNaN()) {
             println("Found NaN")
         }
-        if (values.size > 0 && value == values.last() && capacity == capacities.last()) {
+        if (enableCompression && values.size > 0 && value == values.last() && capacity == capacities.last()) {
             timestamps.replaceLast(timestamp)
         } else {
             timestamps.append(timestamp)

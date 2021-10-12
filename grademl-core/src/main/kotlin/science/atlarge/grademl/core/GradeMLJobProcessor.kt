@@ -3,17 +3,20 @@ package science.atlarge.grademl.core
 import science.atlarge.grademl.core.analysis.BottleneckIdentification
 import science.atlarge.grademl.core.attribution.ResourceAttribution
 import science.atlarge.grademl.core.attribution.ResourceAttributionRuleProvider
+import science.atlarge.grademl.core.attribution.ResourceAttributionSettings
 import science.atlarge.grademl.core.input.InputSource
 import science.atlarge.grademl.core.models.Environment
 import science.atlarge.grademl.core.models.execution.ExecutionModel
 import science.atlarge.grademl.core.models.resource.ResourceModel
 import java.nio.file.Path
+import kotlin.system.measureNanoTime
 
 class GradeMLJobProcessor private constructor(
     private val inputDirectories: Iterable<Path>,
     private val outputDirectory: Path,
     private val inputSources: Iterable<InputSource>,
     private val attributionRuleProvider: (ExecutionModel, ResourceModel, Environment) -> ResourceAttributionRuleProvider,
+    private val resourceAttributionSettings: ResourceAttributionSettings,
     private val progressReport: (GradeMLJobStatusUpdate) -> Unit
 ) {
 
@@ -28,13 +31,18 @@ class GradeMLJobProcessor private constructor(
         // Parse logs
         progressReport(GradeMLJobStatusUpdate.LOG_PARSING_STARTING)
         for (inputSource in inputSources) {
-            inputSource.parseJobData(inputDirectories, executionModel, resourceModel, jobEnvironment)
+            val t = measureNanoTime {
+                inputSource.parseJobData(inputDirectories, executionModel, resourceModel, jobEnvironment)
+            }
+            println("Time taken to process input source ${inputSource.javaClass.canonicalName}: " +
+                    "${String.format("%.2f", t / 1_000_000.0)} ms")
         }
         progressReport(GradeMLJobStatusUpdate.LOG_PARSING_COMPLETED)
 
         // Configure resource attribution
         resourceAttribution = ResourceAttribution(
-            executionModel, resourceModel, attributionRuleProvider(executionModel, resourceModel, jobEnvironment)
+            executionModel, resourceModel, attributionRuleProvider(executionModel, resourceModel, jobEnvironment),
+            resourceAttributionSettings
         )
 
         // Configure bottleneck identification
@@ -52,10 +60,12 @@ class GradeMLJobProcessor private constructor(
             outputDirectory: Path,
             inputSources: Iterable<InputSource>,
             attributionRuleProvider: (ExecutionModel, ResourceModel, Environment) -> ResourceAttributionRuleProvider,
+            resourceAttributionSettings: ResourceAttributionSettings = ResourceAttributionSettings(),
             progressReport: (GradeMLJobStatusUpdate) -> Unit = { }
         ): GradeMLJob {
             return GradeMLJobProcessor(
-                inputDirectories, outputDirectory, inputSources, attributionRuleProvider, progressReport
+                inputDirectories, outputDirectory, inputSources, attributionRuleProvider, resourceAttributionSettings,
+                progressReport
             ).run()
         }
     }

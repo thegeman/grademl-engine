@@ -8,7 +8,8 @@ import science.atlarge.grademl.core.util.LongArrayBuilder
 
 class ResourceUpsamplingStep(
     private val metrics: Set<Metric>,
-    private val resourceDemandEstimates: (Metric) -> ResourceDemandEstimate
+    private val resourceDemandEstimates: (Metric) -> ResourceDemandEstimate,
+    private val enableTimeSeriesCompression: Boolean
 ) {
 
     private val cachedUpsampledMetrics = mutableMapOf<Metric, MetricData>()
@@ -20,7 +21,8 @@ class ResourceUpsamplingStep(
         val newUpsampledMetric = MetricUpsampler(
             metric.data,
             resourceDemandEstimate.exactDemandOverTime,
-            resourceDemandEstimate.variableDemandOverTime
+            resourceDemandEstimate.variableDemandOverTime,
+            enableTimeSeriesCompression
         ).getUpsampledMetric()
         cachedUpsampledMetrics[metric] = newUpsampledMetric
         return newUpsampledMetric
@@ -31,7 +33,8 @@ class ResourceUpsamplingStep(
 private class MetricUpsampler(
     private val observedUsage: MetricData,
     private val exactDemand: MetricData,
-    private val variableDemand: MetricData
+    private val variableDemand: MetricData,
+    private val enableTimeSeriesCompression: Boolean
 ) {
 
     private var currentExactDemand = 0.0
@@ -184,7 +187,7 @@ private class MetricUpsampler(
     }
 
     private fun emitDataPoint(timestamp: TimestampNs, value: Double) {
-        if (values.size > 0 && value == values.last()) {
+        if (enableTimeSeriesCompression && values.size > 0 && value == values.last()) {
             timestamps.replaceLast(timestamp)
         } else {
             timestamps.append(timestamp)
