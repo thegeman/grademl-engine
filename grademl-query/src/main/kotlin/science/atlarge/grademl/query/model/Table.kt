@@ -1,5 +1,6 @@
 package science.atlarge.grademl.query.model
 
+import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.language.ColumnLiteral
 import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.nextOrNull
@@ -52,7 +53,7 @@ interface Table {
 
     val columnsOptimizedForSort: List<Column>
         get() = emptyList()
-    fun sortedBy(sortColumns: List<ColumnLiteral>): Table? {
+    fun sortedBy(sortColumns: List<SortColumn>): Table? {
         return null
     }
 

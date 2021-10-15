@@ -9,6 +9,8 @@ import science.atlarge.grademl.core.models.resource.MetricDataIterator
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.FilterConditionSeparation
 import science.atlarge.grademl.query.execution.ExpressionEvaluation
+import science.atlarge.grademl.query.execution.IndexedSortColumn
+import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.execution.scanners.FilteringScanner
 import science.atlarge.grademl.query.execution.scanners.RemappingScanner
 import science.atlarge.grademl.query.execution.scanners.SortingScanner
@@ -19,7 +21,7 @@ class AttributedMetricsTable private constructor(
     private val gradeMLJob: GradeMLJob,
     private val selectedColumnIds: List<Int>,
     private val filterCondition: Expression?,
-    private val sortColumnIds: List<Int>
+    private val sortColumns: List<IndexedSortColumn>
 ) : Table {
 
     override val columns = selectedColumnIds.map { i -> COLUMNS[i] }
@@ -83,13 +85,25 @@ class AttributedMetricsTable private constructor(
         // Get list of metric-phase pairs after applying basic filter (if needed)
         val metricPhasePairs = listMetricPhasePairsMatchingFilter().toMutableList()
         // Sort list of metric-phase pairs (if needed)
-        val staticSortColumns = sortColumnIds.takeWhile { COLUMNS[it] in columnsOptimizedForSort }
-        for (columnId in staticSortColumns.asReversed()) {
-            when (columnId) {
-                5 -> /* metric_path */ metricPhasePairs.sortBy { it.first.path.asPlainPath }
-                6 -> /* metric_type */ metricPhasePairs.sortBy { it.first.type.asPlainPath }
-                7 -> /* phase_path */ metricPhasePairs.sortBy { it.second.path }
-                8 -> /* phase_type */ metricPhasePairs.sortBy { it.second.type.path }
+        val staticSortColumns = sortColumns.takeWhile { COLUMNS[it.columnIndex] in columnsOptimizedForSort }
+        for (sortColumn in staticSortColumns.asReversed()) {
+            when (sortColumn.columnIndex) {
+                5 -> /* metric_path */ {
+                    if (sortColumn.ascending) metricPhasePairs.sortBy { it.first.path.asPlainPath }
+                    else metricPhasePairs.sortByDescending { it.first.path.asPlainPath }
+                }
+                6 -> /* metric_type */ {
+                    if (sortColumn.ascending) metricPhasePairs.sortBy { it.first.type.asPlainPath }
+                    else metricPhasePairs.sortByDescending { it.first.type.asPlainPath }
+                }
+                7 -> /* phase_path */ {
+                    if (sortColumn.ascending) metricPhasePairs.sortBy { it.second.path }
+                    else metricPhasePairs.sortByDescending { it.second.path }
+                }
+                8 -> /* phase_type */ {
+                    if (sortColumn.ascending) metricPhasePairs.sortBy { it.second.type.path }
+                    else metricPhasePairs.sortByDescending { it.second.type.path }
+                }
             }
         }
 
@@ -112,9 +126,9 @@ class AttributedMetricsTable private constructor(
         }
 
         // Append the sort operation
-        if (sortColumnIds.size > staticSortColumns.size) {
+        if (sortColumns.size > staticSortColumns.size) {
             // Drop columns if possible to sort fewer data elements
-            val preSortNeededColumns = (sortColumnIds + selectedColumnIds).distinct().sorted()
+            val preSortNeededColumns = (sortColumns.map { it.columnIndex } + selectedColumnIds).distinct().sorted()
             if (preSortNeededColumns != scannerSelectedColumns) {
                 scannerSelectedColumns = preSortNeededColumns
                 scanner = RemappingScanner(scanner, preSortNeededColumns.map { originalColumnId ->
@@ -122,15 +136,15 @@ class AttributedMetricsTable private constructor(
                 })
             }
             // Determine which columns to sort by and which columns have already been sorted
-            val remappedColumns = sortColumnIds.map { originalColumnId ->
-                scannerSelectedColumns.indexOf(originalColumnId)
+            val remappedSortColumns = sortColumns.map { sortColumn ->
+                IndexedSortColumn(scannerSelectedColumns.indexOf(sortColumn.columnIndex), sortColumn.ascending)
             }
             // Sort the input
             scanner = SortingScanner(
                 scanner,
                 scannerSelectedColumns.size,
-                remappedColumns,
-                remappedColumns.take(staticSortColumns.size)
+                remappedSortColumns,
+                remappedSortColumns.take(staticSortColumns.size)
             )
         }
 
@@ -152,7 +166,7 @@ class AttributedMetricsTable private constructor(
             require(index in selectedColumnIds.indices)
             selectedColumnIds[index]
         }
-        return AttributedMetricsTable(gradeMLJob, newSelectedColumnIds, filterCondition, sortColumnIds)
+        return AttributedMetricsTable(gradeMLJob, newSelectedColumnIds, filterCondition, sortColumns)
     }
 
     override fun filteredWith(condition: Expression): Table {
@@ -160,17 +174,26 @@ class AttributedMetricsTable private constructor(
             if (filterCondition == null) condition else BinaryExpression(condition, filterCondition, BinaryOp.AND),
             COLUMNS
         )
-        return AttributedMetricsTable(gradeMLJob, selectedColumnIds, newFilterCondition, sortColumnIds)
+        return AttributedMetricsTable(gradeMLJob, selectedColumnIds, newFilterCondition, sortColumns)
     }
 
-    override fun sortedBy(sortColumns: List<ColumnLiteral>): Table {
-        val columnIds = sortColumns.map { c ->
-            val index = columns.indexOfFirst { it.name == c.columnName }
-            require(index in selectedColumnIds.indices)
-            selectedColumnIds[index]
+    override fun sortedBy(sortColumns: List<SortColumn>): Table {
+        val addedSortColumns = sortColumns.map { c ->
+            val index = columns.indexOfFirst { it.name == c.column.columnName }
+            require(index in selectedColumnIds.indices) { "Cannot sort by column that is not selected" }
+            IndexedSortColumn(selectedColumnIds[index], c.ascending)
         }
-        val newSortColumnIds = (columnIds + sortColumnIds).distinct()
-        return AttributedMetricsTable(gradeMLJob, selectedColumnIds, filterCondition, newSortColumnIds)
+
+        val combinedSortColumns = mutableListOf<IndexedSortColumn>()
+        val usedColumnIds = mutableSetOf<Int>()
+        for (c in addedSortColumns + this.sortColumns) {
+            if (c.columnIndex !in usedColumnIds) {
+                combinedSortColumns.add(c)
+                usedColumnIds.add(c.columnIndex)
+            }
+        }
+
+        return AttributedMetricsTable(gradeMLJob, selectedColumnIds, filterCondition, combinedSortColumns)
     }
 
     private fun listMetricPhasePairsMatchingFilter(): List<Pair<Metric, ExecutionPhase>> {
@@ -281,6 +304,7 @@ private class AttributedMetricsTableScanner(
         while (currentMetricPhasePairIndex < metricPhasePairs.size && !rowWrapper.dataIterator.hasNext) {
             nextMetricPhasePair()
         }
+        if (currentMetricPhasePairIndex >= metricPhasePairs.size) return null
         if (!rowWrapper.dataIterator.hasNext) return null
         rowWrapper.dataIterator.next()
         rowWrapper.capacityIterator.next()

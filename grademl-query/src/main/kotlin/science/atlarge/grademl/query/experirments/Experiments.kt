@@ -19,11 +19,11 @@ fun main(args: Array<String>) {
     val inputPaths = args[0].split(File.pathSeparatorChar).map { Paths.get(it) }
     val outputPath = Paths.get(args[1])
 
-//    GradeMLEngine.registerInputSource(ResourceMonitor)
+    GradeMLEngine.registerInputSource(ResourceMonitor)
     GradeMLEngine.registerInputSource(Spark)
     GradeMLEngine.registerInputSource(TensorFlow)
     GradeMLEngine.registerInputSource(Airflow)
 
-    exportJobCharacteristics(inputPaths, outputPath)
-//    runResourceAttributionOverheadExperiment(inputPaths, outputPath)
+//    exportJobCharacteristics(inputPaths, outputPath)
+    runResourceAttributionOverheadExperiment(inputPaths, outputPath)
 }

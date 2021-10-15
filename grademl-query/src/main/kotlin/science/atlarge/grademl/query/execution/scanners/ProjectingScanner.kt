@@ -88,8 +88,10 @@ class ProjectingScanner(
         }
         // For non-grouped inputs, compute aggregate functions once and produce one row per input row
         if (linearInputScanner == null) {
-            // Compute all aggregate functions for the entire input table
-            if (!aggregateNextRowGroup()) return null
+            // Compute all aggregate functions (if any) for the entire input table
+            if (aggregateFunctions.isNotEmpty()) {
+                if (!aggregateNextRowGroup()) return null
+            }
             linearInputScanner = baseScanner!!.invoke()
         }
         // Return the projected output row

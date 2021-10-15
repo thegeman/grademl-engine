@@ -32,8 +32,8 @@ class AliasedTable(val baseTable: Table, val aliasPath: String) : Table {
     override val columnsOptimizedForSort: List<Column>
         get() = baseTable.columnsOptimizedForSort
 
-    override fun sortedBy(sortColumns: List<ColumnLiteral>): Table? {
-        val renamedColumns = sortColumns.map { convertExpression(it) as ColumnLiteral }
+    override fun sortedBy(sortColumns: List<SortColumn>): Table? {
+        val renamedColumns = sortColumns.map { SortColumn(convertExpression(it.column) as ColumnLiteral, it.ascending) }
         val sortedBaseTable = baseTable.sortedBy(renamedColumns) ?: return null
         return AliasedTable(sortedBaseTable, aliasPath)
     }

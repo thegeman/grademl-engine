@@ -156,7 +156,11 @@ class QueryEngine(
         }
 
         // Parse the order by clause
-        val sortColumns = if (selectStatement.orderBy == null) emptyList() else selectStatement.orderBy.columns
+        val sortColumns = if (selectStatement.orderBy == null) emptyList() else {
+            selectStatement.orderBy.columns.zip(selectStatement.orderBy.ascending).map { (col, asc) ->
+                SortColumn(col, asc)
+            }
+        }
 
         return DerivedTable.from(joinedInput, filterExpression, groupByColumns, projections, sortColumns)
     }

@@ -9,7 +9,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
         // Common aggregation functions
         COUNT, COUNT_IF, MIN, MAX, SUM, AVG, WEIGHTED_AVG, MIN_OF, MAX_OF,
         // Data reshaping functions
-        FIND_OR_DEFAULT,
+        FIND_OR_DEFAULT, AS_NUMERIC,
         // Helper functions for traversing hierarchical models
         IS_PARENT_OF, IS_CHILD_OF, IS_ANCESTOR_OF, IS_DESCENDANT_OF, PARENT_OF
     ).iterator()
@@ -187,6 +187,23 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
 
         override fun resolveType(argTypes: List<Type>): Type {
             return argTypes[1]
+        }
+    }
+
+    object AS_NUMERIC : FunctionDefinition {
+        override val functionName = "AS_NUMERIC"
+        override val isAggregatingFunction = false
+
+        override fun checkArgumentCount(argCount: Int) {
+            require(argCount == 1) { "$functionName requires 1 argument (value)" }
+        }
+
+        override fun checkArgumentTypes(argTypes: List<Type>) {
+            require(argTypes[0] == Type.BOOLEAN) { "First argument of $functionName (\"value\") must be BOOLEAN" }
+        }
+
+        override fun resolveType(argTypes: List<Type>): Type {
+            return Type.NUMERIC
         }
     }
 

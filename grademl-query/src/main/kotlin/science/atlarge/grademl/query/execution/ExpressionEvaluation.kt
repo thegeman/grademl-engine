@@ -54,30 +54,30 @@ object ExpressionEvaluation {
         }
 
         override fun visit(e: BinaryExpression) {
-            e.lhs.evaluate().copyTo(scratch[0])
+            val lhsVal = e.lhs.evaluate().clone()
             when (e.op) {
-                BinaryOp.ADD -> lastValue.numericValue = scratch[0].numericValue + e.rhs.evaluate().numericValue
-                BinaryOp.SUBTRACT -> lastValue.numericValue = scratch[0].numericValue - e.rhs.evaluate().numericValue
-                BinaryOp.MULTIPLY -> lastValue.numericValue = scratch[0].numericValue * e.rhs.evaluate().numericValue
-                BinaryOp.DIVIDE -> lastValue.numericValue = scratch[0].numericValue / e.rhs.evaluate().numericValue
-                BinaryOp.AND -> lastValue.booleanValue = scratch[0].booleanValue && e.rhs.evaluate().booleanValue
-                BinaryOp.OR -> lastValue.booleanValue = scratch[0].booleanValue || e.rhs.evaluate().booleanValue
-                BinaryOp.EQUAL -> lastValue.booleanValue = scratch[0] == e.rhs.evaluate()
-                BinaryOp.NOT_EQUAL -> lastValue.booleanValue = scratch[0] != e.rhs.evaluate()
+                BinaryOp.ADD -> lastValue.numericValue = lhsVal.numericValue + e.rhs.evaluate().numericValue
+                BinaryOp.SUBTRACT -> lastValue.numericValue = lhsVal.numericValue - e.rhs.evaluate().numericValue
+                BinaryOp.MULTIPLY -> lastValue.numericValue = lhsVal.numericValue * e.rhs.evaluate().numericValue
+                BinaryOp.DIVIDE -> lastValue.numericValue = lhsVal.numericValue / e.rhs.evaluate().numericValue
+                BinaryOp.AND -> lastValue.booleanValue = lhsVal.booleanValue && e.rhs.evaluate().booleanValue
+                BinaryOp.OR -> lastValue.booleanValue = lhsVal.booleanValue || e.rhs.evaluate().booleanValue
+                BinaryOp.EQUAL -> lastValue.booleanValue = lhsVal == e.rhs.evaluate()
+                BinaryOp.NOT_EQUAL -> lastValue.booleanValue = lhsVal != e.rhs.evaluate()
                 BinaryOp.APPROX_EQUAL -> lastValue.booleanValue = matchPathsWithWildcards(
-                    scratch[0].stringValue, e.rhs.evaluate().stringValue
+                    lhsVal.stringValue, e.rhs.evaluate().stringValue
                 )
                 BinaryOp.NOT_APPROX_EQUAL -> lastValue.booleanValue = !matchPathsWithWildcards(
-                    scratch[0].stringValue, e.rhs.evaluate().stringValue
+                    lhsVal.stringValue, e.rhs.evaluate().stringValue
                 )
                 BinaryOp.GREATER -> lastValue.booleanValue =
-                    scratch[0].numericValue > e.rhs.evaluate().numericValue
+                    lhsVal.numericValue > e.rhs.evaluate().numericValue
                 BinaryOp.GREATER_EQUAL -> lastValue.booleanValue =
-                    scratch[0].numericValue >= e.rhs.evaluate().numericValue
+                    lhsVal.numericValue >= e.rhs.evaluate().numericValue
                 BinaryOp.SMALLER -> lastValue.booleanValue =
-                    scratch[0].numericValue < e.rhs.evaluate().numericValue
+                    lhsVal.numericValue < e.rhs.evaluate().numericValue
                 BinaryOp.SMALLER_EQUAL -> lastValue.booleanValue =
-                    scratch[0].numericValue <= e.rhs.evaluate().numericValue
+                    lhsVal.numericValue <= e.rhs.evaluate().numericValue
             }.ensureExhaustive
         }
 

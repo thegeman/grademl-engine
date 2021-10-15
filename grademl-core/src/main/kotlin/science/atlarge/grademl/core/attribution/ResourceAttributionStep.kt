@@ -1,14 +1,17 @@
 package science.atlarge.grademl.core.attribution
 
 import science.atlarge.grademl.core.TimestampNs
+import science.atlarge.grademl.core.TimestampNsArray
 import science.atlarge.grademl.core.models.execution.ExecutionPhase
 import science.atlarge.grademl.core.models.resource.Metric
 import science.atlarge.grademl.core.models.resource.MetricData
+import science.atlarge.grademl.core.models.resource.sum
 import science.atlarge.grademl.core.util.DoubleArrayBuilder
 import science.atlarge.grademl.core.util.LongArrayBuilder
 
 class ResourceAttributionStep(
-    private val phases: Set<ExecutionPhase>,
+    private val leafPhases: Set<ExecutionPhase>,
+    private val allPhases: Set<ExecutionPhase>,
     private val metrics: Set<Metric>,
     private val attributionRuleProvider: ResourceAttributionRuleProvider,
     private val resourceDemandEstimates: (Metric) -> ResourceDemandEstimate,
@@ -23,14 +26,18 @@ class ResourceAttributionStep(
         cachedAttributedUsage[phase]?.get(metric)?.let { return it }
         // Otherwise, check arguments for validity
         if (metric !in metrics) return NoAttributedData
-        if (phase !in phases) return NoAttributedData
+        if (phase !in allPhases) return NoAttributedData
         // Perform attribution step
-        val newAttributedUsage = computeAttributedUsage(metric, phase)
+        val newAttributedUsage = if (phase in leafPhases) {
+            computeAttributedUsageLeaf(metric, phase)
+        } else {
+            computeAttributedUsageComposite(metric, phase)
+        }
         cachedAttributedUsage.getOrPut(phase) { mutableMapOf() }[metric] = newAttributedUsage
         return newAttributedUsage
     }
 
-    private fun computeAttributedUsage(metric: Metric, phase: ExecutionPhase): ResourceAttributionResult {
+    private fun computeAttributedUsageLeaf(metric: Metric, phase: ExecutionPhase): ResourceAttributionResult {
         // Get attribution rule for phase to determine how to attribute resource usage to the phase
         val attributionRule = attributionRuleProvider.forPhaseAndMetric(phase, metric) ?: ResourceAttributionRule.None
         // Return a flat attributed value of zero if the phase does not use the given resource
@@ -60,6 +67,33 @@ class ResourceAttributionStep(
             phaseDemand, isExactDemand, phase.startTime, phase.endTime, enableTimeSeriesCompression
         ).getAttributedUsageAndCapacity()
         return AttributedResourceData(attributedUsage, attributedCapacity)
+    }
+
+    private fun computeAttributedUsageComposite(metric: Metric, phase: ExecutionPhase): ResourceAttributionResult {
+        // Perform attribution to all sub-phases
+        val attributionsToChildren = phase.children.mapNotNull { child ->
+            when (val attributedToChild = attributeMetricToPhase(metric, child)) {
+                is AttributedResourceData -> attributedToChild
+                NoAttributedData -> null
+            }
+        }
+        // If no child uses this resource, skip attribution
+        if (attributionsToChildren.isEmpty()) return NoAttributedData
+
+        // Create an empty metric with the start and end time of this phase
+        // to make sure the output metric covers the duration of this phase
+        val emptyMetric = MetricData(
+            longArrayOf(phase.startTime, phase.endTime), doubleArrayOf(0.0), 0.0
+        )
+
+        // Sum the metrics of all children
+        val allMetricData = attributionsToChildren.map { it.metricData.slice(phase.startTime, phase.endTime) } + emptyMetric
+        val allCapacityData = attributionsToChildren.map { it.availableCapacity.slice(phase.startTime, phase.endTime) } + emptyMetric
+        val newMetricData = allMetricData.sum(attributionsToChildren.maxOf { it.metricData.maxValue })
+        val newCapacityData = allCapacityData.sum(attributionsToChildren.maxOf { it.availableCapacity.maxValue })
+
+        // Return the final attributed value
+        return AttributedResourceData(newMetricData, newCapacityData)
     }
 
 }

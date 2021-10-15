@@ -41,7 +41,7 @@ class SelectClause(val terms: List<SelectTerm>) : Clause {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 
-class OrderByClause(val columns: List<ColumnLiteral>) : Clause {
+class OrderByClause(val columns: List<ColumnLiteral>, val ascending: List<Boolean>) : Clause {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 

@@ -1,5 +1,6 @@
 package science.atlarge.grademl.query.execution.scanners
 
+import science.atlarge.grademl.query.execution.IndexedSortColumn
 import science.atlarge.grademl.query.model.Row
 import science.atlarge.grademl.query.model.RowScanner
 import science.atlarge.grademl.query.model.TypedValue
@@ -8,17 +9,17 @@ import science.atlarge.grademl.query.nextOrNull
 class SortingScanner(
     private val inputScanner: RowScanner,
     private val columnCount: Int,
-    private val sortByColumns: List<Int>,
-    preSortedColumns: List<Int>
+    private val sortByColumns: List<IndexedSortColumn>,
+    preSortedColumns: List<IndexedSortColumn>
 ) : RowScanner() {
 
     init {
-        require(sortByColumns.toSet().size == sortByColumns.size)
-        require(preSortedColumns.toSet().size == preSortedColumns.size)
+        require(sortByColumns.map { it.columnIndex }.toSet().size == sortByColumns.size)
+        require(preSortedColumns.map { it.columnIndex }.toSet().size == preSortedColumns.size)
     }
 
-    private val usablePreSortedColumns: List<Int> = run {
-        val matchingColumns = arrayListOf<Int>()
+    private val usablePreSortedColumns: List<IndexedSortColumn> = run {
+        val matchingColumns = arrayListOf<IndexedSortColumn>()
         for (i in 0 until minOf(preSortedColumns.size, sortByColumns.size)) {
             if (preSortedColumns[i] == sortByColumns[i]) matchingColumns.add(preSortedColumns[i])
             else break
@@ -27,7 +28,7 @@ class SortingScanner(
     }
 
     private val remainingSortColumns = sortByColumns - this.usablePreSortedColumns
-    private val remainingInputColumns = (0 until columnCount) - sortByColumns
+    private val remainingInputColumns = (0 until columnCount) - sortByColumns.map { it.columnIndex }
 
     private val preSortedColumnCount = this.usablePreSortedColumns.size
     private val additionalSortColumnCount = this.remainingSortColumns.size
@@ -35,9 +36,9 @@ class SortingScanner(
     private val notPreSortedColumnCount = additionalSortColumnCount + additionalInputColumnCount
 
     private val columnRemapping = (0 until columnCount).map { originalId ->
-        val preSortedId = this.usablePreSortedColumns.indexOf(originalId)
+        val preSortedId = this.usablePreSortedColumns.indexOfFirst { it.columnIndex == originalId }
         if (preSortedId >= 0) preSortedId else {
-            val toSortColumnId = this.remainingSortColumns.indexOf(originalId)
+            val toSortColumnId = this.remainingSortColumns.indexOfFirst { it.columnIndex == originalId }
             if (toSortColumnId >= 0) toSortColumnId + preSortedColumnCount else {
                 remainingInputColumns.indexOf(originalId) + preSortedColumnCount + additionalSortColumnCount
             }
@@ -52,12 +53,15 @@ class SortingScanner(
     private var nextRowNumber = 0
     private val rowWrapper = RowWrapper()
 
+    private val negateSortColumn = IntArray(remainingSortColumns.size) {
+        if (remainingSortColumns[it].ascending) 1 else -1
+    }
     private val comparator = Comparator { leftRowOffset: Int, rightRowOffset: Int ->
         for (i in 0 until additionalSortColumnCount) {
             val leftVal = fetchedRowValues[leftRowOffset + i]
             val rightVal = fetchedRowValues[rightRowOffset + i]
             val compResult = leftVal.compareTo(rightVal)
-            if (compResult != 0) return@Comparator compResult
+            if (compResult != 0) return@Comparator compResult * negateSortColumn[i]
         }
         return@Comparator leftRowOffset.compareTo(rightRowOffset)
     }
@@ -95,14 +99,14 @@ class SortingScanner(
 
     private fun readPreSortedColumnValues() {
         for (i in usablePreSortedColumns.indices) {
-            cachedRow!!.readValue(usablePreSortedColumns[i], fetchedPreSortedColumnValues[i])
+            cachedRow!!.readValue(usablePreSortedColumns[i].columnIndex, fetchedPreSortedColumnValues[i])
         }
     }
 
     private val scratch = TypedValue()
     private fun matchesPreSortedColumnValues(): Boolean {
         for (i in usablePreSortedColumns.indices) {
-            cachedRow!!.readValue(usablePreSortedColumns[i], scratch)
+            cachedRow!!.readValue(usablePreSortedColumns[i].columnIndex, scratch)
             if (scratch != fetchedPreSortedColumnValues[i]) return false
         }
         return true
@@ -119,7 +123,7 @@ class SortingScanner(
         val nextRowOffset = fetchedRowCount * notPreSortedColumnCount
         val row = cachedRow!!
         for (i in remainingSortColumns.indices) {
-            row.readValue(remainingSortColumns[i], fetchedRowValues[nextRowOffset + i])
+            row.readValue(remainingSortColumns[i].columnIndex, fetchedRowValues[nextRowOffset + i])
         }
         for (i in remainingInputColumns.indices) {
             row.readValue(remainingInputColumns[i], fetchedRowValues[nextRowOffset + additionalSortColumnCount + i])

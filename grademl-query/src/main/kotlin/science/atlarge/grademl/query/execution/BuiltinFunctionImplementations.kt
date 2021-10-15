@@ -9,7 +9,7 @@ object BuiltinFunctionImplementations {
         // Common aggregation functions
         Count, CountIf, Min, Max, Sum, Average, WeightedAverage, MinOf, MaxOf,
         // Data reshaping functions
-        FindOrDefault,
+        FindOrDefault, AsNumeric,
         // Helper functions for traversing hierarchical models
         IsParentOf, IsChildOf, IsAncestorOf, IsDescendantOf, ParentOf
     ).associateBy { it.definition }

@@ -2,10 +2,7 @@ package science.atlarge.grademl.query.execution
 
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.ASTUtils
-import science.atlarge.grademl.query.execution.scanners.FilteringScanner
-import science.atlarge.grademl.query.execution.scanners.GroupingScanner
-import science.atlarge.grademl.query.execution.scanners.ProjectingScanner
-import science.atlarge.grademl.query.execution.scanners.SortingScanner
+import science.atlarge.grademl.query.execution.scanners.*
 import science.atlarge.grademl.query.language.ColumnLiteral
 import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.Type
@@ -17,7 +14,7 @@ class DerivedTable private constructor(
     private val filterCondition: Expression?,
     private val groupByColumns: List<ColumnLiteral>,
     projections: List<Pair<Column, Expression>>,
-    private val sortByColumns: List<ColumnLiteral>
+    private val sortByColumns: List<SortColumn>
 ) : Table {
 
     // Filter implementation
@@ -38,8 +35,8 @@ class DerivedTable private constructor(
         val sortingScanner = SortingScanner(
             internalFilteredScanner(),
             baseTable.columns.size,
-            sortByColumns = groupColumnIndices,
-            preSortedColumns = preSortedColumnIndices
+            sortByColumns = groupColumnIndices.map { IndexedSortColumn(it, true) },
+            preSortedColumns = preSortedColumnIndices.map { IndexedSortColumn(it, true) }
         )
         return GroupingScanner(sortingScanner, baseTable.columns, groupColumnIndices)
     }
@@ -68,14 +65,29 @@ class DerivedTable private constructor(
         }
     }
 
+    private fun internalIntervalMergingScanner(): RowScanner {
+        val startTimeColumn = columns.indexOfFirst { it.path == "_start_time" }
+        val endTimeColumn = columns.indexOfFirst { it.path == "_end_time" }
+        val inputScanner = internalProjectionScanner()
+        return if (startTimeColumn >= 0 && endTimeColumn >= 0) {
+            IntervalMergingScanner(inputScanner, columns.size, startTimeColumn, endTimeColumn)
+        } else {
+            inputScanner
+        }
+    }
+
     // Sort implementation
     private fun internalSortedScanner(): RowScanner {
-        val sortColumnIndices = sortByColumns.map { it.columnIndex }
+        val sortColumnIndices = sortByColumns.map { IndexedSortColumn(it.column.columnIndex, it.ascending) }
         return if (sortByColumns.isNotEmpty()) {
-            SortingScanner(internalProjectionScanner(), columns.size, sortColumnIndices, emptyList())
+            SortingScanner(internalIntervalMergingScanner(), columns.size, sortColumnIndices, emptyList())
         } else {
-            internalProjectionScanner()
+            internalIntervalMergingScanner()
         }
+    }
+
+    override fun withSubsetColumns(subsetColumns: List<ColumnLiteral>): Table? {
+        return super.withSubsetColumns(subsetColumns)
     }
 
     override fun scan(): RowScanner {
@@ -89,7 +101,7 @@ class DerivedTable private constructor(
             filterCondition: Expression?,
             groupByColumns: List<ColumnLiteral>,
             projections: List<Pair<Column, Expression>>,
-            sortByColumns: List<ColumnLiteral>
+            sortByColumns: List<SortColumn>
         ): DerivedTable {
             var optimizedBaseTable = baseTable
 
@@ -132,7 +144,8 @@ class DerivedTable private constructor(
             // Analyze and sanity check sort-by columns
             val projectedColumns = analyzedProjections.map { it.first }
             val analyzedSortByColumns = sortByColumns.map {
-                ASTAnalysis.analyzeExpression(it, projectedColumns) as ColumnLiteral
+                val analyzedLit = ASTAnalysis.analyzeExpression(it.column, projectedColumns) as ColumnLiteral
+                SortColumn(analyzedLit, it.ascending)
             }
 
             return DerivedTable(
@@ -178,13 +191,13 @@ class DerivedTable private constructor(
                     table.columnsOptimizedForSort.any { it.path == c.columnPath }
                 }
                 // First try sorting by all columns
-                val sortedTable = table.sortedBy(optimized + unoptimized)
+                val sortedTable = table.sortedBy((optimized + unoptimized).map { SortColumn(it, true) })
                 if (sortedTable != null) {
                     return sortedTable to (optimized + unoptimized)
                 }
                 // Otherwise, try sorting only by optimized columns
                 if (optimized.isNotEmpty()) {
-                    val partialSortedTable = table.sortedBy(optimized)
+                    val partialSortedTable = table.sortedBy(optimized.map { SortColumn(it, true) })
                     if (partialSortedTable != null) {
                         return partialSortedTable to optimized
                     }

@@ -24,6 +24,7 @@ object QueryGrammar : Grammar<List<Statement>>() {
     private val cache by caseInsensitiveRegexToken("cache")
     private val create by caseInsensitiveRegexToken("create")
     private val delete by caseInsensitiveRegexToken("delete")
+    private val descending by caseInsensitiveRegexToken("descending")
     private val drop by caseInsensitiveRegexToken("drop")
     private val first by caseInsensitiveRegexToken("first")
     private val from by caseInsensitiveRegexToken("from")
@@ -38,7 +39,7 @@ object QueryGrammar : Grammar<List<Statement>>() {
     private val where by caseInsensitiveRegexToken("where")
 
     // Literals
-    private val id by regexToken("""[a-zA-z_]\w*""")
+    private val id by regexToken("""[A-Za-z_]\w*""")
     private val positiveInteger by regexToken("""[0-9]+(?![A-Za-z0-9.])""")
     private val number by regexToken("""[+-]?(\d+\.)?\d+([Ee][+-]?\d+)?""")
     private val quotedString by regexToken(""""[^"]*"""")
@@ -128,7 +129,8 @@ object QueryGrammar : Grammar<List<Statement>>() {
 
     private val selectClause by (-select * separated(selectTerm, comma) map { SelectClause(it.terms) })
 
-    private val orderByClause by (-order * -by * separated(columnLit, comma) map { OrderByClause(it.terms) })
+    private val orderByClause by (-order * -by * separated(columnLit * optional(descending), comma)
+            map { columns -> OrderByClause(columns.terms.map { it.t1 }, columns.terms.map { it.t2 == null }) })
 
     private val limitClause by -limit * ((positiveInteger use { LimitClause(text.toInt(), null) }) or
             (-first * positiveInteger * optional(-last * positiveInteger) use {

@@ -55,13 +55,13 @@ class BestFitAttributionRuleProvider(
         val bestFit = NonNegativeLeastSquares.fit(activityMatrix, observationVector, scratchDirectory)
 
         // Translate the obtained coefficients to attribution rules
-//        println("[BestFit] Rules for Metric(${metric.path.asPlainPath}):")
+        println("[BestFit] Rules for Metric(${metric.path.asPlainPath}):")
         val rulePerPhaseType = orderedPhaseTypes.mapIndexed { i, phaseType ->
             phaseType to if (bestFit[i] > 0.0) {
-//                println("[BestFit] PhaseType(${phaseType.path}) - Variable(${bestFit[i]})")
+                println("[BestFit] PhaseType(${phaseType.path}) - Variable(${bestFit[i]})")
                 ResourceAttributionRule.Variable(bestFit[i])
             } else {
-//                println("[BestFit] PhaseType(${phaseType.path}) - None")
+                println("[BestFit] PhaseType(${phaseType.path}) - None")
                 ResourceAttributionRule.None
             }
         }.toMap()

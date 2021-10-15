@@ -14,6 +14,7 @@ class ResourceAttribution(
 ) {
 
     val leafPhases = executionModel.rootPhase.descendants.filter { it.children.isEmpty() }.toSet()
+    val phases = executionModel.phases
     val metrics = resourceModel.rootResource.metricsInTree
 
     private val demandEstimationStep = ResourceDemandEstimationStep(
@@ -31,6 +32,7 @@ class ResourceAttribution(
 
     private val attributionStep = ResourceAttributionStep(
         leafPhases,
+        phases,
         metrics,
         attributionRuleProvider,
         { metric -> demandEstimationStep.estimatedDemandForMetric(metric)!! },

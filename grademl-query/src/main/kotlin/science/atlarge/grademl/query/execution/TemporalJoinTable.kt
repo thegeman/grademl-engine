@@ -117,7 +117,7 @@ class TemporalJoinTable private constructor(
         val startTimeColumn = inputStartTimeColumns[tableIndex]
         val startTimeColumnLiteral = ColumnLiteral(startTimeColumn.path)
         // Try pushing down the sort operation
-        val sortedTable = table.sortedBy(listOf(startTimeColumnLiteral))
+        val sortedTable = table.sortedBy(listOf(SortColumn(startTimeColumnLiteral, true)))
         if (sortedTable != null) {
             val scanner = sortedTable.scan()
             return if (filterApplied || filter == null) scanner else FilteringScanner(scanner) {
@@ -129,7 +129,7 @@ class TemporalJoinTable private constructor(
         val baseScanner = if (filterApplied || filter == null) table.scan() else FilteringScanner(table.scan()) {
             ExpressionEvaluation.evaluate(filter, it, scratch).booleanValue
         }
-        return SortingScanner(baseScanner, table.columns.size, listOf(startTimeColumnIndex), emptyList())
+        return SortingScanner(baseScanner, table.columns.size, listOf(IndexedSortColumn(startTimeColumnIndex, true)), emptyList())
     }
 
     companion object {

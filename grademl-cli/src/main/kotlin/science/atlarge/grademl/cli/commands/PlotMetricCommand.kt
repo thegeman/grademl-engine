@@ -145,7 +145,7 @@ object PlotMetricCommand : Command(
 
         // Compute attributed resource usage for each leaf phase
         println("Computing resource attribution for metric \"${metric.path}\".")
-        val phaseAttribution = cliState.resourceAttribution.leafPhases.mapNotNull { phase ->
+        val phaseAttribution = cliState.resourceAttribution.phases.mapNotNull { phase ->
             val attributionResult = cliState.resourceAttribution.attributeMetricToPhase(metric, phase)
             when {
                 attributionResult is NoAttributedData -> null
@@ -155,11 +155,11 @@ object PlotMetricCommand : Command(
             }
         }.toMap()
 
-        // Output list of leaf phases, if needed
-        val selectedPhases = cliState.resourceAttribution.leafPhases.intersect(cliState.phaseFilter.includedPhases)
+        // Output list of phases, if needed
+        val selectedPhases = cliState.resourceAttribution.phases.intersect(cliState.phaseFilter.includedPhases)
         val phaseListFile = dataOutputDirectory.resolve(PhaseListWriter.FILENAME).toFile()
         if (showPhases) {
-            println("Writing list of leaf phases to \"${phaseListFile.absolutePath}\".")
+            println("Writing list of phases to \"${phaseListFile.absolutePath}\".")
             PhaseListWriter.output(
                 phaseListFile,
                 cliState.executionModel.rootPhase,
@@ -169,11 +169,11 @@ object PlotMetricCommand : Command(
             )
         }
 
-        // Output list of leaf phase types, if needed
+        // Output list of phase types, if needed
         val selectedPhaseTypes = selectedPhases.map { it.type }.toSet()
         val phaseTypeListFile = dataOutputDirectory.resolve(PhaseTypeListWriter.FILENAME).toFile()
         if (!showPhases) {
-            println("Writing list of leaf phase types to \"${phaseTypeListFile.absolutePath}\".")
+            println("Writing list of phase types to \"${phaseTypeListFile.absolutePath}\".")
             PhaseTypeListWriter.output(phaseTypeListFile, selectedPhaseTypes, cliState)
         }
 
