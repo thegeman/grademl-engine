@@ -24,7 +24,7 @@ class MetricsTable private constructor(
 
     override val columns = selectedColumnIds.map { i -> COLUMNS[i] }
 
-    override val columnsOptimizedForFilter = columns.filter { it in STATIC_COLUMNS }
+    override val columnsOptimizedForFilter = columns.filter { it.isStatic }
 
     override val columnsOptimizedForSort
         get() = columnsOptimizedForFilter
@@ -39,7 +39,7 @@ class MetricsTable private constructor(
             filterConditionOnDataRows = null
         } else {
             val separationResult = FilterConditionSeparation.splitFilterConditionByColumns(
-                filterCondition, listOf(COLUMNS.indices.filter { COLUMNS[it] in STATIC_COLUMNS }.toSet())
+                filterCondition, listOf(COLUMNS.indices.filter { COLUMNS[it].isStatic }.toSet())
             )
             filterConditionOnMetricRows = separationResult.filterExpressionPerSplit[0]
             filterConditionOnDataRows = separationResult.remainingFilterExpression
@@ -52,18 +52,18 @@ class MetricsTable private constructor(
         // Get list of metrics after applying basic filter (if needed)
         val metrics = listMetricsMatchingFilter().toMutableList()
         // Sort list of metrics (if needed)
-        val staticSortColumns = sortColumns.takeWhile { COLUMNS[it.columnIndex] in STATIC_COLUMNS }
+        val staticSortColumns = sortColumns.takeWhile { COLUMNS[it.columnIndex].isStatic }
         for (sortColumn in staticSortColumns.asReversed()) {
             when (sortColumn.columnIndex) {
-                4 -> /* capacity */ {
+                COLUMN_CAPACITY -> {
                     if (sortColumn.ascending) metrics.sortBy { it.data.maxValue }
                     else metrics.sortByDescending { it.data.maxValue }
                 }
-                5 -> /* path */ {
+                COLUMN_PATH -> {
                     if (sortColumn.ascending) metrics.sortBy { it.path.asPlainPath }
                     else metrics.sortByDescending { it.path.asPlainPath }
                 }
-                6 -> /* type */ {
+                COLUMN_TYPE -> {
                     if (sortColumn.ascending) metrics.sortBy { it.type.asPlainPath }
                     else metrics.sortByDescending { it.type.asPlainPath }
                 }
@@ -162,9 +162,9 @@ class MetricsTable private constructor(
             override val columnCount = COLUMNS.size
             override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
                 when (columnId) {
-                    4 -> /* capacity */ outValue.numericValue = metric.data.maxValue
-                    5 -> /* path */ outValue.stringValue = metric.path.toString()
-                    6 -> /* type */ outValue.stringValue = metric.type.toString()
+                    COLUMN_CAPACITY -> outValue.numericValue = metric.data.maxValue
+                    COLUMN_PATH -> outValue.stringValue = metric.path.toString()
+                    COLUMN_TYPE -> outValue.stringValue = metric.type.toString()
                     else -> throw IllegalArgumentException()
                 }
                 return outValue
@@ -178,21 +178,26 @@ class MetricsTable private constructor(
     }
 
     companion object {
+        const val COLUMN_START_TIME =  Column.INDEX_START_TIME
+        const val COLUMN_END_TIME =    Column.INDEX_END_TIME
+        const val COLUMN_DURATION =    Column.INDEX_DURATION
+        const val COLUMN_UTILIZATION = Column.RESERVED_COLUMNS
+        const val COLUMN_USAGE =       Column.RESERVED_COLUMNS + 1
+        const val COLUMN_CAPACITY =    Column.RESERVED_COLUMNS + 2
+        const val COLUMN_PATH =        Column.RESERVED_COLUMNS + 3
+        const val COLUMN_TYPE =        Column.RESERVED_COLUMNS + 4
+
         val COLUMNS = listOf(
-            Column("_start_time", "_start_time", Type.NUMERIC, ColumnFunction.TIME_START),
-            Column("_end_time", "_end_time", Type.NUMERIC, ColumnFunction.TIME_END),
-            Column("utilization", "utilization", Type.NUMERIC, ColumnFunction.VALUE),
-            Column("usage", "usage", Type.NUMERIC, ColumnFunction.VALUE),
-            Column("capacity", "capacity", Type.NUMERIC, ColumnFunction.METADATA),
-            Column("path", "path", Type.STRING, ColumnFunction.KEY),
-            Column("type", "type", Type.STRING, ColumnFunction.METADATA)
+            Column.START_TIME,
+            Column.END_TIME,
+            Column.DURATION,
+            Column("utilization", "utilization", COLUMN_UTILIZATION, Type.NUMERIC, false),
+            Column("usage", "usage", COLUMN_USAGE, Type.NUMERIC, false),
+            Column("capacity", "capacity", COLUMN_CAPACITY, Type.NUMERIC, true),
+            Column("path", "path", COLUMN_PATH, Type.STRING, true),
+            Column("type", "type", COLUMN_TYPE, Type.STRING, true)
         )
-
-        private val STATIC_COLUMN_NAMES = setOf("path", "type", "capacity")
-
-        private val STATIC_COLUMNS = COLUMNS.filter { it.name in STATIC_COLUMN_NAMES }.toSet()
     }
-
 }
 
 private class MetricsTableScanner(
@@ -234,13 +239,22 @@ private class MetricsTableRow(
 
     override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
         when (columnId) {
-            0 -> /* start_time */ outValue.numericValue = (dataIterator.currentStartTime - deltaTs) * (1 / 1e9)
-            1 -> /* end_time */ outValue.numericValue = (dataIterator.currentEndTime - deltaTs) * (1 / 1e9)
-            2 -> /* utilization */ outValue.numericValue = dataIterator.currentValue / metric.data.maxValue
-            3 -> /* usage */ outValue.numericValue = dataIterator.currentValue
-            4 -> /* capacity */ outValue.numericValue = metric.data.maxValue
-            5 -> /* path */ outValue.stringValue = metric.path.toString()
-            6 -> /* type */ outValue.stringValue = metric.type.toString()
+            MetricsTable.COLUMN_START_TIME ->
+                outValue.numericValue = (dataIterator.currentStartTime - deltaTs) * (1 / 1e9)
+            MetricsTable.COLUMN_END_TIME ->
+                outValue.numericValue = (dataIterator.currentEndTime - deltaTs) * (1 / 1e9)
+            MetricsTable.COLUMN_DURATION ->
+                outValue.numericValue = (dataIterator.currentEndTime - dataIterator.currentStartTime) * (1 / 1e9)
+            MetricsTable.COLUMN_UTILIZATION ->
+                outValue.numericValue = dataIterator.currentValue / metric.data.maxValue
+            MetricsTable.COLUMN_USAGE ->
+                outValue.numericValue = dataIterator.currentValue
+            MetricsTable.COLUMN_CAPACITY ->
+                outValue.numericValue = metric.data.maxValue
+            MetricsTable.COLUMN_PATH ->
+                outValue.stringValue = metric.path.toString()
+            MetricsTable.COLUMN_TYPE ->
+                outValue.stringValue = metric.type.toString()
             else -> {
                 require(columnId !in 0 until columnCount) {
                     "Mismatch between MetricsTableRow and MetricsTable.COLUMNS"

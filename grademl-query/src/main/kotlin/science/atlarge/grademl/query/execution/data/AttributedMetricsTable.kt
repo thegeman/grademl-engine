@@ -26,9 +26,7 @@ class AttributedMetricsTable private constructor(
 
     override val columns = selectedColumnIds.map { i -> COLUMNS[i] }
 
-    override val columnsOptimizedForFilter = columns.filter {
-        it.function in setOf(ColumnFunction.KEY, ColumnFunction.METADATA)
-    }
+    override val columnsOptimizedForFilter = columns.filter { it.isStatic }
 
     override val columnsOptimizedForSort
         get() = columnsOptimizedForFilter
@@ -48,9 +46,7 @@ class AttributedMetricsTable private constructor(
         } else {
             // First split filter into static and data-dependant conditions
             val separationResult = FilterConditionSeparation.splitFilterConditionByColumns(
-                filterCondition, listOf(COLUMNS.indices.filter {
-                    COLUMNS[it].function in setOf(ColumnFunction.KEY, ColumnFunction.METADATA)
-                }.toSet())
+                filterCondition, listOf(COLUMNS.indices.filter { COLUMNS[it].isStatic }.toSet())
             )
             filterConditionOnDataRows = separationResult.remainingFilterExpression
             // Split the static condition into separate conditions on phase and metric
@@ -88,19 +84,19 @@ class AttributedMetricsTable private constructor(
         val staticSortColumns = sortColumns.takeWhile { COLUMNS[it.columnIndex] in columnsOptimizedForSort }
         for (sortColumn in staticSortColumns.asReversed()) {
             when (sortColumn.columnIndex) {
-                5 -> /* metric_path */ {
+                COLUMN_METRIC_PATH -> {
                     if (sortColumn.ascending) metricPhasePairs.sortBy { it.first.path.asPlainPath }
                     else metricPhasePairs.sortByDescending { it.first.path.asPlainPath }
                 }
-                6 -> /* metric_type */ {
+                COLUMN_METRIC_TYPE -> {
                     if (sortColumn.ascending) metricPhasePairs.sortBy { it.first.type.asPlainPath }
                     else metricPhasePairs.sortByDescending { it.first.type.asPlainPath }
                 }
-                7 -> /* phase_path */ {
+                COLUMN_PHASE_PATH -> {
                     if (sortColumn.ascending) metricPhasePairs.sortBy { it.second.path }
                     else metricPhasePairs.sortByDescending { it.second.path }
                 }
-                8 -> /* phase_type */ {
+                COLUMN_PHASE_TYPE -> {
                     if (sortColumn.ascending) metricPhasePairs.sortBy { it.second.type.path }
                     else metricPhasePairs.sortByDescending { it.second.type.path }
                 }
@@ -209,10 +205,10 @@ class AttributedMetricsTable private constructor(
             override val columnCount = MetricsTable.COLUMNS.size
             override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
                 when (columnId) {
-                    5 -> /* metric_path */ outValue.stringValue = metric.path.toString()
-                    6 -> /* metric_type */ outValue.stringValue = metric.type.toString()
-                    7 -> /* phase_path */ outValue.stringValue = phase.path.toString()
-                    8 -> /* phase_type */ outValue.stringValue = phase.type.path.toString()
+                    COLUMN_METRIC_PATH -> outValue.stringValue = metric.path.toString()
+                    COLUMN_METRIC_TYPE -> outValue.stringValue = metric.type.toString()
+                    COLUMN_PHASE_PATH -> outValue.stringValue = phase.path.toString()
+                    COLUMN_PHASE_TYPE -> outValue.stringValue = phase.type.path.toString()
                     else -> throw IllegalArgumentException()
                 }
                 return outValue
@@ -237,8 +233,8 @@ class AttributedMetricsTable private constructor(
             override val columnCount = COLUMNS.size
             override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
                 when (columnId) {
-                    5 -> /* metric_path */ outValue.stringValue = metric.path.toString()
-                    6 -> /* metric_type */ outValue.stringValue = metric.type.toString()
+                    COLUMN_METRIC_PATH -> outValue.stringValue = metric.path.toString()
+                    COLUMN_METRIC_TYPE -> outValue.stringValue = metric.type.toString()
                     else -> throw IllegalArgumentException()
                 }
                 return outValue
@@ -260,8 +256,8 @@ class AttributedMetricsTable private constructor(
             override val columnCount = COLUMNS.size
             override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
                 when (columnId) {
-                    7 -> /* phase_path */ outValue.stringValue = phase.path.toString()
-                    8 -> /* phase_type */ outValue.stringValue = phase.type.path.toString()
+                    COLUMN_PHASE_PATH -> outValue.stringValue = phase.path.toString()
+                    COLUMN_PHASE_TYPE -> outValue.stringValue = phase.type.path.toString()
                     else -> throw IllegalArgumentException()
                 }
                 return outValue
@@ -275,16 +271,28 @@ class AttributedMetricsTable private constructor(
     }
 
     companion object {
+        const val COLUMN_START_TIME =  Column.INDEX_START_TIME
+        const val COLUMN_END_TIME =    Column.INDEX_END_TIME
+        const val COLUMN_DURATION =    Column.INDEX_DURATION
+        const val COLUMN_UTILIZATION = Column.RESERVED_COLUMNS
+        const val COLUMN_USAGE =       Column.RESERVED_COLUMNS + 1
+        const val COLUMN_CAPACITY =    Column.RESERVED_COLUMNS + 2
+        const val COLUMN_METRIC_PATH = Column.RESERVED_COLUMNS + 3
+        const val COLUMN_METRIC_TYPE = Column.RESERVED_COLUMNS + 4
+        const val COLUMN_PHASE_PATH =  Column.RESERVED_COLUMNS + 5
+        const val COLUMN_PHASE_TYPE =  Column.RESERVED_COLUMNS + 6
+
         val COLUMNS = listOf(
-            Column("_start_time", "_start_time", Type.NUMERIC, ColumnFunction.TIME_START),
-            Column("_end_time", "_end_time", Type.NUMERIC, ColumnFunction.TIME_END),
-            Column("utilization", "utilization", Type.NUMERIC, ColumnFunction.VALUE),
-            Column("usage", "usage", Type.NUMERIC, ColumnFunction.VALUE),
-            Column("capacity", "capacity", Type.NUMERIC, ColumnFunction.VALUE),
-            Column("metric_path", "metric_path", Type.STRING, ColumnFunction.KEY),
-            Column("metric_type", "metric_type", Type.STRING, ColumnFunction.METADATA),
-            Column("phase_path", "phase_path", Type.STRING, ColumnFunction.KEY),
-            Column("phase_type", "phase_type", Type.STRING, ColumnFunction.METADATA)
+            Column.START_TIME,
+            Column.END_TIME,
+            Column.DURATION,
+            Column("utilization", "utilization", COLUMN_UTILIZATION, Type.NUMERIC, false),
+            Column("usage", "usage", COLUMN_USAGE, Type.NUMERIC, false),
+            Column("capacity", "capacity", COLUMN_CAPACITY, Type.NUMERIC, false),
+            Column("metric_path", "metric_path", COLUMN_METRIC_PATH, Type.STRING, true),
+            Column("metric_type", "metric_type", COLUMN_METRIC_TYPE, Type.STRING, true),
+            Column("phase_path", "phase_path", COLUMN_PHASE_PATH, Type.STRING, true),
+            Column("phase_type", "phase_type", COLUMN_PHASE_TYPE, Type.STRING, true)
         )
     }
 
@@ -345,15 +353,26 @@ private class AttributedMetricsTableRow(
 
     override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
         when (columnId) {
-            0 -> /* _start_time */ outValue.numericValue = (dataIterator.currentStartTime - deltaTs) * (1 / 1e9)
-            1 -> /* _end_time */ outValue.numericValue = (dataIterator.currentEndTime - deltaTs) * (1 / 1e9)
-            2 -> /* utilization */ outValue.numericValue = dataIterator.currentValue / capacityIterator.currentValue
-            3 -> /* usage */ outValue.numericValue = dataIterator.currentValue
-            4 -> /* capacity */ outValue.numericValue = capacityIterator.currentValue
-            5 -> /* metric_path */ outValue.stringValue = metric.path.toString()
-            6 -> /* metric_type */ outValue.stringValue = metric.type.toString()
-            7 -> /* phase_path */ outValue.stringValue = phase.path.toString()
-            8 -> /* phase_type */ outValue.stringValue = phase.type.path.toString()
+            AttributedMetricsTable.COLUMN_START_TIME ->
+                outValue.numericValue = (dataIterator.currentStartTime - deltaTs) * (1 / 1e9)
+            AttributedMetricsTable.COLUMN_END_TIME ->
+                outValue.numericValue = (dataIterator.currentEndTime - deltaTs) * (1 / 1e9)
+            AttributedMetricsTable.COLUMN_DURATION ->
+                outValue.numericValue = (dataIterator.currentEndTime - dataIterator.currentStartTime) * (1 / 1e9)
+            AttributedMetricsTable.COLUMN_UTILIZATION ->
+                outValue.numericValue = dataIterator.currentValue / capacityIterator.currentValue
+            AttributedMetricsTable.COLUMN_USAGE ->
+                outValue.numericValue = dataIterator.currentValue
+            AttributedMetricsTable.COLUMN_CAPACITY ->
+                outValue.numericValue = capacityIterator.currentValue
+            AttributedMetricsTable.COLUMN_METRIC_PATH ->
+                outValue.stringValue = metric.path.toString()
+            AttributedMetricsTable.COLUMN_METRIC_TYPE ->
+                outValue.stringValue = metric.type.toString()
+            AttributedMetricsTable.COLUMN_PHASE_PATH ->
+                outValue.stringValue = phase.path.toString()
+            AttributedMetricsTable.COLUMN_PHASE_TYPE ->
+                outValue.stringValue = phase.type.path.toString()
             else -> {
                 require(columnId !in 0 until columnCount) {
                     "Mismatch between AttributedMetricsTableRow and AttributedMetricsTable.COLUMNS"

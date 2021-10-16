@@ -42,8 +42,8 @@ class TemporalJoinTable private constructor(
     }
 
     override val columns = listOf(
-        Column("_start_time", "_start_time", Type.NUMERIC, ColumnFunction.TIME_START),
-        Column("_end_time", "_end_time", Type.NUMERIC, ColumnFunction.TIME_END)
+        Column.START_TIME,
+        Column.END_TIME
     ) + columnsPerInput.flatten()
 
     override fun scan(): RowScanner {
@@ -154,37 +154,21 @@ class TemporalJoinTable private constructor(
             val startTimeColumns = inputTables.map { findStartColumn(it.columns) }
             val endTimeColumns = inputTables.map { findEndColumn(it.columns) }
 
-            // Sanity check the selected time columns; start and end time should either
-            // both be given by reserved columns or both be given by columns with explicit function
-            for (i in startTimeColumns.indices) {
-                require((startTimeColumns[i].path == "_start_time") == (endTimeColumns[i].path == "_end_time"))
-            }
-
             return TemporalJoinTable(inputTables, startTimeColumns, endTimeColumns, inputTables.map { null }, null)
         }
 
         private fun findStartColumn(columns: List<Column>): Column {
             // Find column by reserved name
-            val startTimeColumn = columns.find { it.path == "_start_time" }
-            if (startTimeColumn != null) return startTimeColumn
-            // Otherwise, find all columns with the start time function
-            val columnsWithFunction = columns.filter { it.function == ColumnFunction.TIME_START }
-            require(columnsWithFunction.size == 1) {
-                "Inputs of a TEMPORAL JOIN must have precisely one column indicating the start time of an event"
-            }
-            return columnsWithFunction[0]
+            val startTimeColumn = columns.find { it.name == "_start_time" }
+            requireNotNull(startTimeColumn)
+            return startTimeColumn
         }
 
         private fun findEndColumn(columns: List<Column>): Column {
             // Find column by reserved name
-            val endTimeColumn = columns.find { it.path == "_end_time" }
-            if (endTimeColumn != null) return endTimeColumn
-            // Otherwise, find all columns with the end time function
-            val columnsWithFunction = columns.filter { it.function == ColumnFunction.TIME_END }
-            require(columnsWithFunction.size == 1) {
-                "Inputs of a TEMPORAL JOIN must have precisely one column indicating the end time of an event"
-            }
-            return columnsWithFunction[0]
+            val endTimeColumn = columns.find { it.name == "_end_time" }
+            requireNotNull(endTimeColumn)
+            return endTimeColumn
         }
 
     }

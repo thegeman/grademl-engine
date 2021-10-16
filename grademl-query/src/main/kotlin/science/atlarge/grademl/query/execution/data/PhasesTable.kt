@@ -34,19 +34,19 @@ class PhasesTable private constructor(
         // Sort the phases if needed
         for (sortColumn in sortColumns.asReversed()) {
             when (sortColumn.columnIndex) {
-                0 -> /* start_time */ {
+                COLUMN_START_TIME -> {
                     if (sortColumn.ascending) phases.sortBy { it.startTime }
                     else phases.sortByDescending { it.startTime }
                 }
-                1 -> /* end_time */ {
+                COLUMN_END_TIME -> {
                     if (sortColumn.ascending) phases.sortBy { it.endTime }
                     else phases.sortByDescending { it.endTime }
                 }
-                2 -> /* path */ {
+                COLUMN_PATH -> {
                     if (sortColumn.ascending) phases.sortBy { it.path }
                     else phases.sortByDescending { it.path }
                 }
-                3 -> /* type */ {
+                COLUMN_TYPE -> {
                     if (sortColumn.ascending) phases.sortBy { it.type.path }
                     else phases.sortByDescending { it.type.path }
                 }
@@ -116,11 +116,18 @@ class PhasesTable private constructor(
     }
 
     companion object {
+        const val COLUMN_START_TIME = Column.INDEX_START_TIME
+        const val COLUMN_END_TIME =   Column.INDEX_END_TIME
+        const val COLUMN_DURATION =   Column.INDEX_DURATION
+        const val COLUMN_PATH =       Column.RESERVED_COLUMNS
+        const val COLUMN_TYPE =       Column.RESERVED_COLUMNS + 1
+
         val COLUMNS = listOf(
-            Column("_start_time", "_start_time", Type.NUMERIC, ColumnFunction.TIME_START),
-            Column("_end_time", "_end_time", Type.NUMERIC, ColumnFunction.TIME_END),
-            Column("path", "path", Type.STRING, ColumnFunction.KEY),
-            Column("type", "type", Type.STRING, ColumnFunction.METADATA)
+            Column.START_TIME,
+            Column.END_TIME,
+            Column.DURATION,
+            Column("path", "path", COLUMN_PATH, Type.STRING, true),
+            Column("type", "type", COLUMN_TYPE, Type.STRING, true)
         )
     }
 
@@ -135,10 +142,11 @@ private class PhasesTableRow(
 
     override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
         when (columnId) {
-            0 -> /* start_time */ outValue.numericValue = (phase.startTime - deltaTs) * (1 / 1e9)
-            1 -> /* end_time */ outValue.numericValue = (phase.endTime - deltaTs) * (1 / 1e9)
-            2 -> /* path */ outValue.stringValue = phase.path.toString()
-            3 -> /* type */ outValue.stringValue = phase.type.path.toString()
+            PhasesTable.COLUMN_START_TIME -> outValue.numericValue = (phase.startTime - deltaTs) * (1 / 1e9)
+            PhasesTable.COLUMN_END_TIME -> outValue.numericValue = (phase.endTime - deltaTs) * (1 / 1e9)
+            PhasesTable.COLUMN_DURATION -> outValue.numericValue = (phase.endTime - phase.startTime) * (1 / 1e9)
+            PhasesTable.COLUMN_PATH -> outValue.stringValue = phase.path.toString()
+            PhasesTable.COLUMN_TYPE -> outValue.stringValue = phase.type.path.toString()
             else -> {
                 require(columnId !in 0 until columnCount) {
                     "Mismatch between PhasesTableRow and PhasesTable.COLUMNS"

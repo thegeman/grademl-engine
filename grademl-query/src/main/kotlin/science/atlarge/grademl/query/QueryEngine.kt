@@ -150,8 +150,10 @@ class QueryEngine(
             Column(
                 columnNames[i],
                 columnNames[i],
+                i,
                 projectionExpressions[i].type,
-                determineColumnFunction(columnNames[i], projectionExpressions[i], joinedInput.columns)
+                determineColumnFunction(columnNames[i], projectionExpressions[i], joinedInput.columns) in
+                        setOf(ColumnFunction.METADATA, ColumnFunction.KEY)
             ) to projectionExpressions[i]
         }
 
@@ -181,7 +183,7 @@ class QueryEngine(
 
         // TODO: Determine column type
         val usedColumns = ASTUtils.findColumnLiterals(expression)
-        val anyValueTag = usedColumns.any { inputColumns[it.columnIndex].function == ColumnFunction.VALUE }
+        val anyValueTag = usedColumns.any { !inputColumns[it.columnIndex].isStatic }
         return if (anyValueTag) ColumnFunction.VALUE else ColumnFunction.METADATA
     }
 
