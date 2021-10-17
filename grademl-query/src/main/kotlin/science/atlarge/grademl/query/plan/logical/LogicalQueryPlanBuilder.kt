@@ -8,6 +8,15 @@ class LogicalQueryPlanBuilder {
 
     private var nextNodeId: Int = 1
 
+    fun aggregate(
+        input: LogicalQueryPlan,
+        groupByExpressions: List<Expression>,
+        aggregateExpressions: List<NamedExpression>
+    ) : LogicalQueryPlan {
+        val nodeId = nextNodeId++
+        return AggregatePlan(nodeId, input, groupByExpressions, aggregateExpressions)
+    }
+
     fun filter(input: LogicalQueryPlan, condition: Expression): LogicalQueryPlan {
         val nodeId = nextNodeId++
         return FilterPlan(nodeId, input, condition)
