@@ -177,7 +177,14 @@ object ExplainLogicalPlan {
             stringBuilder.indentSummary()
                 .append("TemporalJoin[")
                 .append(temporalJoinPlan.nodeId)
-                .append(']')
+                .append("] - Columns: [")
+            var isFirst = true
+            for (c in temporalJoinPlan.schema.columns) {
+                if (!isFirst) stringBuilder.append(", ")
+                stringBuilder.append(c.identifier)
+                isFirst = false
+            }
+            stringBuilder.append(']')
                 .appendLine()
             // Explain input nodes
             recurse(temporalJoinPlan.leftInput, false)
