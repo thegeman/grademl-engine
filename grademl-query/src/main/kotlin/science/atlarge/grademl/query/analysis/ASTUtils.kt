@@ -36,4 +36,34 @@ object ASTUtils {
         return columnLiterals
     }
 
+    fun findFunctionCalls(e: Expression): List<FunctionCallExpression> {
+        val functionCalls = mutableListOf<FunctionCallExpression>()
+        val visitor = object : ExpressionVisitor {
+            override fun visit(e: BooleanLiteral) {}
+            override fun visit(e: NumericLiteral) {}
+            override fun visit(e: StringLiteral) {}
+            override fun visit(e: ColumnLiteral) {}
+
+            override fun visit(e: UnaryExpression) {
+                e.expr.accept(this)
+            }
+
+            override fun visit(e: BinaryExpression) {
+                e.lhs.accept(this)
+                e.rhs.accept(this)
+            }
+
+            override fun visit(e: FunctionCallExpression) {
+                functionCalls.add(e)
+                e.arguments.forEach { it.accept(this) }
+            }
+
+            override fun visit(e: CustomExpression) {
+                e.arguments.forEach { it.accept(this) }
+            }
+        }
+        e.accept(visitor)
+        return functionCalls
+    }
+
 }
