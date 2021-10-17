@@ -1,5 +1,6 @@
 package science.atlarge.grademl.query.plan.logical
 
+import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.NamedExpression
 import science.atlarge.grademl.query.model.v2.Table
@@ -12,7 +13,7 @@ class LogicalQueryPlanBuilder {
         input: LogicalQueryPlan,
         groupByExpressions: List<Expression>,
         aggregateExpressions: List<NamedExpression>
-    ) : LogicalQueryPlan {
+    ): LogicalQueryPlan {
         val nodeId = nextNodeId++
         return AggregatePlan(nodeId, input, groupByExpressions, aggregateExpressions)
     }
@@ -30,6 +31,11 @@ class LogicalQueryPlanBuilder {
     fun scan(table: Table, tableName: String): LogicalQueryPlan {
         val nodeId = nextNodeId++
         return ScanTablePlan(nodeId, table, tableName)
+    }
+
+    fun sort(input: LogicalQueryPlan, sortColumns: List<SortColumn>): LogicalQueryPlan {
+        val nodeId = nextNodeId++
+        return SortPlan(nodeId, input, sortColumns)
     }
 
     fun temporalJoin(leftInput: LogicalQueryPlan, rightInput: LogicalQueryPlan): LogicalQueryPlan {

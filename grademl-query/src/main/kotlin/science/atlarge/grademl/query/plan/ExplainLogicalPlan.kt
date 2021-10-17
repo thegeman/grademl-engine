@@ -129,6 +129,28 @@ object ExplainLogicalPlan {
                 .appendLine()
         }
 
+        override fun visit(sortPlan: SortPlan) {
+            // Append one line with top-level description
+            stringBuilder.indentSummary()
+                .append("Sort[")
+                .append(sortPlan.nodeId)
+                .append("] - By: [")
+            var isFirst = true
+            for (c in sortPlan.sortByColumns) {
+                if (!isFirst) stringBuilder.append(", ")
+                stringBuilder.append(c.column.columnPath)
+                    .append(' ')
+                    .append(if (c.ascending) "ASCENDING" else "DESCENDING")
+                isFirst = false
+            }
+            stringBuilder.append(']')
+                .appendLine()
+            // Explain input node
+            currentDepth++
+            sortPlan.input.accept(this)
+            currentDepth--
+        }
+
         override fun visit(temporalJoinPlan: TemporalJoinPlan) {
             // Append one line with top-level description
             stringBuilder.indentSummary()

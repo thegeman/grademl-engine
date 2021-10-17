@@ -6,6 +6,7 @@ interface LogicalQueryPlanVisitor {
     fun visit(filterPlan: FilterPlan)
     fun visit(projectPlan: ProjectPlan)
     fun visit(scanTablePlan: ScanTablePlan)
+    fun visit(sortPlan: SortPlan)
     fun visit(temporalJoinPlan: TemporalJoinPlan)
 
 }
