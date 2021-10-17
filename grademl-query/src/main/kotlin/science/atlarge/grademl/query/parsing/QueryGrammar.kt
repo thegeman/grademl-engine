@@ -109,9 +109,9 @@ object QueryGrammar : Grammar<List<Statement>>() {
     private val expression by leftAssociative(andChain, or) { l, op, r -> BinaryExpression(l, r, toBinaryOp(op.text)) }
 
     // Clauses
-    private val tableSelect: Parser<TableIdentifier> by (-leftParen * parser(this::selectStatement) * -rightParen map {
-        TableIdentifier.AnonymousTable(it)
-    }) or (id use { TableIdentifier.NamedTable(text) })
+    private val tableSelect: Parser<TableExpression> by (-leftParen * parser(this::selectStatement) * -rightParen map {
+        TableExpression.Query(it)
+    }) or (id use { TableExpression.NamedTable(text) })
 
     private val fromClause by (
             -from * separated(tableSelect * -`as` * id, temporal * join) use {

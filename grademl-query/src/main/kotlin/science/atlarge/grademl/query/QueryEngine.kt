@@ -92,8 +92,8 @@ class QueryEngine(
         // Find the input data source(s)
         val inputTables = selectStatement.from.tables.map { tableId ->
             when (tableId) {
-                is TableIdentifier.AnonymousTable -> createTableFromSelect(tableId.tableDefinition)
-                is TableIdentifier.NamedTable -> {
+                is TableExpression.Query -> createTableFromSelect(tableId.tableDefinition)
+                is TableExpression.NamedTable -> {
                     val tableName = tableId.tableName
                     cachedTables[tableName] ?: tables[tableName] ?: throw IllegalArgumentException(
                         "Table $tableName does not exist"
@@ -127,7 +127,7 @@ class QueryEngine(
             when (it) {
                 is SelectTerm.FromExpression -> listOf(it)
                 SelectTerm.Wildcard -> joinedInput.columns.map { column ->
-                    SelectTerm.FromExpression(ColumnLiteral(column.path), null)
+                    SelectTerm.FromExpression(ColumnLiteral(column.identifier), null)
                 }
             }
         }
