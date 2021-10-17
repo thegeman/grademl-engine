@@ -31,7 +31,7 @@ class ProjectPlan(
             // Determine if all input columns are keys
             val allKey = columnsUsed.all { input.schema.columns[it.columnIndex].isKey }
             // Create the new column, mark it as a key column iff all inputs are keys
-            columns.add(Column(columnExpressions[i].name, columnExpressions[i].expr.type, allKey))
+            columns.add(Column(columnExpressions[i].name, analyzedColumnExpressions[i].type, allKey))
         }
 
         this.columnExpressions = analyzedColumnExpressions
