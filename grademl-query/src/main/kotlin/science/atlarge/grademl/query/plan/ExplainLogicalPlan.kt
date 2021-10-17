@@ -25,15 +25,19 @@ object ExplainLogicalPlan {
             stringBuilder.indent()
                 .append("Aggregate[")
                 .append(aggregatePlan.nodeId)
-                .append("] - Group by: [")
-            var isFirst = true
-            for (g in aggregatePlan.groupExpressions) {
-                if (!isFirst) stringBuilder.append(", ")
-                stringBuilder.append(g)
-                isFirst = false
+                .append("] - ")
+            if (aggregatePlan.groupExpressions.isNotEmpty()) {
+                stringBuilder.append("Group by: [")
+                var isFirst = true
+                for (g in aggregatePlan.groupExpressions) {
+                    if (!isFirst) stringBuilder.append(", ")
+                    stringBuilder.append(g)
+                    isFirst = false
+                }
+                stringBuilder.append("], ")
             }
-            stringBuilder.append("], Columns: [")
-            isFirst = true
+            stringBuilder.append("Columns: [")
+            var isFirst = true
             for (c in aggregatePlan.schema.columns) {
                 if (!isFirst) stringBuilder.append(", ")
                 stringBuilder.append(c.identifier)
