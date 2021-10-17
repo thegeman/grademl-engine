@@ -1,5 +1,6 @@
 package science.atlarge.grademl.query.plan
 
+import science.atlarge.grademl.query.language.prettyPrint
 import science.atlarge.grademl.query.plan.logical.*
 
 object ExplainLogicalPlan {
@@ -35,7 +36,7 @@ object ExplainLogicalPlan {
                 var isFirst = true
                 for (g in aggregatePlan.groupExpressions) {
                     if (!isFirst) stringBuilder.append(", ")
-                    stringBuilder.append(g)
+                    stringBuilder.append(g.prettyPrint())
                     isFirst = false
                 }
                 stringBuilder.append("], ")
@@ -55,7 +56,7 @@ object ExplainLogicalPlan {
                     .append("Column ")
                     .append(aggregatePlan.schema.columns[i].identifier)
                     .append(" = ")
-                    .append(aggregatePlan.aggregateExpressions[i])
+                    .append(aggregatePlan.aggregateExpressions[i].expr.prettyPrint())
                     .appendLine()
             }
             // Explain input node
@@ -70,7 +71,7 @@ object ExplainLogicalPlan {
                 .append("Filter[")
                 .append(filterPlan.nodeId)
                 .append("] - Condition: ")
-                .append(filterPlan.condition)
+                .append(filterPlan.condition.prettyPrint())
                 .appendLine()
             // Explain input node
             currentDepth++
@@ -98,7 +99,7 @@ object ExplainLogicalPlan {
                     .append("Column ")
                     .append(projectPlan.schema.columns[i].identifier)
                     .append(" = ")
-                    .append(projectPlan.columnExpressions[i])
+                    .append(projectPlan.columnExpressions[i].prettyPrint())
                     .appendLine()
             }
             // Explain input node
