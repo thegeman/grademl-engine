@@ -15,14 +15,18 @@ object ExplainLogicalPlan {
         private val stringBuilder = StringBuilder()
         private var currentDepth = 0
 
-        private fun StringBuilder.indent(): StringBuilder {
+        private fun StringBuilder.indentSummary(): StringBuilder {
             repeat(currentDepth) { stringBuilder.append("   ") }
             return this
         }
 
+        private fun StringBuilder.indentDetail(): StringBuilder {
+            return indentSummary().append("      ")
+        }
+
         override fun visit(aggregatePlan: AggregatePlan) {
             // Append one line with top-level description
-            stringBuilder.indent()
+            stringBuilder.indentSummary()
                 .append("Aggregate[")
                 .append(aggregatePlan.nodeId)
                 .append("] - ")
@@ -47,7 +51,8 @@ object ExplainLogicalPlan {
                 .appendLine()
             // Append one line per projection expression
             for (i in aggregatePlan.schema.columns.indices) {
-                stringBuilder.indent().append("    Column ")
+                stringBuilder.indentDetail()
+                    .append("Column ")
                     .append(aggregatePlan.schema.columns[i].identifier)
                     .append(" = ")
                     .append(aggregatePlan.aggregateExpressions[i])
@@ -61,7 +66,7 @@ object ExplainLogicalPlan {
 
         override fun visit(filterPlan: FilterPlan) {
             // Append one line with top-level description
-            stringBuilder.indent()
+            stringBuilder.indentSummary()
                 .append("Filter[")
                 .append(filterPlan.nodeId)
                 .append("] - Condition: ")
@@ -75,7 +80,7 @@ object ExplainLogicalPlan {
 
         override fun visit(projectPlan: ProjectPlan) {
             // Append one line with top-level description
-            stringBuilder.indent()
+            stringBuilder.indentSummary()
                 .append("Project[")
                 .append(projectPlan.nodeId)
                 .append("] - Columns: [")
@@ -89,7 +94,8 @@ object ExplainLogicalPlan {
                 .appendLine()
             // Append one line per projection expression
             for (i in projectPlan.schema.columns.indices) {
-                stringBuilder.indent().append("    Column ")
+                stringBuilder.indentDetail()
+                    .append("Column ")
                     .append(projectPlan.schema.columns[i].identifier)
                     .append(" = ")
                     .append(projectPlan.columnExpressions[i])
@@ -103,15 +109,15 @@ object ExplainLogicalPlan {
 
         override fun visit(scanTablePlan: ScanTablePlan) {
             // Append one line with top-level description
-            stringBuilder.indent()
+            stringBuilder.indentSummary()
                 .append("ScanTable[")
                 .append(scanTablePlan.nodeId)
                 .append("] - Table: ")
                 .append(scanTablePlan.tableName)
                 .appendLine()
             // Append an additional line listing column names
-            stringBuilder.indent()
-                .append("    Columns: [")
+            stringBuilder.indentDetail()
+                .append("Columns: [")
             var isFirst = true
             for (c in scanTablePlan.schema.columns) {
                 if (!isFirst) stringBuilder.append(", ")
@@ -124,7 +130,7 @@ object ExplainLogicalPlan {
 
         override fun visit(temporalJoinPlan: TemporalJoinPlan) {
             // Append one line with top-level description
-            stringBuilder.indent()
+            stringBuilder.indentSummary()
                 .append("TemporalJoin[")
                 .append(temporalJoinPlan.nodeId)
                 .append(']')
