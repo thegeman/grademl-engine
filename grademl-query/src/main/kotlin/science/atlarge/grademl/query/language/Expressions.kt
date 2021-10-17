@@ -7,6 +7,8 @@ sealed class Expression : ASTNode, Typed {
     abstract fun clone(): Expression
 }
 
+class NamedExpression(val expr: Expression, val name: String)
+
 class BooleanLiteral(val value: Boolean) : Expression() {
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
     override fun clone() = BooleanLiteral(value).also { it.type = type }

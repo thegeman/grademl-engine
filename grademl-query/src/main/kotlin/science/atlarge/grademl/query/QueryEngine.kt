@@ -125,20 +125,21 @@ class QueryEngine(
         // Parse the select clause
         val resolvedSelectTerms = selectStatement.select.terms.flatMap {
             when (it) {
-                is SelectTerm.FromExpression -> listOf(it)
+                is SelectTerm.Anonymous -> listOf(it.expression to null)
+                is SelectTerm.Named -> listOf(it.namedExpression.expr to it.namedExpression.name)
                 SelectTerm.Wildcard -> joinedInput.columns.map { column ->
-                    SelectTerm.FromExpression(ColumnLiteral(column.identifier), null)
+                    ColumnLiteral(column.path) to column.path
                 }
             }
         }
         val projectionExpressions = resolvedSelectTerms.map {
-            ASTAnalysis.analyzeExpression(it.expression, joinedInput.columns)
+            ASTAnalysis.analyzeExpression(it.first, joinedInput.columns)
         }
         val columnNames = mutableListOf<String>()
         // Select appropriate column names
         for (i in projectionExpressions.indices) {
             val columnName = when {
-                resolvedSelectTerms[i].alias != null -> resolvedSelectTerms[i].alias!!
+                resolvedSelectTerms[i].second != null -> resolvedSelectTerms[i].second!!
                 projectionExpressions[i] is ColumnLiteral -> (projectionExpressions[i] as ColumnLiteral).columnName
                 else -> "_$i"
             }

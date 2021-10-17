@@ -33,7 +33,8 @@ class GroupByClause(val columns: List<ColumnLiteral>) : Clause {
 }
 
 sealed class SelectTerm {
-    class FromExpression(val expression: Expression, val alias: String?) : SelectTerm()
+    class Anonymous(val expression: Expression) : SelectTerm()
+    class Named(val namedExpression: NamedExpression) : SelectTerm()
     object Wildcard : SelectTerm()
 }
 

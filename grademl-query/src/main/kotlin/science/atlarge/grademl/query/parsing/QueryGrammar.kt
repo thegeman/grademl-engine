@@ -108,6 +108,8 @@ object QueryGrammar : Grammar<List<Statement>>() {
 
     private val expression by leftAssociative(andChain, or) { l, op, r -> BinaryExpression(l, r, toBinaryOp(op.text)) }
 
+    private val namedExpression by expression * -`as` * id map { NamedExpression(it.t1, it.t2.text) }
+
     // Clauses
     private val tableSelect: Parser<TableExpression> by (-leftParen * parser(this::selectStatement) * -rightParen map {
         TableExpression.Query(it)
@@ -125,7 +127,8 @@ object QueryGrammar : Grammar<List<Statement>>() {
     private val groupByClause by (-group * -by * separated(columnLit, comma) map { GroupByClause(it.terms) })
 
     private val selectTerm by (star map { SelectTerm.Wildcard }) or
-            (expression * optional(-`as` * id use { text }) map { SelectTerm.FromExpression(it.t1, it.t2) })
+            (namedExpression map { SelectTerm.Named(it) }) or
+            (expression map { SelectTerm.Anonymous(it) })
 
     private val selectClause by (-select * separated(selectTerm, comma) map { SelectClause(it.terms) })
 
