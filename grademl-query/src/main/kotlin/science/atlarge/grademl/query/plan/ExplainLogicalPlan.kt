@@ -1,5 +1,6 @@
 package science.atlarge.grademl.query.plan
 
+import science.atlarge.grademl.query.language.ColumnLiteral
 import science.atlarge.grademl.query.language.prettyPrint
 import science.atlarge.grademl.query.plan.logical.*
 
@@ -15,14 +16,34 @@ object ExplainLogicalPlan {
 
         private val stringBuilder = StringBuilder()
         private var currentDepth = 0
+        private val isLastAtDepth = mutableListOf<Boolean>()
 
-        private fun StringBuilder.indentSummary(): StringBuilder {
-            repeat(currentDepth) { stringBuilder.append("   ") }
+        private fun StringBuilder.partialIndent(): StringBuilder {
+            for (i in 0 until currentDepth - 1) {
+                if (isLastAtDepth[i]) append("   ") else append("|  ")
+            }
             return this
         }
 
-        private fun StringBuilder.indentDetail(): StringBuilder {
-            return indentSummary().append("      ")
+        private fun StringBuilder.indentSummary(): StringBuilder {
+            return partialIndent()
+                .append("+- ")
+        }
+
+        private fun StringBuilder.indentDetail(hasChildren: Boolean): StringBuilder {
+            for (i in 0 until currentDepth) {
+                if (isLastAtDepth[i]) append("   ") else append("|  ")
+            }
+            if (!hasChildren) append("   ") else append("|  ")
+            return append("   ")
+        }
+
+        private fun recurse(innerPlan: LogicalQueryPlan, isLastInnerPlan: Boolean) {
+            currentDepth++
+            isLastAtDepth.add(isLastInnerPlan)
+            innerPlan.accept(this)
+            isLastAtDepth.removeLast()
+            currentDepth--
         }
 
         override fun visit(aggregatePlan: AggregatePlan) {
@@ -52,17 +73,19 @@ object ExplainLogicalPlan {
                 .appendLine()
             // Append one line per projection expression
             for (i in aggregatePlan.schema.columns.indices) {
-                stringBuilder.indentDetail()
+                val columnName = aggregatePlan.schema.columns[i].identifier
+                val columnExpr = aggregatePlan.aggregateExpressions[i].expr
+                // Skip trivial column expressions
+                if (columnExpr is ColumnLiteral && columnExpr.columnPath == columnName) continue
+                stringBuilder.indentDetail(true)
                     .append("Column ")
-                    .append(aggregatePlan.schema.columns[i].identifier)
+                    .append(columnName)
                     .append(" = ")
-                    .append(aggregatePlan.aggregateExpressions[i].expr.prettyPrint())
+                    .append(columnExpr.prettyPrint())
                     .appendLine()
             }
             // Explain input node
-            currentDepth++
-            aggregatePlan.input.accept(this)
-            currentDepth--
+            recurse(aggregatePlan.input, true)
         }
 
         override fun visit(filterPlan: FilterPlan) {
@@ -74,9 +97,7 @@ object ExplainLogicalPlan {
                 .append(filterPlan.condition.prettyPrint())
                 .appendLine()
             // Explain input node
-            currentDepth++
-            filterPlan.input.accept(this)
-            currentDepth--
+            recurse(filterPlan.input, true)
         }
 
         override fun visit(projectPlan: ProjectPlan) {
@@ -95,17 +116,19 @@ object ExplainLogicalPlan {
                 .appendLine()
             // Append one line per projection expression
             for (i in projectPlan.schema.columns.indices) {
-                stringBuilder.indentDetail()
+                val columnName = projectPlan.schema.columns[i].identifier
+                val columnExpr = projectPlan.columnExpressions[i]
+                // Skip trivial column expressions
+                if (columnExpr is ColumnLiteral && columnExpr.columnPath == columnName) continue
+                stringBuilder.indentDetail(true)
                     .append("Column ")
-                    .append(projectPlan.schema.columns[i].identifier)
+                    .append(columnName)
                     .append(" = ")
-                    .append(projectPlan.columnExpressions[i].prettyPrint())
+                    .append(columnExpr.prettyPrint())
                     .appendLine()
             }
             // Explain input node
-            currentDepth++
-            projectPlan.input.accept(this)
-            currentDepth--
+            recurse(projectPlan.input, true)
         }
 
         override fun visit(scanTablePlan: ScanTablePlan) {
@@ -117,7 +140,7 @@ object ExplainLogicalPlan {
                 .append(scanTablePlan.tableName)
                 .appendLine()
             // Append an additional line listing column names
-            stringBuilder.indentDetail()
+            stringBuilder.indentDetail(false)
                 .append("Columns: [")
             var isFirst = true
             for (c in scanTablePlan.schema.columns) {
@@ -146,9 +169,7 @@ object ExplainLogicalPlan {
             stringBuilder.append(']')
                 .appendLine()
             // Explain input node
-            currentDepth++
-            sortPlan.input.accept(this)
-            currentDepth--
+            recurse(sortPlan.input, true)
         }
 
         override fun visit(temporalJoinPlan: TemporalJoinPlan) {
@@ -159,10 +180,8 @@ object ExplainLogicalPlan {
                 .append(']')
                 .appendLine()
             // Explain input nodes
-            currentDepth++
-            temporalJoinPlan.leftInput.accept(this)
-            temporalJoinPlan.rightInput.accept(this)
-            currentDepth--
+            recurse(temporalJoinPlan.leftInput, false)
+            recurse(temporalJoinPlan.rightInput, true)
         }
 
         override fun toString(): String {
