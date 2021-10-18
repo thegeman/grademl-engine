@@ -1,8 +1,10 @@
 package science.atlarge.grademl.query.plan.physical
 
 import science.atlarge.grademl.query.analysis.ASTAnalysis
+import science.atlarge.grademl.query.execution.IndexedSortColumn
 import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.execution.operators.QueryOperator
+import science.atlarge.grademl.query.execution.operators.SortOperator
 import science.atlarge.grademl.query.language.ColumnLiteral
 import science.atlarge.grademl.query.model.v2.TableSchema
 
@@ -40,7 +42,11 @@ class SortPlan(
     }
 
     override fun toQueryOperator(): QueryOperator {
-        TODO("Not yet implemented")
+        return SortOperator(
+            input.toQueryOperator(), schema,
+            preSortedColumns = emptyList(),
+            remainingSortColumns = sortByColumns.map { IndexedSortColumn(it.column.columnIndex, it.ascending) }
+        )
     }
 
 }
