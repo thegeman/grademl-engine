@@ -20,4 +20,11 @@ dependencies {
     runtimeOnly("org.fusesource.jansi:jansi:2.3.2")
 
     implementation("com.github.h0tk3y.betterParse:better-parse:0.4.2")
+
+    testImplementation("org.junit.jupiter:junit-jupiter:5.8.0")
+    testImplementation(kotlin("test"))
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
