@@ -97,30 +97,28 @@ class TimeSeriesCache(
         override val schema: TableSchema
             get() = this@TimeSeriesCache.schema
         override val currentTimeSeries: TimeSeries = object : TimeSeries {
-            private val tsId = currentTimeSeriesId
-            private val firstRow = currentTimeSeriesFirstRow
-
             override val schema: TableSchema
                 get() = this@TimeSeriesCache.schema
 
             override fun getBoolean(columnIndex: Int): Boolean {
                 require(isKeyColumn[columnIndex])
-                return cachedBooleanValues[columnIndex][tsId]
+                return cachedBooleanValues[columnIndex][currentTimeSeriesId]
             }
 
             override fun getNumeric(columnIndex: Int): Double {
                 require(isKeyColumn[columnIndex])
-                return cachedNumericValues[columnIndex][tsId]
+                return cachedNumericValues[columnIndex][currentTimeSeriesId]
             }
 
             override fun getString(columnIndex: Int): String {
                 require(isKeyColumn[columnIndex])
-                return cachedStringValues[columnIndex][tsId]!!
+                return cachedStringValues[columnIndex][currentTimeSeriesId]!!
             }
 
             override fun rowIterator(): RowIterator = object : RowIterator {
-                private var currentRowId = firstRow - 1
-                private val lastRowId = firstRow + rowsPerTimeSeries[tsId] - 1
+                private val timeSeriesId = currentTimeSeriesId
+                private var currentRowId = currentTimeSeriesFirstRow - 1
+                private val lastRowId = currentTimeSeriesFirstRow + rowsPerTimeSeries[timeSeriesId] - 1
 
                 override val schema: TableSchema
                     get() = this@TimeSeriesCache.schema
@@ -129,17 +127,17 @@ class TimeSeriesCache(
                         get() = this@TimeSeriesCache.schema
 
                     override fun getBoolean(columnIndex: Int): Boolean {
-                        return if (isKeyColumn[columnIndex]) cachedBooleanValues[columnIndex][tsId]
+                        return if (isKeyColumn[columnIndex]) cachedBooleanValues[columnIndex][timeSeriesId]
                         else cachedBooleanValues[columnIndex][currentRowId]
                     }
 
                     override fun getNumeric(columnIndex: Int): Double {
-                        return if (isKeyColumn[columnIndex]) cachedNumericValues[columnIndex][tsId]
+                        return if (isKeyColumn[columnIndex]) cachedNumericValues[columnIndex][timeSeriesId]
                         else cachedNumericValues[columnIndex][currentRowId]
                     }
 
                     override fun getString(columnIndex: Int): String {
-                        return if (isKeyColumn[columnIndex]) cachedStringValues[columnIndex][tsId]!!
+                        return if (isKeyColumn[columnIndex]) cachedStringValues[columnIndex][timeSeriesId]!!
                         else cachedStringValues[columnIndex][currentRowId]!!
                     }
                 }

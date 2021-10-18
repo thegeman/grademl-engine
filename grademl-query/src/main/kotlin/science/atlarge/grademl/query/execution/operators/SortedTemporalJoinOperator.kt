@@ -116,15 +116,17 @@ private class TemporalJoinTimeSeriesIterator(
             }
         }
         // Check if the next right input time series can be joined with the left input cache
-        if (leftTimeSeriesCache.numCachedTimeSeries > 0 && isNextRightTimeSeriesMatching()) {
-            // Restart the left cache iterator to be joined with the new right input
-            leftCacheIterator = leftTimeSeriesCache.iterator()
-            if (!leftCacheIterator!!.loadNext()) throw IllegalStateException("Cache iterator is empty after filling the cache")
-            temporalJoinTimeSeries.setInputs(leftCacheIterator!!.currentTimeSeries, rightInput.currentTimeSeries)
-            return true
-        } else if (!rightInputValid) {
-            // Abort if no right input was loaded
-            return false
+        if (leftTimeSeriesCache.numCachedTimeSeries > 0) {
+            if (isNextRightTimeSeriesMatching()) {
+                // Restart the left cache iterator to be joined with the new right input
+                leftCacheIterator = leftTimeSeriesCache.iterator()
+                if (!leftCacheIterator!!.loadNext()) throw IllegalStateException("Cache iterator is empty after filling the cache")
+                temporalJoinTimeSeries.setInputs(leftCacheIterator!!.currentTimeSeries, rightInput.currentTimeSeries)
+                return true
+            } else if (!rightInputValid) {
+                // Abort if no right input was loaded
+                return false
+            }
         }
         // Clear the cache to load a new group of time series
         leftTimeSeriesCache.clear()
@@ -293,17 +295,17 @@ private class TemporalJoinTimeSeries(
                         columnIndex == 1 -> minOf(leftEnd, rightEnd)
                         columnIndex == 2 -> minOf(leftEnd, rightEnd) - maxOf(leftStart, rightStart)
                         columnIndex >= rightColumnOffset ->
-                            rightTimeSeries.getNumeric(columnIndex - rightColumnOffset)
+                            rightRow!!.getNumeric(columnIndex - rightColumnOffset)
                         columnIndex >= leftColumnOffset ->
-                            leftTimeSeries.getNumeric(columnIndex - leftColumnOffset)
+                            leftRow!!.getNumeric(columnIndex - leftColumnOffset)
                         else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a NUMERIC column")
                     }
                 }
 
                 override fun getString(columnIndex: Int): String {
                     return when {
-                        columnIndex >= rightColumnOffset -> rightTimeSeries.getString(columnIndex - rightColumnOffset)
-                        columnIndex >= leftColumnOffset -> leftTimeSeries.getString(columnIndex - leftColumnOffset)
+                        columnIndex >= rightColumnOffset -> rightRow!!.getString(columnIndex - rightColumnOffset)
+                        columnIndex >= leftColumnOffset -> leftRow!!.getString(columnIndex - leftColumnOffset)
                         else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a STRING column")
                     }
                 }
