@@ -1,0 +1,46 @@
+package science.atlarge.grademl.query.plan.physical
+
+import science.atlarge.grademl.query.analysis.ASTAnalysis
+import science.atlarge.grademl.query.execution.SortColumn
+import science.atlarge.grademl.query.execution.operators.QueryOperator
+import science.atlarge.grademl.query.language.ColumnLiteral
+import science.atlarge.grademl.query.model.v2.TableSchema
+
+class SortPlan(
+    override val nodeId: Int,
+    val input: PhysicalQueryPlan,
+    sortByColumns: List<SortColumn>
+) : PhysicalQueryPlan {
+
+    val sortByColumns: List<SortColumn>
+
+    override val schema: TableSchema
+    override val children: List<PhysicalQueryPlan>
+        get() = listOf(input)
+
+    init {
+        // Sanity check sort columns and filter duplicates
+        val uniqueSortColumns = mutableListOf<SortColumn>()
+        val usedColumnNames = mutableListOf<String>()
+        for (sc in sortByColumns) {
+            val resolvedColumn = ASTAnalysis.analyzeExpressionV2(sc.column, input.schema.columns) as ColumnLiteral
+            if (!usedColumnNames.contains(resolvedColumn.columnPath)) {
+                uniqueSortColumns.add(SortColumn(resolvedColumn, sc.ascending))
+                usedColumnNames.add(resolvedColumn.columnPath)
+            }
+        }
+        this.sortByColumns = uniqueSortColumns
+
+        // Create a new schema, marking all sorted columns as keys
+        this.schema = TableSchema(
+            input.schema.columns.map { column ->
+                if (!column.isKey && column.identifier in usedColumnNames) column.copy(isKey = true) else column
+            }
+        )
+    }
+
+    override fun toQueryOperator(): QueryOperator {
+        TODO("Not yet implemented")
+    }
+
+}
