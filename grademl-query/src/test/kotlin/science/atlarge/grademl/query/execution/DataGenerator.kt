@@ -5,6 +5,7 @@ import science.atlarge.grademl.query.model.v2.Column
 import science.atlarge.grademl.query.model.v2.Columns
 import science.atlarge.grademl.query.model.v2.Row
 import science.atlarge.grademl.query.model.v2.TableSchema
+import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
 object DataGenerator {
@@ -23,6 +24,7 @@ object DataGenerator {
     )
 
     fun generate(
+        seed: Double,
         timeSeriesRowCounts: List<Int>,
         durationGenerator: Pair<Double, Double> = 0.7 to 2.0,
         k1Generator: Pair<Double, Double> = 1.0 to 3.0,
@@ -32,15 +34,16 @@ object DataGenerator {
         v3Generator: Pair<Double, Double> = 0.6 to 2.0,
         v4Generator: Pair<Double, Double> = 0.75 to 7.0
     ): List<GeneratedRow> {
+        val absSeed = if (!seed.isFinite()) 0.0 else seed.absoluteValue
         val generatedRows = mutableListOf<GeneratedRow>()
         timeSeriesRowCounts.forEachIndexed { timeSeriesId, rowCount ->
-            fun Pair<Double, Double>.genKey() = (first * timeSeriesId).mod(second)
+            fun Pair<Double, Double>.genKey() = (absSeed + first * timeSeriesId).mod(second)
             var _startTime = timeSeriesId.mod(2).toDouble()
             val k1 = k1Generator.genKey()
             val k2 = k2Generator.genKey().toString()
 
             for (rowId in 0 until rowCount) {
-                fun Pair<Double, Double>.genValue() = (first * (rowId + timeSeriesId)).mod(second)
+                fun Pair<Double, Double>.genValue() = (absSeed + first * (rowId + timeSeriesId)).mod(second)
                 val _duration = durationGenerator.genValue() + 1.0
                 val _endTime = _startTime + _duration
 
@@ -58,10 +61,10 @@ object DataGenerator {
         return generatedRows
     }
 
-    fun generate(numTimeSeries: Int, rowsPerTimeSeries: Int): List<GeneratedRow> {
+    fun generate(seed: Double, numTimeSeries: Int, rowsPerTimeSeries: Int): List<GeneratedRow> {
         val timeSeriesRowCounts = mutableListOf<Int>()
         repeat(numTimeSeries) { timeSeriesRowCounts.add(rowsPerTimeSeries) }
-        return generate(timeSeriesRowCounts)
+        return generate(seed, timeSeriesRowCounts)
     }
 
 }
