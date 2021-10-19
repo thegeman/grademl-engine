@@ -26,8 +26,9 @@ object ExplainLogicalPlan {
         }
 
         private fun StringBuilder.indentSummary(): StringBuilder {
-            return partialIndent()
-                .append("+- ")
+            return partialIndent().also {
+                if (currentDepth > 0) append("+- ")
+            }
         }
 
         private fun StringBuilder.indentDetail(hasChildren: Boolean): StringBuilder {
@@ -192,7 +193,7 @@ object ExplainLogicalPlan {
         }
 
         override fun toString(): String {
-            return stringBuilder.toString()
+            return stringBuilder.dropLast(1).toString()
         }
 
     }
