@@ -5,16 +5,16 @@ import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.ASTUtils
 import science.atlarge.grademl.query.execution.*
 import science.atlarge.grademl.query.execution.data.DefaultTables
+import science.atlarge.grademl.query.execution.data.v2.AttributedMetricsTable
+import science.atlarge.grademl.query.execution.data.v2.MetricsTable
+import science.atlarge.grademl.query.execution.data.v2.PhasesTable
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.Column
 import science.atlarge.grademl.query.model.ColumnFunction
 import science.atlarge.grademl.query.model.Table
-import science.atlarge.grademl.query.model.v2.Columns
-import science.atlarge.grademl.query.model.v2.TableSchema
-import science.atlarge.grademl.query.model.v2.TimeSeriesIterator
 import science.atlarge.grademl.query.plan.ExplainLogicalPlan
-import science.atlarge.grademl.query.plan.logical.LogicalQueryPlan
-import science.atlarge.grademl.query.plan.logical.LogicalQueryPlanBuilder
+import science.atlarge.grademl.query.plan.ExplainPhysicalPlan
+import science.atlarge.grademl.query.plan.QueryPlanner
 
 class QueryEngine(
     gradeMLJob: GradeMLJob
@@ -22,13 +22,20 @@ class QueryEngine(
 
     private val builtinTables = DefaultTables.create(gradeMLJob)
     private val tables = builtinTables.toMutableMap()
+    private val tablesV2 = mapOf(
+        "attributed_metrics" to AttributedMetricsTable(gradeMLJob),
+        "metrics" to MetricsTable(gradeMLJob),
+        "phases" to PhasesTable(gradeMLJob)
+    )
     private val cachedTables = mutableMapOf<String, ConcreteTable>()
 
     fun executeStatement(statement: Statement) {
         when (statement) {
             is SelectStatement -> {
-                TablePrinter.print(
-                    createTableFromSelect(statement),
+                val logicalPlan = QueryPlanner.createLogicalPlanFromSelect(statement, tablesV2)
+                val physicalQueryPlan = QueryPlanner.convertLogicalToPhysicalPlan(logicalPlan)
+                TablePrinterV2.print(
+                    physicalQueryPlan.toQueryOperator().execute(),
                     limit = statement.limit?.limitFirst
                 )
                 println()
@@ -83,126 +90,6 @@ class QueryEngine(
                 println("Table \"$tableName\" dropped from the cache.")
                 println()
             }
-        }
-    }
-
-    private fun createQueryPlanFromSelect(
-        selectStatement: SelectStatement,
-        builder: LogicalQueryPlanBuilder = LogicalQueryPlanBuilder()
-    ): LogicalQueryPlan {
-        // Parse the from clause
-        require(selectStatement.from.tables.isNotEmpty()) { "Query must have at least one input" }
-        require(selectStatement.from.aliases.size == 1 || selectStatement.from.aliases.none { it.isBlank() }) {
-            "All inputs of a join must have an alias"
-        }
-        require(selectStatement.from.aliases.toSet().size == selectStatement.from.aliases.size) {
-            "All inputs of a join must have a unique alias"
-        }
-        // Find the input data source(s)
-        val inputPlans = selectStatement.from.tables.map { tableExpression ->
-            when (tableExpression) {
-                is TableExpression.Query -> createQueryPlanFromSelect(tableExpression.tableDefinition, builder)
-                is TableExpression.NamedTable -> {
-                    val tableName = tableExpression.tableName
-                    val table = (cachedTables[tableName] ?: tables[tableName] ?: throw IllegalArgumentException(
-                        "Table $tableName does not exist"
-                    ))
-                    val newTable = object : science.atlarge.grademl.query.model.v2.Table {
-                        override val schema: TableSchema
-                            get() = TableSchema(table.columns.map { column ->
-                                science.atlarge.grademl.query.model.v2.Column(column.path, column.type, column.isStatic)
-                            })
-
-                        override fun timeSeriesIterator(): TimeSeriesIterator {
-                            TODO("Not yet implemented")
-                        }
-                    }
-                    builder.scan(newTable, tableName)
-                }
-            }
-        }
-
-        // Alias the input(s)
-        val aliasesInputPlans = inputPlans.mapIndexed { index, input ->
-            val alias = selectStatement.from.aliases[index]
-            if (alias.isBlank()) input
-            else {
-                val reservedColumns = input.schema.columns.filter { it in Columns.RESERVED_COLUMNS }
-                    .map { NamedExpression(ColumnLiteral(it.identifier), it.identifier) }
-                val columnExpressions = input.schema.columns.map { column ->
-                    NamedExpression(ColumnLiteral(column.identifier), "$alias.${column.identifier}")
-                }
-                builder.project(input, reservedColumns + columnExpressions)
-            }
-        }
-
-        // Join the inputs (if applicable)
-        val joinedInputPlan = aliasesInputPlans.reduce { leftInput, rightInput ->
-            builder.temporalJoin(leftInput, rightInput)
-        }
-
-        // Apply the where clause
-        val filteredInputPlan = if (selectStatement.where == null) {
-            joinedInputPlan
-        } else {
-            val filterExpression = ASTAnalysis.analyzeExpressionV2(
-                selectStatement.where.conditionExpression, joinedInputPlan.schema.columns
-            )
-            builder.filter(joinedInputPlan, filterExpression)
-        }
-
-        // Parse the group by clause
-        val groupByColumns = if (selectStatement.groupBy == null) emptyList() else selectStatement.groupBy.columns
-        // Parse the select clause
-        val resolvedSelectTerms = selectStatement.select.terms
-            .flatMap {
-                when (it) {
-                    is SelectTerm.Anonymous -> listOf(it.expression to null)
-                    is SelectTerm.Named -> listOf(it.namedExpression.expr to it.namedExpression.name)
-                    SelectTerm.Wildcard -> filteredInputPlan.schema.columns.map { column ->
-                        ColumnLiteral(column.identifier) to column.identifier
-                    }
-                }
-            }
-            .map {
-                ASTAnalysis.analyzeExpressionV2(it.first, filteredInputPlan.schema.columns) to it.second
-            }
-            .mapIndexed { index, (expression, name) ->
-                // Assign names to anonymous select terms
-                NamedExpression(
-                    expression, when {
-                        name != null -> name
-                        expression is ColumnLiteral -> expression.columnPath
-                        else -> "_$index"
-                    }
-                )
-            }
-
-        // Check for duplicate names
-        require(resolvedSelectTerms.map { it.name }.toSet().size == resolvedSelectTerms.size) {
-            "Found duplicate column names in SELECT: [${
-                resolvedSelectTerms.groupBy { it.name }.filter { it.value.size > 1 }.keys.joinToString()
-            }]"
-        }
-
-        // Check if the query has a group-by clause or any aggregating functions
-        val isAggregatingSelect = groupByColumns.isNotEmpty() ||
-                resolvedSelectTerms.any { ASTUtils.findFunctionCalls(it.expr).isNotEmpty() }
-
-        // Create an AggregatePlan for an aggregating queries, or a ProjectPlan otherwise
-        val projectedOutputPlan = if (isAggregatingSelect) {
-            builder.aggregate(filteredInputPlan, groupByColumns, resolvedSelectTerms)
-        } else {
-            builder.project(filteredInputPlan, resolvedSelectTerms)
-        }
-
-        // Sort if needed, then return the compiled query plan
-        return if (selectStatement.orderBy != null) {
-            val sortColumns = selectStatement.orderBy.columns.zip(selectStatement.orderBy.ascending)
-                .map { (col, asc) -> SortColumn(col, asc) }
-            builder.sort(projectedOutputPlan, sortColumns)
-        } else {
-            projectedOutputPlan
         }
     }
 
