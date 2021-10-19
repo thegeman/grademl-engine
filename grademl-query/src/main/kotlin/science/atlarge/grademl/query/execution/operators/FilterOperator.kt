@@ -23,7 +23,10 @@ class FilterOperator(
 
         override fun loadNext(): Boolean {
             while (inputIterator.loadNext()) {
-                if (condition.evaluateAsBoolean(inputIterator.currentTimeSeries)) return true
+                if (condition.evaluateAsBoolean(inputIterator.currentTimeSeries)) {
+                    currentTimeSeries = inputIterator.currentTimeSeries
+                    return true
+                }
             }
             return false
         }
