@@ -23,6 +23,25 @@ class SortedTemporalJoinOperator(
     private val leftJoinColumnIndices = leftJoinColumns.map { it.columnIndex }.toIntArray()
     private val rightJoinColumnIndices = rightJoinColumns.map { it.columnIndex }.toIntArray()
 
+    private val leftSelectedColumns = leftInput.schema.columns - Columns.RESERVED_COLUMNS
+    private val leftSelectedColumnIds = leftSelectedColumns.map { column -> leftInput.schema.indexOfColumn(column)!! }
+    private val leftStartTimeColumnId = leftInput.schema.indexOfStartTimeColumn() ?: throw IllegalArgumentException(
+        "Left input to temporal join must have _start_time column"
+    )
+    private val leftEndTimeColumnId = leftInput.schema.indexOfEndTimeColumn() ?: throw IllegalArgumentException(
+        "Left input to temporal join must have _end_time column"
+    )
+
+    private val rightSelectedColumns = rightInput.schema.columns - Columns.RESERVED_COLUMNS
+    private val rightSelectedColumnIds =
+        rightSelectedColumns.map { column -> rightInput.schema.indexOfColumn(column)!! }
+    private val rightStartTimeColumnId = rightInput.schema.indexOfStartTimeColumn() ?: throw IllegalArgumentException(
+        "Right input to temporal join must have _start_time column"
+    )
+    private val rightEndTimeColumnId = rightInput.schema.indexOfEndTimeColumn() ?: throw IllegalArgumentException(
+        "Right input to temporal join must have _end_time column"
+    )
+
     init {
         require(rightJoinColumns.size == leftJoinColumns.size) {
             "Must have the same number of left and right join columns"
@@ -35,9 +54,10 @@ class SortedTemporalJoinOperator(
                 "Join columns must have the sort direction"
             }
         }
-        require(schema.columns[0] == Columns.START_TIME) { "Temporal join must produce _start_time column" }
-        require(schema.columns[1] == Columns.END_TIME) { "Temporal join must produce _end_time column" }
-        require(schema.columns[2] == Columns.DURATION) { "Temporal join must produce _duration column" }
+        // Sanity check output schema
+        require(schema.indexOfStartTimeColumn() == 0) { "Temporal join must produce _start_time column" }
+        require(schema.indexOfEndTimeColumn() == 1) { "Temporal join must produce _end_time column" }
+        require(schema.indexOfDurationColumn() == 2) { "Temporal join must produce _duration column" }
     }
 
     override fun execute(): TimeSeriesIterator = TemporalJoinTimeSeriesIterator(
@@ -47,7 +67,13 @@ class SortedTemporalJoinOperator(
         joinColumnTypes = joinColumnTypes,
         joinColumnAscending = joinColumnAscending,
         leftJoinColumnIndices = leftJoinColumnIndices,
-        rightJoinColumnIndices = rightJoinColumnIndices
+        rightJoinColumnIndices = rightJoinColumnIndices,
+        leftColumnMap = leftSelectedColumnIds.toIntArray(),
+        leftStartColumn = leftStartTimeColumnId,
+        leftEndColumn = leftEndTimeColumnId,
+        rightColumnMap = rightSelectedColumnIds.toIntArray(),
+        rightStartColumn = rightStartTimeColumnId,
+        rightEndColumn = rightEndTimeColumnId
     )
 
 }
@@ -59,7 +85,13 @@ private class TemporalJoinTimeSeriesIterator(
     joinColumnTypes: Array<Type>,
     private val joinColumnAscending: BooleanArray,
     private val leftJoinColumnIndices: IntArray,
-    private val rightJoinColumnIndices: IntArray
+    private val rightJoinColumnIndices: IntArray,
+    leftColumnMap: IntArray,
+    leftStartColumn: Int,
+    leftEndColumn: Int,
+    rightColumnMap: IntArray,
+    rightStartColumn: Int,
+    rightEndColumn: Int
 ) : TimeSeriesIterator {
 
     // Store column types as integers for faster look-ups
@@ -101,7 +133,15 @@ private class TemporalJoinTimeSeriesIterator(
         }
     }
 
-    private val temporalJoinTimeSeries = TemporalJoinTimeSeries(schema, leftInput.schema.columns.size)
+    private val temporalJoinTimeSeries = TemporalJoinTimeSeries(
+        schema = schema,
+        leftColumnMap = leftColumnMap,
+        leftStartColumn = leftStartColumn,
+        leftEndColumn = leftEndColumn,
+        rightColumnMap = rightColumnMap,
+        rightStartColumn = rightStartColumn,
+        rightEndColumn = rightEndColumn
+    )
     override val currentTimeSeries: TimeSeries
         get() = temporalJoinTimeSeries
 
@@ -223,11 +263,16 @@ private class TemporalJoinTimeSeriesIterator(
 
 private class TemporalJoinTimeSeries(
     override val schema: TableSchema,
-    leftColumnCount: Int
+    private val leftColumnMap: IntArray,
+    private val leftStartColumn: Int,
+    private val leftEndColumn: Int,
+    private val rightColumnMap: IntArray,
+    private val rightStartColumn: Int,
+    private val rightEndColumn: Int
 ) : TimeSeries {
 
     private val leftColumnOffset = Columns.INDEX_NOT_RESERVED
-    private val rightColumnOffset = leftColumnOffset + leftColumnCount
+    private val rightColumnOffset = leftColumnOffset + leftColumnMap.size
 
     private lateinit var leftTimeSeries: TimeSeries
     private lateinit var rightTimeSeries: TimeSeries
@@ -239,24 +284,24 @@ private class TemporalJoinTimeSeries(
 
     override fun getBoolean(columnIndex: Int): Boolean {
         return when {
-            columnIndex >= rightColumnOffset -> rightTimeSeries.getBoolean(columnIndex - rightColumnOffset)
-            columnIndex >= leftColumnOffset -> leftTimeSeries.getBoolean(columnIndex - leftColumnOffset)
+            columnIndex >= rightColumnOffset -> rightTimeSeries.getBoolean(rightColumnMap[columnIndex - rightColumnOffset])
+            columnIndex >= leftColumnOffset -> leftTimeSeries.getBoolean(leftColumnMap[columnIndex - leftColumnOffset])
             else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a key column")
         }
     }
 
     override fun getNumeric(columnIndex: Int): Double {
         return when {
-            columnIndex >= rightColumnOffset -> rightTimeSeries.getNumeric(columnIndex - rightColumnOffset)
-            columnIndex >= leftColumnOffset -> leftTimeSeries.getNumeric(columnIndex - leftColumnOffset)
+            columnIndex >= rightColumnOffset -> rightTimeSeries.getNumeric(rightColumnMap[columnIndex - rightColumnOffset])
+            columnIndex >= leftColumnOffset -> leftTimeSeries.getNumeric(leftColumnMap[columnIndex - leftColumnOffset])
             else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a key column")
         }
     }
 
     override fun getString(columnIndex: Int): String {
         return when {
-            columnIndex >= rightColumnOffset -> rightTimeSeries.getString(columnIndex - rightColumnOffset)
-            columnIndex >= leftColumnOffset -> leftTimeSeries.getString(columnIndex - leftColumnOffset)
+            columnIndex >= rightColumnOffset -> rightTimeSeries.getString(rightColumnMap[columnIndex - rightColumnOffset])
+            columnIndex >= leftColumnOffset -> leftTimeSeries.getString(leftColumnMap[columnIndex - leftColumnOffset])
             else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a key column")
         }
     }
@@ -282,9 +327,9 @@ private class TemporalJoinTimeSeries(
                 override fun getBoolean(columnIndex: Int): Boolean {
                     return when {
                         columnIndex >= rightColumnOffset ->
-                            rightRow!!.getBoolean(columnIndex - rightColumnOffset)
+                            rightRow!!.getBoolean(rightColumnMap[columnIndex - rightColumnOffset])
                         columnIndex >= leftColumnOffset ->
-                            leftRow!!.getBoolean(columnIndex - leftColumnOffset)
+                            leftRow!!.getBoolean(leftColumnMap[columnIndex - leftColumnOffset])
                         else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a BOOLEAN column")
                     }
                 }
@@ -295,17 +340,19 @@ private class TemporalJoinTimeSeries(
                         columnIndex == 1 -> minOf(leftEnd, rightEnd)
                         columnIndex == 2 -> minOf(leftEnd, rightEnd) - maxOf(leftStart, rightStart)
                         columnIndex >= rightColumnOffset ->
-                            rightRow!!.getNumeric(columnIndex - rightColumnOffset)
+                            rightRow!!.getNumeric(rightColumnMap[columnIndex - rightColumnOffset])
                         columnIndex >= leftColumnOffset ->
-                            leftRow!!.getNumeric(columnIndex - leftColumnOffset)
+                            leftRow!!.getNumeric(leftColumnMap[columnIndex - leftColumnOffset])
                         else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a NUMERIC column")
                     }
                 }
 
                 override fun getString(columnIndex: Int): String {
                     return when {
-                        columnIndex >= rightColumnOffset -> rightRow!!.getString(columnIndex - rightColumnOffset)
-                        columnIndex >= leftColumnOffset -> leftRow!!.getString(columnIndex - leftColumnOffset)
+                        columnIndex >= rightColumnOffset ->
+                            rightRow!!.getString(rightColumnMap[columnIndex - rightColumnOffset])
+                        columnIndex >= leftColumnOffset ->
+                            leftRow!!.getString(leftColumnMap[columnIndex - leftColumnOffset])
                         else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a STRING column")
                     }
                 }
@@ -339,8 +386,8 @@ private class TemporalJoinTimeSeries(
                 leftRow = null
                 if (!leftIterator.loadNext()) return false
                 leftRow = leftIterator.currentRow
-                leftStart = leftRow!!.getNumeric(0)
-                leftEnd = leftRow!!.getNumeric(1)
+                leftStart = leftRow!!.getNumeric(leftStartColumn)
+                leftEnd = leftRow!!.getNumeric(leftEndColumn)
                 return true
             }
 
@@ -348,8 +395,8 @@ private class TemporalJoinTimeSeries(
                 rightRow = null
                 if (!rightIterator.loadNext()) return false
                 rightRow = rightIterator.currentRow
-                rightStart = rightRow!!.getNumeric(0)
-                rightEnd = rightRow!!.getNumeric(1)
+                rightStart = rightRow!!.getNumeric(rightStartColumn)
+                rightEnd = rightRow!!.getNumeric(rightEndColumn)
                 return true
             }
         }

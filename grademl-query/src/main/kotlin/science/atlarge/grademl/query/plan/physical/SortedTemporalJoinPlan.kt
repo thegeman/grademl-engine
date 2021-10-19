@@ -16,8 +16,8 @@ class SortedTemporalJoinPlan(
 
     override val schema = TableSchema(
         Columns.RESERVED_COLUMNS +
-                leftInput.schema.columns +
-                rightInput.schema.columns
+                (leftInput.schema.columns - Columns.RESERVED_COLUMNS) +
+                (rightInput.schema.columns - Columns.RESERVED_COLUMNS)
     )
 
     override val children: List<PhysicalQueryPlan>
