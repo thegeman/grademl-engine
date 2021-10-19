@@ -33,4 +33,8 @@ class FilterPlan(
         )
     }
 
+    override fun <T> accept(visitor: PhysicalQueryPlanVisitor<T>): T {
+        return visitor.visit(this)
+    }
+
 }

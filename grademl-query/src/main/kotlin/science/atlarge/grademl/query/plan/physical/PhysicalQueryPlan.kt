@@ -13,4 +13,6 @@ interface PhysicalQueryPlan {
 
     fun toQueryOperator(): QueryOperator
 
+    fun <T> accept(visitor: PhysicalQueryPlanVisitor<T>): T
+
 }
