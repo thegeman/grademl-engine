@@ -55,13 +55,25 @@ class CreateTableStatement(val tableName: String, val tableDefinition: SelectSta
 }
 
 class DeleteTableStatement(val tableName: String) : Statement {
-    override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+    override fun accept(visitor: ASTVisitor) {
+        visitor.visit(this)
+    }
 }
 
 class CacheTableStatement(val tableName: String) : Statement {
-    override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+    override fun accept(visitor: ASTVisitor) {
+        visitor.visit(this)
+    }
 }
 
 class DropTableFromCacheStatement(val tableName: String) : Statement {
-    override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+    override fun accept(visitor: ASTVisitor) {
+        visitor.visit(this)
+    }
+}
+
+class ExplainStatement(val selectStatement: SelectStatement) : Statement {
+    override fun accept(visitor: ASTVisitor) {
+        visitor.visit(this)
+    }
 }

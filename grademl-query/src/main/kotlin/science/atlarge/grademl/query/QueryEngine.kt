@@ -90,6 +90,17 @@ class QueryEngine(
                 println("Table \"$tableName\" dropped from the cache.")
                 println()
             }
+            is ExplainStatement -> {
+                println()
+                val logicalPlan = QueryPlanner.createLogicalPlanFromSelect(statement.selectStatement, tablesV2)
+                println("LOGICAL QUERY PLAN:")
+                println(ExplainLogicalPlan.explain(logicalPlan))
+                println()
+                val physicalQueryPlan = QueryPlanner.convertLogicalToPhysicalPlan(logicalPlan)
+                println("PHYSICAL QUERY PLAN:")
+                println(ExplainPhysicalPlan.explain(physicalQueryPlan))
+                println()
+            }
         }
     }
 
