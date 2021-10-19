@@ -42,9 +42,9 @@ private class ProjectTimeSeriesIterator(
         override val schema: TableSchema
             get() = this@ProjectTimeSeriesIterator.schema
 
-        override fun getBoolean(columnIndex: Int) = booleanColumnExpressions[columnIndex]!!.evaluateAsBoolean(this)
-        override fun getNumeric(columnIndex: Int) = numericColumnExpressions[columnIndex]!!.evaluateAsNumeric(this)
-        override fun getString(columnIndex: Int) = stringColumnExpressions[columnIndex]!!.evaluateAsString(this)
+        override fun getBoolean(columnIndex: Int) = booleanColumnExpressions[columnIndex]!!.evaluateAsBoolean(input)
+        override fun getNumeric(columnIndex: Int) = numericColumnExpressions[columnIndex]!!.evaluateAsNumeric(input)
+        override fun getString(columnIndex: Int) = stringColumnExpressions[columnIndex]!!.evaluateAsString(input)
 
         override fun rowIterator(): RowIterator = ProjectRowIterator(
             input.rowIterator(), schema, booleanColumnExpressions, numericColumnExpressions, stringColumnExpressions
@@ -75,9 +75,9 @@ class ProjectRowIterator(
         override val schema: TableSchema
             get() = this@ProjectRowIterator.schema
 
-        override fun getBoolean(columnIndex: Int) = booleanColumnExpressions[columnIndex]!!.evaluateAsBoolean(this)
-        override fun getNumeric(columnIndex: Int) = numericColumnExpressions[columnIndex]!!.evaluateAsNumeric(this)
-        override fun getString(columnIndex: Int) = stringColumnExpressions[columnIndex]!!.evaluateAsString(this)
+        override fun getBoolean(columnIndex: Int) = booleanColumnExpressions[columnIndex]!!.evaluateAsBoolean(input)
+        override fun getNumeric(columnIndex: Int) = numericColumnExpressions[columnIndex]!!.evaluateAsNumeric(input)
+        override fun getString(columnIndex: Int) = stringColumnExpressions[columnIndex]!!.evaluateAsString(input)
     }
     override val currentRow: Row
         get() = projectRow
