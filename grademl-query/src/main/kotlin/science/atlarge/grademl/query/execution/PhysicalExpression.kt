@@ -1,8 +1,10 @@
 package science.atlarge.grademl.query.execution
 
+import science.atlarge.grademl.query.execution.operators.IntTypes
+import science.atlarge.grademl.query.execution.operators.IntTypes.toInt
 import science.atlarge.grademl.query.language.*
+import science.atlarge.grademl.query.model.TypedValue
 import science.atlarge.grademl.query.model.v2.Row
-import java.lang.IllegalArgumentException
 
 sealed interface PhysicalExpression
 
@@ -268,7 +270,63 @@ private class PhysicalExpressionConverter : ExpressionVisitor {
     }
 
     override fun visit(e: CustomExpression) {
-        TODO("Not yet implemented")
+        // TODO: Avoid using TypedValues
+        val args = e.arguments.map { it.convert() }
+        val argTypes = e.arguments.map { it.type.toInt() }
+        result = when (e.type) {
+            Type.UNDEFINED -> throw IllegalArgumentException("Cannot evaluate UNDEFINED CustomExpression")
+            Type.BOOLEAN -> object : BooleanPhysicalExpression {
+                val scratchArgs = e.arguments.map { TypedValue() }
+                val scratchOut = TypedValue()
+                override fun evaluateAsBoolean(row: Row): Boolean {
+                    argTypes.forEachIndexed { index, type ->
+                        when (type) {
+                            IntTypes.TYPE_BOOLEAN -> scratchArgs[index].booleanValue =
+                                (args[index] as BooleanPhysicalExpression).evaluateAsBoolean(row)
+                            IntTypes.TYPE_NUMERIC -> scratchArgs[index].numericValue =
+                                (args[index] as NumericPhysicalExpression).evaluateAsNumeric(row)
+                            IntTypes.TYPE_STRING -> scratchArgs[index].stringValue =
+                                (args[index] as StringPhysicalExpression).evaluateAsString(row)
+                        }
+                    }
+                    return e.evalFunction(scratchArgs, scratchOut).booleanValue
+                }
+            }
+            Type.NUMERIC -> object : NumericPhysicalExpression {
+                val scratchArgs = e.arguments.map { TypedValue() }
+                val scratchOut = TypedValue()
+                override fun evaluateAsNumeric(row: Row): Double {
+                    argTypes.forEachIndexed { index, type ->
+                        when (type) {
+                            IntTypes.TYPE_BOOLEAN -> scratchArgs[index].booleanValue =
+                                (args[index] as BooleanPhysicalExpression).evaluateAsBoolean(row)
+                            IntTypes.TYPE_NUMERIC -> scratchArgs[index].numericValue =
+                                (args[index] as NumericPhysicalExpression).evaluateAsNumeric(row)
+                            IntTypes.TYPE_STRING -> scratchArgs[index].stringValue =
+                                (args[index] as StringPhysicalExpression).evaluateAsString(row)
+                        }
+                    }
+                    return e.evalFunction(scratchArgs, scratchOut).numericValue
+                }
+            }
+            Type.STRING -> object : StringPhysicalExpression {
+                val scratchArgs = e.arguments.map { TypedValue() }
+                val scratchOut = TypedValue()
+                override fun evaluateAsString(row: Row): String {
+                    argTypes.forEachIndexed { index, type ->
+                        when (type) {
+                            IntTypes.TYPE_BOOLEAN -> scratchArgs[index].booleanValue =
+                                (args[index] as BooleanPhysicalExpression).evaluateAsBoolean(row)
+                            IntTypes.TYPE_NUMERIC -> scratchArgs[index].numericValue =
+                                (args[index] as NumericPhysicalExpression).evaluateAsNumeric(row)
+                            IntTypes.TYPE_STRING -> scratchArgs[index].stringValue =
+                                (args[index] as StringPhysicalExpression).evaluateAsString(row)
+                        }
+                    }
+                    return e.evalFunction(scratchArgs, scratchOut).stringValue
+                }
+            }
+        }
     }
 
     private fun matchPathsWithWildcards(l: String, r: String): Boolean {
