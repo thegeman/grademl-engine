@@ -7,7 +7,8 @@ import science.atlarge.grademl.query.model.v2.TableSchema
 
 class LinearTableScanPlan(
     override val nodeId: Int,
-    val table: Table
+    val table: Table,
+    val tableName: String
 ) : PhysicalQueryPlan {
 
     override val schema: TableSchema

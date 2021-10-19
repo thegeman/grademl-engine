@@ -15,9 +15,9 @@ class PhysicalQueryPlanBuilder {
         return FilterPlan(nodeId, input, condition)
     }
 
-    fun linearScan(table: Table): PhysicalQueryPlan {
+    fun linearScan(table: Table, tableName: String): PhysicalQueryPlan {
         val nodeId = nextNodeId++
-        return LinearTableScanPlan(nodeId, table)
+        return LinearTableScanPlan(nodeId, table, tableName)
     }
 
     fun project(input: PhysicalQueryPlan, columnExpressions: List<NamedExpression>): PhysicalQueryPlan {

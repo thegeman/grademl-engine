@@ -2,13 +2,20 @@ package science.atlarge.grademl.query.language
 
 object PrettyPrintExpressions {
 
-    fun print(expression: Expression): String {
-        val visitor = Visitor()
+    fun print(
+        expression: Expression,
+        formatColumnLiteral: ((ColumnLiteral) -> String)? = null
+    ): String {
+        val visitor = Visitor(
+            formatColumnLiteral = formatColumnLiteral ?: { it.columnPath }
+        )
         expression.accept(visitor)
         return visitor.toString()
     }
 
-    private class Visitor : ExpressionVisitor {
+    private class Visitor(
+        private val formatColumnLiteral: ((ColumnLiteral) -> String)
+    ) : ExpressionVisitor {
 
         private val stringBuilder = StringBuilder()
         private var isNested = false
@@ -39,7 +46,7 @@ object PrettyPrintExpressions {
         }
 
         override fun visit(e: ColumnLiteral) {
-            stringBuilder.append(e.columnPath)
+            stringBuilder.append(formatColumnLiteral(e))
         }
 
         override fun visit(e: UnaryExpression) {
@@ -92,4 +99,6 @@ object PrettyPrintExpressions {
 
 }
 
-fun Expression.prettyPrint(): String = PrettyPrintExpressions.print(this)
+fun Expression.prettyPrint(
+    formatColumnLiteral: ((ColumnLiteral) -> String)? = null
+): String = PrettyPrintExpressions.print(this, formatColumnLiteral)

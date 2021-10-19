@@ -157,7 +157,7 @@ object QueryPlanner {
             }
 
             override fun visit(scanTablePlan: ScanTablePlan) {
-                lastResult = physicalPlanBuilder.linearScan(scanTablePlan.table)
+                lastResult = physicalPlanBuilder.linearScan(scanTablePlan.table, scanTablePlan.tableName)
             }
 
             override fun visit(sortPlan: SortPlan) {
