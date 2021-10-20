@@ -1,11 +1,11 @@
 package science.atlarge.grademl.query.execution.functions
 
-import science.atlarge.grademl.query.execution.AggregatingFunctionImplementation
-import science.atlarge.grademl.query.execution.Aggregator
+import science.atlarge.grademl.query.execution.*
 import science.atlarge.grademl.query.language.FunctionDefinition
 import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.BuiltinFunctions
 import science.atlarge.grademl.query.model.TypedValue
+import science.atlarge.grademl.query.model.v2.Row
 
 object CountIf : AggregatingFunctionImplementation {
     override val definition: FunctionDefinition = BuiltinFunctions.COUNT_IF
@@ -21,6 +21,25 @@ object CountIf : AggregatingFunctionImplementation {
 
         override fun writeResultTo(outValue: TypedValue) {
             outValue.numericValue = count.toDouble()
+        }
+    }
+
+    override fun newAggregator(
+        argumentExpressions: List<PhysicalExpression>,
+        argumentTypes: List<Type>
+    ) = object : AggregatorV2 {
+        private val condition = argumentExpressions[0] as BooleanPhysicalExpression
+        private var count = 0
+        override fun reset() {
+            count = 0
+        }
+
+        override fun addRow(row: Row) {
+            if (condition.evaluateAsBoolean(row)) count++
+        }
+
+        override fun getNumericResult(): Double {
+            return count.toDouble()
         }
     }
 }

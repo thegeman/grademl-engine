@@ -1,6 +1,6 @@
 package science.atlarge.grademl.query.execution.scanners
 
-import science.atlarge.grademl.query.analysis.AggregateFunctionDecomposition
+import science.atlarge.grademl.query.analysis.NestedAggregateFunctionDecomposition
 import science.atlarge.grademl.query.execution.AggregatingFunctionImplementation
 import science.atlarge.grademl.query.execution.Aggregator
 import science.atlarge.grademl.query.execution.BuiltinFunctionImplementations
@@ -48,7 +48,7 @@ class ProjectingScanner(
         }
 
         val aggregateFunctionDecomposition =
-            AggregateFunctionDecomposition.decompose(columnExpressions, inputColumns.size)
+            NestedAggregateFunctionDecomposition.decompose(columnExpressions, inputColumns.size)
         this.columnExpressions = aggregateFunctionDecomposition.rewrittenExpressions
         this.aggregateFunctions = aggregateFunctionDecomposition.aggregateFunctions.map { f ->
             BuiltinFunctionImplementations.from(f) as AggregatingFunctionImplementation
