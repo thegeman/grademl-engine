@@ -140,7 +140,48 @@ object QueryPlanner {
             }
 
             override fun visit(aggregatePlan: AggregatePlan) {
-                TODO("Not yet implemented")
+                // TODO: Differentiate between sorting with fixed order/direction and grouping
+                val input = rewrite(aggregatePlan.input)
+
+                // Check if any group-by expressions are not simple columns
+                val groupByProjections = mutableListOf<NamedExpression>()
+                val rewrittenGroupByLiterals = aggregatePlan.groupExpressions.mapIndexed { index, expression ->
+                    if (expression is ColumnLiteral) expression
+                    else {
+                        val projection = NamedExpression(expression, "__groupby_${aggregatePlan.nodeId}_$index")
+                        groupByProjections.add(projection)
+                        ColumnLiteral(projection.name).apply {
+                            type = projection.expr.type
+                            columnIndex = groupByProjections.lastIndex + input.schema.columns.size
+                        }
+                    }
+                }
+
+                // If any group-by expressions have been rewritten, add a projection node in the query plan
+                val projectedInput = if (groupByProjections.isNotEmpty()) {
+                    val selectInputColumns = input.schema.columns.mapIndexed { index, column ->
+                        val columnLit = ColumnLiteral(column.identifier).apply {
+                            type = column.type
+                            columnIndex = index
+                        }
+                        NamedExpression(columnLit, column.identifier)
+                    }
+                    physicalPlanBuilder.project(input, selectInputColumns + groupByProjections)
+                } else {
+                    input
+                }
+
+                // Sort the input by the group-by columns
+                val sortedInput = physicalPlanBuilder.sort(projectedInput, rewrittenGroupByLiterals.map {
+                    SortColumn(it, true)
+                })
+
+                // Apply the final aggregations
+                lastResult = physicalPlanBuilder.sortedAggregate(
+                    sortedInput,
+                    rewrittenGroupByLiterals.map { it.columnIndex },
+                    aggregatePlan.aggregateExpressions
+                )
             }
 
             override fun visit(filterPlan: FilterPlan) {
@@ -168,6 +209,7 @@ object QueryPlanner {
             override fun visit(temporalJoinPlan: TemporalJoinPlan) {
                 val leftInput = rewrite(temporalJoinPlan.leftInput)
                 val rightInput = rewrite(temporalJoinPlan.rightInput)
+                // TODO: Support joining on columns + sorting inputs
                 val leftJoinColumns = emptyList<IndexedSortColumn>()
                 val rightJoinColumns = emptyList<IndexedSortColumn>()
                 lastResult = physicalPlanBuilder.sortedTemporalJoin(

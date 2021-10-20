@@ -124,6 +124,54 @@ object ExplainPhysicalPlan {
             recurse(projectPlan.input, true)
         }
 
+        override fun visit(sortedAggregatePlan: SortedAggregatePlan) {
+            // Append one line with top-level description
+            stringBuilder.indentSummary()
+                .append("SortedAggregate[")
+                .append(sortedAggregatePlan.nodeId)
+                .append("] - ")
+            var isFirst = true
+            if (sortedAggregatePlan.groupByColumns.isNotEmpty()) {
+                stringBuilder.append("Group by: [")
+                for (g in sortedAggregatePlan.groupByColumns) {
+                    if (!isFirst) stringBuilder.append(", ")
+                    stringBuilder.append(sortedAggregatePlan.input.schema.columns[g].identifier)
+                        .append('#')
+                        .append(g)
+                    isFirst = false
+                }
+                stringBuilder.append("] - ")
+            }
+            stringBuilder.append("Columns: [")
+            isFirst = true
+            for (c in sortedAggregatePlan.schema.columns.withIndex()) {
+                if (!isFirst) stringBuilder.append(", ")
+                stringBuilder.append(c.value.identifier)
+                    .append('#')
+                    .append(c.index)
+                isFirst = false
+            }
+            stringBuilder.append(']')
+                .appendLine()
+            // Append one line per projection expression
+            for (i in sortedAggregatePlan.schema.columns.indices) {
+                val columnName = sortedAggregatePlan.schema.columns[i].identifier
+                val columnExpr = sortedAggregatePlan.columnExpressions[i]
+                // Skip trivial column expressions
+                if (columnExpr is ColumnLiteral && columnExpr.columnPath == columnName && columnExpr.columnIndex == i) continue
+                stringBuilder.indentDetail(true)
+                    .append("Column ")
+                    .append(columnName)
+                    .append('#')
+                    .append(i)
+                    .append(" = ")
+                    .append(columnExpr.prettyPrintWithFormat())
+                    .appendLine()
+            }
+            // Explain input node
+            recurse(sortedAggregatePlan.input, true)
+        }
+
         override fun visit(sortedTemporalJoinPlan: SortedTemporalJoinPlan) {
             // Append one line with top-level description
             stringBuilder.indentSummary()

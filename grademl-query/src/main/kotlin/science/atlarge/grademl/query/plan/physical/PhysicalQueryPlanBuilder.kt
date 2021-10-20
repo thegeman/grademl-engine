@@ -25,6 +25,15 @@ class PhysicalQueryPlanBuilder {
         return ProjectPlan(nodeId, input, columnExpressions)
     }
 
+    fun sortedAggregate(
+        input: PhysicalQueryPlan,
+        groupByColumns: List<Int>,
+        columnExpressions: List<NamedExpression>
+    ): PhysicalQueryPlan {
+        val nodeId = nextNodeId++
+        return SortedAggregatePlan(nodeId, input, groupByColumns, columnExpressions)
+    }
+
     fun sortedTemporalJoin(
         leftInput: PhysicalQueryPlan,
         rightInput: PhysicalQueryPlan,
