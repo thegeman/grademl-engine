@@ -10,6 +10,15 @@ sealed interface PhysicalExpression
 
 interface BooleanPhysicalExpression : PhysicalExpression {
     fun evaluateAsBoolean(row: Row): Boolean
+
+    companion object {
+        val ALWAYS_TRUE = object : BooleanPhysicalExpression {
+            override fun evaluateAsBoolean(row: Row) = true
+        }
+        val ALWAYS_FALSE = object : BooleanPhysicalExpression {
+            override fun evaluateAsBoolean(row: Row) = false
+        }
+    }
 }
 
 interface NumericPhysicalExpression : PhysicalExpression {
@@ -213,7 +222,10 @@ private class PhysicalExpressionConverter : ExpressionVisitor {
                 rightExpression as StringPhysicalExpression
                 object : BooleanPhysicalExpression {
                     override fun evaluateAsBoolean(row: Row): Boolean {
-                        return matchPathsWithWildcards(leftExpression.evaluateAsString(row), rightExpression.evaluateAsString(row))
+                        return matchPathsWithWildcards(
+                            leftExpression.evaluateAsString(row),
+                            rightExpression.evaluateAsString(row)
+                        )
                     }
                 }
             }
@@ -222,7 +234,10 @@ private class PhysicalExpressionConverter : ExpressionVisitor {
                 rightExpression as StringPhysicalExpression
                 object : BooleanPhysicalExpression {
                     override fun evaluateAsBoolean(row: Row): Boolean {
-                        return !matchPathsWithWildcards(leftExpression.evaluateAsString(row), rightExpression.evaluateAsString(row))
+                        return !matchPathsWithWildcards(
+                            leftExpression.evaluateAsString(row),
+                            rightExpression.evaluateAsString(row)
+                        )
                     }
                 }
             }

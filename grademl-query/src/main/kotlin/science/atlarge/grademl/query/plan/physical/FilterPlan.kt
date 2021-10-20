@@ -1,6 +1,7 @@
 package science.atlarge.grademl.query.plan.physical
 
 import science.atlarge.grademl.query.analysis.ASTAnalysis
+import science.atlarge.grademl.query.analysis.FilterConditionSeparation
 import science.atlarge.grademl.query.execution.BooleanPhysicalExpression
 import science.atlarge.grademl.query.execution.operators.FilterOperator
 import science.atlarge.grademl.query.execution.operators.QueryOperator
@@ -27,9 +28,30 @@ class FilterPlan(
     }
 
     override fun toQueryOperator(): QueryOperator {
+        // Split filter condition into key-only and remaining conditions
+        val keyColumnIndices = input.schema.columns
+            .mapIndexedNotNull { index, column -> if (column.isKey) index else null }
+            .toSet()
+        val splitCondition = FilterConditionSeparation
+            .splitFilterConditionByColumns(filterCondition, listOf(keyColumnIndices))
+        // Convert part of condition expression using only key columns to physical expression for time-series filter
+        val timeSeriesCondition = splitCondition.filterExpressionPerSplit[0]
+        val physicalTimeSeriesCondition = if (timeSeriesCondition != null) {
+            timeSeriesCondition.toPhysicalExpression() as BooleanPhysicalExpression
+        } else {
+            BooleanPhysicalExpression.ALWAYS_TRUE
+        }
+        // Convert remaining part of condition expression to physical expression for row filter
+        val rowCondition = splitCondition.remainingFilterExpression
+        val physicalRowCondition = if (rowCondition != null) {
+            rowCondition.toPhysicalExpression() as BooleanPhysicalExpression
+        } else {
+            BooleanPhysicalExpression.ALWAYS_TRUE
+        }
         return FilterOperator(
             input.toQueryOperator(),
-            filterCondition.toPhysicalExpression() as BooleanPhysicalExpression
+            physicalTimeSeriesCondition,
+            physicalRowCondition
         )
     }
 
