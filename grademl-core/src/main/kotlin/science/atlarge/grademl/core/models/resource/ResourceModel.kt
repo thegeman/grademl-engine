@@ -211,7 +211,12 @@ data class MetricPath(val resourcePath: ResourcePath, val metricName: String) {
         val newLastComponent = "${resourcePath.pathComponents.last()}:$metricName"
         Path(resourcePath.pathComponents.dropLast(1) + newLastComponent, resourcePath.isRelative)
     }
+
+    private val cachedToString by lazy {
+        "${resourcePath.toCanonicalPath()}:$metricName"
+    }
+
     override fun toString(): String {
-        return "${resourcePath.toCanonicalPath()}:$metricName"
+        return cachedToString
     }
 }

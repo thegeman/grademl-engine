@@ -130,12 +130,16 @@ data class Path(
         return pathComponents.size - other.pathComponents.size
     }
 
-    override fun toString(): String {
+    private val cachedToString by lazy {
         val separatorString = SEPARATOR.toString()
-        return pathComponents.joinToString(
+        pathComponents.joinToString(
             separator = separatorString,
             prefix = if (isRelative) "" else separatorString
         )
+    }
+
+    override fun toString(): String {
+        return cachedToString
     }
 
     override fun equals(other: Any?): Boolean {
