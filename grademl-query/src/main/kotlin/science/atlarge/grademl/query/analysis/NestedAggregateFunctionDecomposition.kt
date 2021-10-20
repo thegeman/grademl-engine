@@ -1,10 +1,8 @@
 package science.atlarge.grademl.query.analysis
 
-import science.atlarge.grademl.query.analysis.ASTUtils.traverse
 import science.atlarge.grademl.query.language.*
-import science.atlarge.grademl.query.model.v2.Column
 
-object AggregateFunctionDecomposition {
+object NestedAggregateFunctionDecomposition {
 
     fun decompose(expressions: List<Expression>, inputColumnCount: Int): Result {
         val visitor = Visitor(inputColumnCount)
@@ -15,18 +13,19 @@ object AggregateFunctionDecomposition {
         return Result(
             rewrittenExpressions,
             visitor.aggregateFunctions,
+            visitor.aggregateFunctionDepths,
             visitor.aggregateFunctionTypes,
-            visitor.aggregateFunctionArguments,
-            visitor.aggregateColumns
+            visitor.rewrittenFunctionArguments
         )
     }
 
     private class Visitor(private val inputColumnCount: Int) : ExpressionVisitor {
 
-        val aggregateFunctions = mutableListOf<FunctionDefinition>()
-        val aggregateFunctionTypes = mutableListOf<Type>()
-        val aggregateFunctionArguments = mutableListOf<List<Expression>>()
-        val aggregateColumns = mutableListOf<Column>()
+        val aggregateFunctions = arrayListOf<FunctionDefinition>()
+        val aggregateFunctionDepths = arrayListOf<Int>()
+        val aggregateFunctionTypes = arrayListOf<Type>()
+        val rewrittenFunctionArguments = arrayListOf<List<Expression>>()
+        private var currentDepth = 0
 
         lateinit var rewrittenExpression: Expression
             private set
@@ -43,8 +42,14 @@ object AggregateFunctionDecomposition {
         override fun visit(e: NumericLiteral) {
             rewrittenExpression = e
         }
-        override fun visit(e: StringLiteral) { rewrittenExpression = e }
-        override fun visit(e: ColumnLiteral) { rewrittenExpression = e }
+
+        override fun visit(e: StringLiteral) {
+            rewrittenExpression = e
+        }
+
+        override fun visit(e: ColumnLiteral) {
+            rewrittenExpression = e
+        }
 
         override fun visit(e: UnaryExpression) {
             val inner = e.expr.rewrite()
@@ -59,24 +64,16 @@ object AggregateFunctionDecomposition {
 
         override fun visit(e: FunctionCallExpression) {
             rewrittenExpression = if (e.functionDefinition.isAggregatingFunction) {
-                // Rewrite aggregating functions
-                // First, check for unsupported nested aggregations
-                val args = e.arguments
-                for (arg in args) {
-                    val hasNestedAggregateFunction = arg.traverse().filterIsInstance<FunctionCallExpression>()
-                        .any { it.functionDefinition.isAggregatingFunction }
-                    require(!hasNestedAggregateFunction) {
-                        "Nested aggregate functions are not supported"
-                    }
-                }
+                currentDepth++
+                val args = e.arguments.map { it.rewrite() }
+                currentDepth--
 
                 val newColumnIndex = inputColumnCount + aggregateFunctions.size
                 aggregateFunctions.add(e.functionDefinition)
+                aggregateFunctionDepths.add(currentDepth)
                 aggregateFunctionTypes.add(e.type)
-                aggregateFunctionArguments.add(args)
-                val column = Column("__AGG_${e.functionName}_$newColumnIndex", e.type, false)
-                aggregateColumns.add(column)
-                ColumnLiteral(column.identifier).apply {
+                rewrittenFunctionArguments.add(args)
+                ColumnLiteral("__AGG_${e.functionName}_$newColumnIndex").apply {
                     type = e.type
                     columnIndex = newColumnIndex
                 }
@@ -97,9 +94,9 @@ object AggregateFunctionDecomposition {
     class Result(
         val rewrittenExpressions: List<Expression>,
         val aggregateFunctions: List<FunctionDefinition>,
+        val aggregateFunctionDepths: List<Int>,
         val aggregateFunctionTypes: List<Type>,
-        val aggregateFunctionArguments: List<List<Expression>>,
-        val aggregateColumns: List<Column>
+        val rewrittenFunctionArguments: List<List<Expression>>
     )
 
 }

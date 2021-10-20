@@ -66,4 +66,48 @@ object ASTUtils {
         return functionCalls
     }
 
+    fun Expression.traverse(): List<Expression> {
+        val allExpressions = mutableListOf<Expression>()
+        val visitor = object : ExpressionVisitor {
+            override fun visit(e: BooleanLiteral) {
+                allExpressions.add(e)
+            }
+
+            override fun visit(e: NumericLiteral) {
+                allExpressions.add(e)
+            }
+
+            override fun visit(e: StringLiteral) {
+                allExpressions.add(e)
+            }
+
+            override fun visit(e: ColumnLiteral) {
+                allExpressions.add(e)
+            }
+
+            override fun visit(e: UnaryExpression) {
+                allExpressions.add(e)
+                e.expr.accept(this)
+            }
+
+            override fun visit(e: BinaryExpression) {
+                allExpressions.add(e)
+                e.lhs.accept(this)
+                e.rhs.accept(this)
+            }
+
+            override fun visit(e: FunctionCallExpression) {
+                allExpressions.add(e)
+                e.arguments.forEach { it.accept(this) }
+            }
+
+            override fun visit(e: CustomExpression) {
+                allExpressions.add(e)
+                e.arguments.forEach { it.accept(this) }
+            }
+        }
+        accept(visitor)
+        return allExpressions
+    }
+
 }
