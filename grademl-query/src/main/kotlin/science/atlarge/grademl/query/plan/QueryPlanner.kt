@@ -210,10 +210,8 @@ object QueryPlanner {
                 val leftInput = rewrite(temporalJoinPlan.leftInput)
                 val rightInput = rewrite(temporalJoinPlan.rightInput)
                 // TODO: Support joining on columns + sorting inputs
-                val leftJoinColumns = emptyList<SortColumn>()
-                val rightJoinColumns = emptyList<SortColumn>()
                 lastResult = PhysicalQueryPlanBuilder.sortedTemporalJoin(
-                    leftInput, rightInput, leftJoinColumns, rightJoinColumns
+                    leftInput, rightInput, emptyList(), emptyList(), emptySet(), emptySet()
                 )
             }
         }

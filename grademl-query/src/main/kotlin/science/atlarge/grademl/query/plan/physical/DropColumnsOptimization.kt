@@ -117,13 +117,18 @@ private class DropColumnsRewriter(
         // Rewrite both inputs
         val rewrittenLeftInput = sortedTemporalJoinPlan.leftInput.recurseAndDropColumns(requiredLeftInputs)
         val rewrittenRightInput = sortedTemporalJoinPlan.rightInput.recurseAndDropColumns(requiredRightInputs)
+        // Determine which join inputs can be dropped after the join
+        val leftColumnsToDrop = leftJoinColumns - requiredInputs
+        val rightColumnsToDrop = rightJoinColumns - requiredInputs
         // If either input is rewritten, create a new join
         if (rewrittenLeftInput == null && rewrittenRightInput == null) return null
         return PhysicalQueryPlanBuilder.sortedTemporalJoin(
             rewrittenLeftInput ?: sortedTemporalJoinPlan.leftInput,
             rewrittenRightInput ?: sortedTemporalJoinPlan.rightInput,
             sortedTemporalJoinPlan.leftJoinColumns,
-            sortedTemporalJoinPlan.rightJoinColumns
+            sortedTemporalJoinPlan.rightJoinColumns,
+            leftColumnsToDrop + sortedTemporalJoinPlan.leftDropColumns,
+            rightColumnsToDrop + sortedTemporalJoinPlan.rightDropColumns
         )
     }
 

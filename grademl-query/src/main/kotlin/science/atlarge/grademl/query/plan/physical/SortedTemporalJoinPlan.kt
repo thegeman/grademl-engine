@@ -14,7 +14,9 @@ class SortedTemporalJoinPlan(
     val leftInput: PhysicalQueryPlan,
     val rightInput: PhysicalQueryPlan,
     leftJoinColumns: List<SortColumn>,
-    rightJoinColumns: List<SortColumn>
+    rightJoinColumns: List<SortColumn>,
+    leftDropColumns: Set<String>,
+    rightDropColumns: Set<String>
 ) : PhysicalQueryPlan {
 
     val leftJoinColumns = leftJoinColumns.map {
@@ -24,10 +26,22 @@ class SortedTemporalJoinPlan(
         SortColumn(ASTAnalysis.analyzeExpressionV2(it.column, rightInput.schema.columns) as ColumnLiteral, it.ascending)
     }
 
+    val leftDropColumns = leftDropColumns.filter {
+        it != Columns.START_TIME.identifier && it != Columns.END_TIME.identifier && leftInput.schema.column(it) != null
+    }.toSet()
+    val rightDropColumns = rightDropColumns.filter {
+        it != Columns.START_TIME.identifier && it != Columns.END_TIME.identifier && rightInput.schema.column(it) != null
+    }.toSet()
+
+    private val leftOutputColumns = leftInput.schema.columns.filter {
+        it.identifier !in Columns.RESERVED_COLUMN_NAMES && it.identifier !in leftDropColumns
+    }
+    private val rightOutputColumns = rightInput.schema.columns.filter {
+        it.identifier !in Columns.RESERVED_COLUMN_NAMES && it.identifier !in rightDropColumns
+    }
+
     override val schema = TableSchema(
-        Columns.RESERVED_COLUMNS +
-                (leftInput.schema.columns - Columns.RESERVED_COLUMNS) +
-                (rightInput.schema.columns - Columns.RESERVED_COLUMNS)
+        Columns.RESERVED_COLUMNS + leftOutputColumns + rightOutputColumns
     )
 
     override val children: List<PhysicalQueryPlan>
@@ -39,7 +53,9 @@ class SortedTemporalJoinPlan(
             rightInput.toQueryOperator(),
             schema,
             leftJoinColumns.map { IndexedSortColumn(it.column.columnIndex, it.ascending) },
-            rightJoinColumns.map { IndexedSortColumn(it.column.columnIndex, it.ascending) }
+            rightJoinColumns.map { IndexedSortColumn(it.column.columnIndex, it.ascending) },
+            leftOutputColumns,
+            rightOutputColumns
         )
     }
 

@@ -13,7 +13,9 @@ class SortedTemporalJoinOperator(
     private val rightInput: QueryOperator,
     override val schema: TableSchema,
     leftJoinColumns: List<IndexedSortColumn>,
-    rightJoinColumns: List<IndexedSortColumn>
+    rightJoinColumns: List<IndexedSortColumn>,
+    leftSelectedColumns: List<Column>,
+    rightSelectedColumns: List<Column>
 ) : QueryOperator {
 
     private val joinColumnTypes = leftJoinColumns.map {
@@ -23,7 +25,6 @@ class SortedTemporalJoinOperator(
     private val leftJoinColumnIndices = leftJoinColumns.map { it.columnIndex }.toIntArray()
     private val rightJoinColumnIndices = rightJoinColumns.map { it.columnIndex }.toIntArray()
 
-    private val leftSelectedColumns = leftInput.schema.columns - Columns.RESERVED_COLUMNS
     private val leftSelectedColumnIds = leftSelectedColumns.map { column -> leftInput.schema.indexOfColumn(column)!! }
     private val leftStartTimeColumnId = leftInput.schema.indexOfStartTimeColumn() ?: throw IllegalArgumentException(
         "Left input to temporal join must have _start_time column"
@@ -32,7 +33,6 @@ class SortedTemporalJoinOperator(
         "Left input to temporal join must have _end_time column"
     )
 
-    private val rightSelectedColumns = rightInput.schema.columns - Columns.RESERVED_COLUMNS
     private val rightSelectedColumnIds =
         rightSelectedColumns.map { column -> rightInput.schema.indexOfColumn(column)!! }
     private val rightStartTimeColumnId = rightInput.schema.indexOfStartTimeColumn() ?: throw IllegalArgumentException(

@@ -37,10 +37,14 @@ object PhysicalQueryPlanBuilder {
         leftInput: PhysicalQueryPlan,
         rightInput: PhysicalQueryPlan,
         leftJoinColumns: List<SortColumn>,
-        rightJoinColumns: List<SortColumn>
+        rightJoinColumns: List<SortColumn>,
+        leftDropColumns: Set<String>,
+        rightDropColumns: Set<String>
     ): PhysicalQueryPlan {
         val nodeId = nextNodeId++
-        return SortedTemporalJoinPlan(nodeId, leftInput, rightInput, leftJoinColumns, rightJoinColumns)
+        return SortedTemporalJoinPlan(
+            nodeId, leftInput, rightInput, leftJoinColumns, rightJoinColumns, leftDropColumns, rightDropColumns
+        )
     }
 
     fun sort(input: PhysicalQueryPlan, sortByColumns: List<SortColumn>): PhysicalQueryPlan {

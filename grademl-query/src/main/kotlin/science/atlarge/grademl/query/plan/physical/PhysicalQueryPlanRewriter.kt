@@ -33,7 +33,9 @@ interface PhysicalQueryPlanRewriter : PhysicalQueryPlanVisitor<PhysicalQueryPlan
             leftRewritten ?: sortedTemporalJoinPlan.leftInput,
             rightRewritten ?: sortedTemporalJoinPlan.rightInput,
             sortedTemporalJoinPlan.leftJoinColumns,
-            sortedTemporalJoinPlan.rightJoinColumns
+            sortedTemporalJoinPlan.rightJoinColumns,
+            sortedTemporalJoinPlan.leftDropColumns,
+            sortedTemporalJoinPlan.rightDropColumns
         )
     }
 

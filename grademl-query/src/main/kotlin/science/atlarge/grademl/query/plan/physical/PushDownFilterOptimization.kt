@@ -145,7 +145,12 @@ object PushDownFilterOptimization : OptimizationStrategy, PhysicalQueryPlanRewri
         }
         // Join the filtered inputs
         val newJoin = PhysicalQueryPlanBuilder.sortedTemporalJoin(
-            filteredLeft, filteredRight, sortedTemporalJoinPlan.leftJoinColumns, sortedTemporalJoinPlan.rightJoinColumns
+            filteredLeft,
+            filteredRight,
+            sortedTemporalJoinPlan.leftJoinColumns,
+            sortedTemporalJoinPlan.rightJoinColumns,
+            sortedTemporalJoinPlan.leftDropColumns,
+            sortedTemporalJoinPlan.rightDropColumns
         )
         // Add an outer filter operation with part of the filter condition that could not be pushed down
         return if (remainingFilter != null) {
