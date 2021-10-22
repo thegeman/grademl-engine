@@ -5,7 +5,7 @@ import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.NamedExpression
 import science.atlarge.grademl.query.model.v2.Table
 
-class PhysicalQueryPlanBuilder {
+object PhysicalQueryPlanBuilder {
 
     private var nextNodeId: Int = 1
 

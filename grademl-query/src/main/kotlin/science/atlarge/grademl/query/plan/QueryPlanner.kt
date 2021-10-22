@@ -129,7 +129,6 @@ object QueryPlanner {
     }
 
     fun convertLogicalToPhysicalPlan(logicalQueryPlan: LogicalQueryPlan): PhysicalQueryPlan {
-        val physicalPlanBuilder = PhysicalQueryPlanBuilder()
         val logicalPlanVisitor = object : LogicalQueryPlanVisitor {
             private lateinit var lastResult: PhysicalQueryPlan
 
@@ -165,18 +164,18 @@ object QueryPlanner {
                         }
                         NamedExpression(columnLit, column.identifier)
                     }
-                    physicalPlanBuilder.project(input, selectInputColumns + groupByProjections)
+                    PhysicalQueryPlanBuilder.project(input, selectInputColumns + groupByProjections)
                 } else {
                     input
                 }
 
                 // Sort the input by the group-by columns
-                val sortedInput = physicalPlanBuilder.sort(projectedInput, rewrittenGroupByLiterals.map {
+                val sortedInput = PhysicalQueryPlanBuilder.sort(projectedInput, rewrittenGroupByLiterals.map {
                     SortColumn(it, true)
                 })
 
                 // Apply the final aggregations
-                lastResult = physicalPlanBuilder.sortedAggregate(
+                lastResult = PhysicalQueryPlanBuilder.sortedAggregate(
                     sortedInput,
                     rewrittenGroupByLiterals.map { it.columnPath },
                     aggregatePlan.aggregateExpressions
@@ -185,7 +184,7 @@ object QueryPlanner {
 
             override fun visit(filterPlan: FilterPlan) {
                 val input = rewrite(filterPlan.input)
-                lastResult = physicalPlanBuilder.filter(input, filterPlan.condition)
+                lastResult = PhysicalQueryPlanBuilder.filter(input, filterPlan.condition)
             }
 
             override fun visit(projectPlan: ProjectPlan) {
@@ -193,16 +192,16 @@ object QueryPlanner {
                 val namedExpressions = projectPlan.schema.columns.mapIndexed { index, column ->
                     NamedExpression(projectPlan.columnExpressions[index], column.identifier)
                 }
-                lastResult = physicalPlanBuilder.project(input, namedExpressions)
+                lastResult = PhysicalQueryPlanBuilder.project(input, namedExpressions)
             }
 
             override fun visit(scanTablePlan: ScanTablePlan) {
-                lastResult = physicalPlanBuilder.linearScan(scanTablePlan.table, scanTablePlan.tableName)
+                lastResult = PhysicalQueryPlanBuilder.linearScan(scanTablePlan.table, scanTablePlan.tableName)
             }
 
             override fun visit(sortPlan: SortPlan) {
                 val input = rewrite(sortPlan.input)
-                lastResult = physicalPlanBuilder.sort(input, sortPlan.sortByColumns)
+                lastResult = PhysicalQueryPlanBuilder.sort(input, sortPlan.sortByColumns)
             }
 
             override fun visit(temporalJoinPlan: TemporalJoinPlan) {
@@ -211,7 +210,7 @@ object QueryPlanner {
                 // TODO: Support joining on columns + sorting inputs
                 val leftJoinColumns = emptyList<SortColumn>()
                 val rightJoinColumns = emptyList<SortColumn>()
-                lastResult = physicalPlanBuilder.sortedTemporalJoin(
+                lastResult = PhysicalQueryPlanBuilder.sortedTemporalJoin(
                     leftInput, rightInput, leftJoinColumns, rightJoinColumns
                 )
             }
