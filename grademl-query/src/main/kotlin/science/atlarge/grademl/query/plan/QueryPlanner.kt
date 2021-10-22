@@ -2,7 +2,6 @@ package science.atlarge.grademl.query.plan
 
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.ASTUtils
-import science.atlarge.grademl.query.execution.IndexedSortColumn
 import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.v2.Columns
@@ -179,7 +178,7 @@ object QueryPlanner {
                 // Apply the final aggregations
                 lastResult = physicalPlanBuilder.sortedAggregate(
                     sortedInput,
-                    rewrittenGroupByLiterals.map { it.columnIndex },
+                    rewrittenGroupByLiterals.map { it.columnPath },
                     aggregatePlan.aggregateExpressions
                 )
             }
@@ -210,8 +209,8 @@ object QueryPlanner {
                 val leftInput = rewrite(temporalJoinPlan.leftInput)
                 val rightInput = rewrite(temporalJoinPlan.rightInput)
                 // TODO: Support joining on columns + sorting inputs
-                val leftJoinColumns = emptyList<IndexedSortColumn>()
-                val rightJoinColumns = emptyList<IndexedSortColumn>()
+                val leftJoinColumns = emptyList<SortColumn>()
+                val rightJoinColumns = emptyList<SortColumn>()
                 lastResult = physicalPlanBuilder.sortedTemporalJoin(
                     leftInput, rightInput, leftJoinColumns, rightJoinColumns
                 )

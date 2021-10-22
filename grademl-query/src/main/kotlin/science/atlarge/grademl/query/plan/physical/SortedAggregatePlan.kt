@@ -14,23 +14,43 @@ import science.atlarge.grademl.query.model.v2.TableSchema
 class SortedAggregatePlan(
     override val nodeId: Int,
     val input: PhysicalQueryPlan,
-    val groupByColumns: List<Int>,
+    val groupByColumns: List<String>,
     columnExpressions: List<NamedExpression>
 ) : PhysicalQueryPlan {
 
-    val columnExpressions = columnExpressions.map { ASTAnalysis.analyzeExpressionV2(it.expr, input.schema.columns) }
+    val columnExpressions: List<Expression>
+    val namedColumnExpressions: List<NamedExpression>
+    override val schema: TableSchema
 
-    override val schema: TableSchema = TableSchema(columnExpressions.mapIndexed { i, namedExpression ->
-        // Find all columns used in the expression
-        val columnsUsed = ASTUtils.findColumnLiterals(namedExpression.expr)
-        // Determine if all input columns are keys
-        val allKeys = columnsUsed.all { input.schema.columns[it.columnIndex].isKey }
-        // Create the new column, mark it as a key column iff all inputs are keys
-        Column(namedExpression.name, this.columnExpressions[i].type, allKeys)
-    })
+    private val groupByColumnIndices = groupByColumns.map { name ->
+        input.schema.indexOfColumn(name) ?: throw IllegalArgumentException(
+            "Cannot group by column that does not exist in input: \"$name\""
+        )
+    }
 
     override val children: List<PhysicalQueryPlan>
         get() = listOf(input)
+
+    init {
+        val newColumnExpressions = mutableListOf<Expression>()
+        val newNamedColumnExpressions = mutableListOf<NamedExpression>()
+        val newColumns = mutableListOf<Column>()
+
+        // For each column expression provided: analyze the expression, create a named expression, and create a column
+        columnExpressions.forEachIndexed { index, columnExpression ->
+            val rewrittenExpression = ASTAnalysis.analyzeExpressionV2(columnExpression.expr, input.schema.columns)
+            newColumnExpressions.add(rewrittenExpression)
+            newNamedColumnExpressions.add(NamedExpression(rewrittenExpression, columnExpression.name))
+            // Determine if the new column is a key
+            val columnsUsed = ASTUtils.findColumnLiterals(rewrittenExpression)
+            val allKeys = columnsUsed.all { input.schema.columns[it.columnIndex].isKey }
+            newColumns.add(Column(columnExpression.name, rewrittenExpression.type, allKeys))
+        }
+
+        this.columnExpressions = newColumnExpressions
+        this.namedColumnExpressions = newNamedColumnExpressions
+        this.schema = TableSchema(newColumns)
+    }
 
     override fun toQueryOperator(): QueryOperator {
         // Decompose aggregate expressions into aggregate functions with arguments expression and final projections
@@ -42,7 +62,7 @@ class SortedAggregatePlan(
         return SortedAggregateOperator(
             input.toQueryOperator(),
             schema,
-            groupByColumns,
+            groupByColumnIndices,
             aggregateDecomposition.aggregateFunctions,
             aggregateDecomposition.aggregateFunctionTypes,
             aggregateDecomposition.aggregateFunctionArguments.map { it.map(Expression::toPhysicalExpression) },

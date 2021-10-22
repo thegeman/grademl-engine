@@ -1,6 +1,5 @@
 package science.atlarge.grademl.query.plan.physical
 
-import science.atlarge.grademl.query.execution.IndexedSortColumn
 import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.NamedExpression
@@ -27,7 +26,7 @@ class PhysicalQueryPlanBuilder {
 
     fun sortedAggregate(
         input: PhysicalQueryPlan,
-        groupByColumns: List<Int>,
+        groupByColumns: List<String>,
         columnExpressions: List<NamedExpression>
     ): PhysicalQueryPlan {
         val nodeId = nextNodeId++
@@ -37,8 +36,8 @@ class PhysicalQueryPlanBuilder {
     fun sortedTemporalJoin(
         leftInput: PhysicalQueryPlan,
         rightInput: PhysicalQueryPlan,
-        leftJoinColumns: List<IndexedSortColumn>,
-        rightJoinColumns: List<IndexedSortColumn>
+        leftJoinColumns: List<SortColumn>,
+        rightJoinColumns: List<SortColumn>
     ): PhysicalQueryPlan {
         val nodeId = nextNodeId++
         return SortedTemporalJoinPlan(nodeId, leftInput, rightInput, leftJoinColumns, rightJoinColumns)

@@ -135,9 +135,9 @@ object ExplainPhysicalPlan {
                 stringBuilder.append("Group by: [")
                 for (g in sortedAggregatePlan.groupByColumns) {
                     if (!isFirst) stringBuilder.append(", ")
-                    stringBuilder.append(sortedAggregatePlan.input.schema.columns[g].identifier)
+                    stringBuilder.append(g)
                         .append('#')
-                        .append(g)
+                        .append(sortedAggregatePlan.input.schema.indexOfColumn(g)!!)
                     isFirst = false
                 }
                 stringBuilder.append("] - ")
