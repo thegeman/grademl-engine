@@ -1,6 +1,9 @@
 package science.atlarge.grademl.query.analysis
 
-import science.atlarge.grademl.query.language.*
+import science.atlarge.grademl.query.language.BinaryExpression
+import science.atlarge.grademl.query.language.BinaryOp
+import science.atlarge.grademl.query.language.Expression
+import science.atlarge.grademl.query.language.Type
 
 object FilterConditionSeparation : ExpressionRewritePass() {
 
@@ -12,7 +15,7 @@ object FilterConditionSeparation : ExpressionRewritePass() {
         }
 
         val simplifiedCondition = BooleanSimplification.simplify(e)
-        val filterTerms = collectFilterTerms(simplifiedCondition)
+        val filterTerms = collectAndExpressionTerms(simplifiedCondition)
 
         val matchedTermsPerSplit = availableColumnsPerSplit.map { mutableListOf<Expression>() }
         val unmatchedTerms = mutableListOf<Expression>()
@@ -31,7 +34,7 @@ object FilterConditionSeparation : ExpressionRewritePass() {
         )
     }
 
-    private fun collectFilterTerms(e: Expression): List<Expression> {
+    fun collectAndExpressionTerms(e: Expression): List<Expression> {
         val termsToCheck = mutableListOf<Expression>()
         val termsFound = mutableListOf<Expression>()
         termsToCheck.add(e)

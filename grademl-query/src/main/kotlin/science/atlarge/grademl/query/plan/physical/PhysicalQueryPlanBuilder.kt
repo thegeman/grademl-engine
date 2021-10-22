@@ -9,6 +9,11 @@ object PhysicalQueryPlanBuilder {
 
     private var nextNodeId: Int = 1
 
+    fun generateColumnName(prefix: String): String {
+        val nodeId = nextNodeId++
+        return prefix + nodeId
+    }
+
     fun filter(input: PhysicalQueryPlan, condition: Expression): PhysicalQueryPlan {
         val nodeId = nextNodeId++
         return FilterPlan(nodeId, input, condition)

@@ -222,7 +222,9 @@ object QueryPlanner {
         // Eagerly drop columns to reduce data volume
         DropColumnsOptimization,
         // Split filter conditions to filter early and often
-        PushDownFilterOptimization
+        PushDownFilterOptimization,
+        // Merge adjacent filter and join operations into a join-on operation
+        FilterAsJoinConditionOptimization
     )
 
     fun optimizePhysicalPlan(
