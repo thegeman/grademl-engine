@@ -24,4 +24,9 @@ class LinearTableScanPlan(
         return visitor.visit(this)
     }
 
+    override fun isEquivalent(other: PhysicalQueryPlan): Boolean {
+        if (other !is LinearTableScanPlan) return false
+        return tableName == other.tableName
+    }
+
 }

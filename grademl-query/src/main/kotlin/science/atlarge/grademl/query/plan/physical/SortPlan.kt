@@ -53,4 +53,10 @@ class SortPlan(
         return visitor.visit(this)
     }
 
+    override fun isEquivalent(other: PhysicalQueryPlan): Boolean {
+        if (other !is SortPlan) return false
+        if (sortByColumns != other.sortByColumns) return false
+        return input.isEquivalent(other.input)
+    }
+
 }

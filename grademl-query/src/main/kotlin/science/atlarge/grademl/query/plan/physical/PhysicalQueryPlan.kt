@@ -15,4 +15,6 @@ interface PhysicalQueryPlan {
 
     fun <T> accept(visitor: PhysicalQueryPlanVisitor<T>): T
 
+    fun isEquivalent(other: PhysicalQueryPlan): Boolean
+
 }

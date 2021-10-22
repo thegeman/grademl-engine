@@ -56,4 +56,14 @@ class ProjectPlan(
         return visitor.visit(this)
     }
 
+    override fun isEquivalent(other: PhysicalQueryPlan): Boolean {
+        if (other !is ProjectPlan) return false
+        if (columnExpressions.size != other.columnExpressions.size) return false
+        if (columnExpressions.indices.any {
+                namedColumnExpressions[it].name != other.namedColumnExpressions[it].name ||
+                        !namedColumnExpressions[it].expr.isEquivalent(other.namedColumnExpressions[it].expr)
+            }) return false
+        return input.isEquivalent(other.input)
+    }
+
 }

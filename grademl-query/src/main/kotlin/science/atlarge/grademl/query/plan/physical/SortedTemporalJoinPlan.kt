@@ -63,4 +63,13 @@ class SortedTemporalJoinPlan(
         return visitor.visit(this)
     }
 
+    override fun isEquivalent(other: PhysicalQueryPlan): Boolean {
+        if (other !is SortedTemporalJoinPlan) return false
+        if (leftJoinColumns != other.leftJoinColumns) return false
+        if (rightJoinColumns != other.rightJoinColumns) return false
+        if (leftDropColumns != other.leftDropColumns) return false
+        if (rightDropColumns != other.rightDropColumns) return false
+        return leftInput.isEquivalent(other.leftInput) && rightInput.isEquivalent(other.rightInput)
+    }
+
 }

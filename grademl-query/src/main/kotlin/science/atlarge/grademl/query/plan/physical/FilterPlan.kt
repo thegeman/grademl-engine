@@ -59,4 +59,10 @@ class FilterPlan(
         return visitor.visit(this)
     }
 
+    override fun isEquivalent(other: PhysicalQueryPlan): Boolean {
+        if (other !is FilterPlan) return false
+        if (!filterCondition.isEquivalent(other.filterCondition)) return false
+        return input.isEquivalent(other.input)
+    }
+
 }

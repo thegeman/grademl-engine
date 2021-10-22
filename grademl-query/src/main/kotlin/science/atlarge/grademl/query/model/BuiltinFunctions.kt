@@ -17,6 +17,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object COUNT : FunctionDefinition {
         override val functionName = "COUNT"
         override val isAggregatingFunction = true
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 1) { "$functionName requires 1 argument" }
@@ -34,6 +35,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object COUNT_IF : FunctionDefinition {
         override val functionName = "COUNT_IF"
         override val isAggregatingFunction = true
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 1) { "$functionName requires 1 argument" }
@@ -51,6 +53,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object MIN : FunctionDefinition {
         override val functionName = "MIN"
         override val isAggregatingFunction = true
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 1) { "$functionName requires 1 argument" }
@@ -68,6 +71,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object MAX : FunctionDefinition {
         override val functionName = "MAX"
         override val isAggregatingFunction = true
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 1) { "$functionName requires 1 argument" }
@@ -85,6 +89,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object SUM : FunctionDefinition {
         override val functionName = "SUM"
         override val isAggregatingFunction = true
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 1) { "$functionName requires 1 argument" }
@@ -102,6 +107,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object AVG : FunctionDefinition {
         override val functionName = "AVG"
         override val isAggregatingFunction = true
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 1) { "$functionName requires 1 argument" }
@@ -119,6 +125,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object WEIGHTED_AVG : FunctionDefinition {
         override val functionName = "WEIGHTED_AVG"
         override val isAggregatingFunction = true
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 2) { "$functionName requires 2 arguments (value, weight)" }
@@ -137,6 +144,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object MIN_OF : FunctionDefinition {
         override val functionName = "MIN_OF"
         override val isAggregatingFunction = false
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount >= 2) { "$functionName requires at least 2 arguments" }
@@ -154,6 +162,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object MAX_OF : FunctionDefinition {
         override val functionName = "MAX_OF"
         override val isAggregatingFunction = false
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount >= 2) { "$functionName requires at least 2 arguments" }
@@ -171,6 +180,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object FIND_OR_DEFAULT : FunctionDefinition {
         override val functionName = "FIND_OR_DEFAULT"
         override val isAggregatingFunction = true
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 3) { "$functionName requires 3 arguments (condition, value_if_true, default)" }
@@ -193,6 +203,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object AS_NUMERIC : FunctionDefinition {
         override val functionName = "AS_NUMERIC"
         override val isAggregatingFunction = false
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 1) { "$functionName requires 1 argument (value)" }
@@ -210,6 +221,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object IS_PARENT_OF : FunctionDefinition {
         override val functionName = "IS_PARENT_OF"
         override val isAggregatingFunction = false
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 2) { "$functionName requires 2 arguments (parent, path)" }
@@ -228,6 +240,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object IS_CHILD_OF : FunctionDefinition {
         override val functionName = "IS_CHILD_OF"
         override val isAggregatingFunction = false
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 2) { "$functionName requires 2 arguments (child, path)" }
@@ -246,6 +259,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object IS_ANCESTOR_OF : FunctionDefinition {
         override val functionName = "IS_ANCESTOR_OF"
         override val isAggregatingFunction = false
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 2) { "$functionName requires 2 arguments (ancestor, path)" }
@@ -264,6 +278,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object IS_DESCENDANT_OF : FunctionDefinition {
         override val functionName = "IS_DESCENDANT_OF"
         override val isAggregatingFunction = false
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 2) { "$functionName requires 2 arguments (descendant, path)" }
@@ -282,6 +297,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     object PARENT_OF : FunctionDefinition {
         override val functionName = "PARENT_OF"
         override val isAggregatingFunction = false
+        override val isDeterministic = true
 
         override fun checkArgumentCount(argCount: Int) {
             require(argCount == 1) { "$functionName requires 1 argument (path)" }
