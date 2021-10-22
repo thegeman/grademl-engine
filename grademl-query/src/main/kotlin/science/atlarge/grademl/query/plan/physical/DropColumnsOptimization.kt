@@ -34,7 +34,7 @@ private class DropColumnsRewriter(
         // Recursively rewrite a query plan, dropping unnecessary columns where possible
         var rewrittenPlan = recurse(columnsToKeep) ?: this
         // Determine if there are any excess columns in the rewritten query plan
-        if (rewrittenPlan.schema.columns.size > requiredColumns.size) {
+        if (rewrittenPlan.schema.columns.size > columnsToKeep.size) {
             // If so, create a projection to select only required columns
             val orderedColumnsToKeep = rewrittenPlan.schema.columns.filter { it.identifier in columnsToKeep }
             val columnExpressions = orderedColumnsToKeep.map { column ->
@@ -50,11 +50,14 @@ private class DropColumnsRewriter(
     }
 
     override fun visit(filterPlan: FilterPlan): PhysicalQueryPlan? {
+        // Do not use a projection to drop any columns directly before a filter, always filter then project
+        // Recurse into the filter's input to attempt dropping columns further down
+
         // Determine which columns are needed as input to the filter
         val filteredInputColumns = ASTUtils.findColumnLiterals(filterPlan.filterCondition).map { it.columnPath }
         val allRequiredColumns = requiredColumns + filteredInputColumns
         // Rewrite the input to drop any columns not required for this filter operation or its output
-        val rewrittenInput = filterPlan.input.recurseAndDropColumns(allRequiredColumns)
+        val rewrittenInput = filterPlan.input.recurse(allRequiredColumns)
         // Apply a filter to the rewritten input
         return if (rewrittenInput != null) {
             PhysicalQueryPlanBuilder.filter(rewrittenInput, filterPlan.filterCondition)
