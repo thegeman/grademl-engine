@@ -7,6 +7,9 @@ class TableSchema(val columns: List<Column>) {
     val valueColumns: List<Column>
         get() = columns.filter { !it.isKey }
 
+    private val columnsByName = columns.associateBy { it.identifier }
+    private val columnIndexByName = columns.withIndex().associate { it.value.identifier to it.index }
+
     init {
         require(columns.map { it.identifier }.toSet().size == columns.size) {
             "TableSchema cannot have duplicate column names: [${
@@ -14,6 +17,14 @@ class TableSchema(val columns: List<Column>) {
             }]"
         }
     }
+
+    fun column(index: Int) = columns[index]
+
+    fun column(name: String): Column? = columnsByName[name]
+
+    fun indexOfColumn(name: String): Int? = columnIndexByName[name]
+
+    fun indexOfColumn(column: Column): Int? = indexOfColumn(column.identifier)
 
     fun indexOfStartTimeColumn(): Int? {
         return indexOfColumn(Columns.START_TIME)
@@ -25,11 +36,6 @@ class TableSchema(val columns: List<Column>) {
 
     fun indexOfDurationColumn(): Int? {
         return indexOfColumn(Columns.DURATION)
-    }
-
-    fun indexOfColumn(column: Column): Int? {
-        val index = columns.indexOfFirst { it == column }
-        return if (index >= 0) index else null
     }
 
 }
