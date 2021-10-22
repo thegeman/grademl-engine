@@ -110,7 +110,7 @@ object ExplainPhysicalPlan {
                 val columnName = projectPlan.schema.columns[i].identifier
                 val columnExpr = projectPlan.columnExpressions[i]
                 // Skip trivial column expressions
-                if (columnExpr is ColumnLiteral && columnExpr.columnPath == columnName && columnExpr.columnIndex == i) continue
+                if (columnExpr is ColumnLiteral && columnExpr.columnPath == columnName) continue
                 stringBuilder.indentDetail(true)
                     .append("Column ")
                     .append(columnName)
