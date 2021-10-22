@@ -188,6 +188,18 @@ object ExplainPhysicalPlan {
             }
             stringBuilder.append(']')
                 .appendLine()
+            // Append one line per join condition
+            isFirst = true
+            for (j in sortedTemporalJoinPlan.leftJoinColumns.indices) {
+                stringBuilder.indentDetail(true)
+                if (isFirst) stringBuilder.append("On: ")
+                else stringBuilder.append("    ")
+                stringBuilder.append(sortedTemporalJoinPlan.leftJoinColumns[j].column.prettyPrintWithFormat())
+                    .append(" = ")
+                    .append(sortedTemporalJoinPlan.rightJoinColumns[j].column.prettyPrintWithFormat())
+                    .appendLine()
+                isFirst = false
+            }
             // Explain input nodes
             recurse(sortedTemporalJoinPlan.leftInput, false)
             recurse(sortedTemporalJoinPlan.rightInput, true)
