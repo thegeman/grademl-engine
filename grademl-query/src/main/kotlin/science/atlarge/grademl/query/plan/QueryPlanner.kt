@@ -7,6 +7,7 @@ import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.v2.Columns
 import science.atlarge.grademl.query.model.v2.Table
 import science.atlarge.grademl.query.plan.logical.*
+import science.atlarge.grademl.query.plan.physical.DropColumnsOptimization
 import science.atlarge.grademl.query.plan.physical.PhysicalQueryPlan
 import science.atlarge.grademl.query.plan.physical.PhysicalQueryPlanBuilder
 
@@ -216,6 +217,13 @@ object QueryPlanner {
             }
         }
         return logicalPlanVisitor.rewrite(logicalQueryPlan)
+    }
+
+    fun optimizePhysicalPlan(physicalQueryPlan: PhysicalQueryPlan): PhysicalQueryPlan {
+        var optimizedPlan = physicalQueryPlan
+        // Eagerly drop columns to reduce data volume
+        optimizedPlan = DropColumnsOptimization.optimize(optimizedPlan) ?: optimizedPlan
+        return optimizedPlan
     }
 
 }

@@ -34,8 +34,9 @@ class QueryEngine(
             is SelectStatement -> {
                 val logicalPlan = QueryPlanner.createLogicalPlanFromSelect(statement, tablesV2)
                 val physicalQueryPlan = QueryPlanner.convertLogicalToPhysicalPlan(logicalPlan)
+                val optimizedQueryPlan = QueryPlanner.optimizePhysicalPlan(physicalQueryPlan)
                 TablePrinterV2.print(
-                    physicalQueryPlan.toQueryOperator().execute(),
+                    optimizedQueryPlan.toQueryOperator().execute(),
                     limit = statement.limit?.limitFirst
                 )
                 println()
@@ -99,6 +100,10 @@ class QueryEngine(
                 val physicalQueryPlan = QueryPlanner.convertLogicalToPhysicalPlan(logicalPlan)
                 println("PHYSICAL QUERY PLAN:")
                 println(ExplainPhysicalPlan.explain(physicalQueryPlan))
+                println()
+                val optimizedQueryPlan = QueryPlanner.optimizePhysicalPlan(physicalQueryPlan)
+                println("OPTIMIZED PHYSICAL QUERY PLAN:")
+                println(ExplainPhysicalPlan.explain(optimizedQueryPlan))
                 println()
             }
         }
