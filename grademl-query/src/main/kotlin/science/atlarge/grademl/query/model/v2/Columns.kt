@@ -9,6 +9,7 @@ object Columns {
     val DURATION = Column("_duration", Type.NUMERIC, false)
 
     val RESERVED_COLUMNS = listOf(START_TIME, END_TIME, DURATION)
+    val RESERVED_COLUMN_NAMES = RESERVED_COLUMNS.map { it.identifier }.toSet()
 
     const val INDEX_START_TIME = 0
     const val INDEX_END_TIME = 1

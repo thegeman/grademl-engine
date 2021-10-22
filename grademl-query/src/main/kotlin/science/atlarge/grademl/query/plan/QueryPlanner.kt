@@ -7,9 +7,10 @@ import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.v2.Columns
 import science.atlarge.grademl.query.model.v2.Table
 import science.atlarge.grademl.query.plan.logical.*
-import science.atlarge.grademl.query.plan.physical.DropColumnsOptimization
-import science.atlarge.grademl.query.plan.physical.PhysicalQueryPlan
-import science.atlarge.grademl.query.plan.physical.PhysicalQueryPlanBuilder
+import science.atlarge.grademl.query.plan.logical.FilterPlan
+import science.atlarge.grademl.query.plan.logical.ProjectPlan
+import science.atlarge.grademl.query.plan.logical.SortPlan
+import science.atlarge.grademl.query.plan.physical.*
 
 object QueryPlanner {
 
@@ -219,10 +220,21 @@ object QueryPlanner {
         return logicalPlanVisitor.rewrite(logicalQueryPlan)
     }
 
-    fun optimizePhysicalPlan(physicalQueryPlan: PhysicalQueryPlan): PhysicalQueryPlan {
-        var optimizedPlan = physicalQueryPlan
+    private val defaultOptimizationStrategies = listOf(
         // Eagerly drop columns to reduce data volume
-        optimizedPlan = DropColumnsOptimization.optimize(optimizedPlan) ?: optimizedPlan
+        DropColumnsOptimization,
+        // Split filter conditions to filter early and often
+        PushDownFilterOptimization
+    )
+
+    fun optimizePhysicalPlan(
+        physicalQueryPlan: PhysicalQueryPlan,
+        optimizationStrategies: List<OptimizationStrategy> = defaultOptimizationStrategies
+    ): PhysicalQueryPlan {
+        var optimizedPlan = physicalQueryPlan
+        for (s in optimizationStrategies) {
+            optimizedPlan = s.optimizeOrReturn(optimizedPlan)
+        }
         return optimizedPlan
     }
 
