@@ -227,14 +227,23 @@ object QueryPlanner {
         FilterAsJoinConditionOptimization
     )
 
+    private val maxOptimizationIterations = 100
+
     fun optimizePhysicalPlan(
         physicalQueryPlan: PhysicalQueryPlan,
         optimizationStrategies: List<OptimizationStrategy> = defaultOptimizationStrategies
     ): PhysicalQueryPlan {
         var optimizedPlan = physicalQueryPlan
-        for (s in optimizationStrategies) {
-            optimizedPlan = s.optimizeOrReturn(optimizedPlan)
-        }
+        var previousOptimizedPlan: PhysicalQueryPlan
+        var iterationsCompleted = 0
+        do {
+            previousOptimizedPlan = optimizedPlan
+            for (s in optimizationStrategies) {
+                optimizedPlan = s.optimizeOrReturn(optimizedPlan)
+            }
+            iterationsCompleted++
+            if (iterationsCompleted == maxOptimizationIterations) return optimizedPlan
+        } while (optimizedPlan.isEquivalent(previousOptimizedPlan))
         return optimizedPlan
     }
 
