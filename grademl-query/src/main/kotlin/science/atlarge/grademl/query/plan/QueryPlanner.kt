@@ -221,6 +221,8 @@ object QueryPlanner {
     private val defaultOptimizationStrategies = listOf(
         // Eagerly drop columns to reduce data volume
         DropColumnsOptimization,
+        // Merge adjacent projections
+        CollapseProjectsOptimization,
         // Split filter conditions to filter early and often
         PushDownFilterOptimization,
         // Merge adjacent filter and join operations into a join-on operation
