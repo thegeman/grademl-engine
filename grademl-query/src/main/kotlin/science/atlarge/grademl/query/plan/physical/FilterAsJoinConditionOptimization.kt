@@ -121,13 +121,18 @@ object FilterAsJoinConditionOptimization : OptimizationStrategy, PhysicalQueryPl
         expressions: List<Expression>
     ): Pair<List<NamedExpression>, List<String>> {
         val addedColumns = mutableListOf<NamedExpression>()
-        val columnNames = expressions.map {
-            if (it !is ColumnLiteral) {
-                val newColumnName = PhysicalQueryPlanBuilder.generateColumnName("__join_")
-                addedColumns.add(NamedExpression(it, newColumnName))
-                newColumnName
+        val columnNames = expressions.map { expr ->
+            if (expr !is ColumnLiteral) {
+                val existingColumn = addedColumns.firstOrNull { it.expr.isEquivalent(expr) }
+                if (existingColumn == null) {
+                    val newColumnName = PhysicalQueryPlanBuilder.generateColumnName("__join_")
+                    addedColumns.add(NamedExpression(expr, newColumnName))
+                    newColumnName
+                } else {
+                    existingColumn.name
+                }
             } else {
-                it.columnPath
+                expr.columnPath
             }
         }
         return addedColumns to columnNames
