@@ -243,7 +243,7 @@ object QueryPlanner {
             }
             iterationsCompleted++
             if (iterationsCompleted == maxOptimizationIterations) return optimizedPlan
-        } while (optimizedPlan.isEquivalent(previousOptimizedPlan))
+        } while (!optimizedPlan.isEquivalent(previousOptimizedPlan))
         return optimizedPlan
     }
 
