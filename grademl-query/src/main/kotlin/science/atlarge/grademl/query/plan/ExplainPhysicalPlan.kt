@@ -201,8 +201,8 @@ object ExplainPhysicalPlan {
                 isFirst = false
             }
             // Explain input nodes
-            recurse(sortedTemporalJoinPlan.leftInput, false)
-            recurse(sortedTemporalJoinPlan.rightInput, true)
+            recurse(sortedTemporalJoinPlan.rightInput, false)
+            recurse(sortedTemporalJoinPlan.leftInput, true)
         }
 
         override fun visit(sortPlan: SortPlan) {
