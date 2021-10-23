@@ -17,7 +17,7 @@ object FilterAsJoinConditionOptimization : OptimizationStrategy, PhysicalQueryPl
         // Match on filters directly after a join
         return when (filterPlan.input) {
             is SortedTemporalJoinPlan -> collapseFilterIntoJoin(filterPlan.filterCondition, filterPlan.input)
-            else -> null
+            else -> super.visit(filterPlan)
         }
     }
 
