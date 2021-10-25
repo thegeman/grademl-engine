@@ -1,4 +1,4 @@
-package science.atlarge.grademl.query.execution.data.v2
+package science.atlarge.grademl.query.execution.data
 
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.core.attribution.AttributedResourceData
