@@ -1,6 +1,6 @@
-package science.atlarge.grademl.query.execution.operators
+package science.atlarge.grademl.query.execution
 
-import science.atlarge.grademl.query.execution.operators.IntTypes.toInt
+import science.atlarge.grademl.query.execution.IntTypes.toInt
 import science.atlarge.grademl.query.model.v2.*
 import java.util.*
 

@@ -1,4 +1,4 @@
-package science.atlarge.grademl.query.execution.operators
+package science.atlarge.grademl.query.execution
 
 import science.atlarge.grademl.query.language.Type
 
