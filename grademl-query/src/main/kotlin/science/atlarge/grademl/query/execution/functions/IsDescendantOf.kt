@@ -1,16 +1,33 @@
 package science.atlarge.grademl.query.execution.functions
 
 import science.atlarge.grademl.query.PathUtils
+import science.atlarge.grademl.query.execution.BooleanPhysicalExpression
 import science.atlarge.grademl.query.execution.MappingFunctionImplementation
+import science.atlarge.grademl.query.execution.PhysicalExpression
+import science.atlarge.grademl.query.execution.StringPhysicalExpression
+import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.BuiltinFunctions
-import science.atlarge.grademl.query.model.TypedValue
+import science.atlarge.grademl.query.model.v2.Row
 
 object IsDescendantOf : MappingFunctionImplementation {
+
     override val definition = BuiltinFunctions.IS_DESCENDANT_OF
-    override fun computeValue(arguments: List<TypedValue>, argumentCount: Int, outValue: TypedValue) {
-        val leftPath = arguments[0].stringValue
-        val rightPath = arguments[1].stringValue
-        outValue.booleanValue = leftPath.isDescendantOf(rightPath)
+
+    override fun toPhysicalExpression(
+        arguments: List<PhysicalExpression>,
+        argumentTypes: List<Type>
+    ): BooleanPhysicalExpression {
+        require(arguments.size == 2) { "IS_DESCENDANT_OF takes two arguments" }
+        require(argumentTypes[0] == Type.STRING && argumentTypes[1] == Type.STRING) {
+            "IS_DESCENDANT_OF takes two STRING arguments"
+        }
+
+        return object : BooleanPhysicalExpression {
+            private val leftExpr = arguments[0] as StringPhysicalExpression
+            private val rightExpr = arguments[1] as StringPhysicalExpression
+            override fun evaluateAsBoolean(row: Row) =
+                leftExpr.evaluateAsString(row).isDescendantOf(rightExpr.evaluateAsString(row))
+        }
     }
 
     fun String.isDescendantOf(other: String): Boolean {
@@ -28,4 +45,5 @@ object IsDescendantOf : MappingFunctionImplementation {
         // Make sure there are additional characters
         return length > other.length + 1
     }
+
 }

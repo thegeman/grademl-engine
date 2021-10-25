@@ -280,63 +280,19 @@ private class PhysicalExpressionConverter : ExpressionVisitor {
     }
 
     override fun visit(e: FunctionCallExpression) {
-        // TODO: Avoid using TypedValues
+        // Lookup function implementation
+        val implementation = BuiltinFunctionImplementations.from(e.functionDefinition)
+        if (implementation !is MappingFunctionImplementation) throw IllegalArgumentException(
+            "Cannot convert function implementation of type ${implementation.javaClass.canonicalName} " +
+                    "to a physical expression"
+        )
+
+        // Prepare arguments
         val args = e.arguments.map { it.convert() }
-        val argTypes = e.arguments.map { it.type.toInt() }
-        result = when (e.type) {
-            Type.UNDEFINED -> throw IllegalArgumentException("Cannot evaluate UNDEFINED FunctionCallExpression")
-            Type.BOOLEAN -> object : BooleanPhysicalExpression {
-                val scratchArgs = e.arguments.map { TypedValue() }
-                val scratchOut = TypedValue()
-                override fun evaluateAsBoolean(row: Row): Boolean {
-                    argTypes.forEachIndexed { index, type ->
-                        when (type) {
-                            IntTypes.TYPE_BOOLEAN -> scratchArgs[index].booleanValue =
-                                (args[index] as BooleanPhysicalExpression).evaluateAsBoolean(row)
-                            IntTypes.TYPE_NUMERIC -> scratchArgs[index].numericValue =
-                                (args[index] as NumericPhysicalExpression).evaluateAsNumeric(row)
-                            IntTypes.TYPE_STRING -> scratchArgs[index].stringValue =
-                                (args[index] as StringPhysicalExpression).evaluateAsString(row)
-                        }
-                    }
-                    return e.evalFunction!!.invoke(scratchArgs, scratchOut).booleanValue
-                }
-            }
-            Type.NUMERIC -> object : NumericPhysicalExpression {
-                val scratchArgs = e.arguments.map { TypedValue() }
-                val scratchOut = TypedValue()
-                override fun evaluateAsNumeric(row: Row): Double {
-                    argTypes.forEachIndexed { index, type ->
-                        when (type) {
-                            IntTypes.TYPE_BOOLEAN -> scratchArgs[index].booleanValue =
-                                (args[index] as BooleanPhysicalExpression).evaluateAsBoolean(row)
-                            IntTypes.TYPE_NUMERIC -> scratchArgs[index].numericValue =
-                                (args[index] as NumericPhysicalExpression).evaluateAsNumeric(row)
-                            IntTypes.TYPE_STRING -> scratchArgs[index].stringValue =
-                                (args[index] as StringPhysicalExpression).evaluateAsString(row)
-                        }
-                    }
-                    return e.evalFunction!!.invoke(scratchArgs, scratchOut).numericValue
-                }
-            }
-            Type.STRING -> object : StringPhysicalExpression {
-                val scratchArgs = e.arguments.map { TypedValue() }
-                val scratchOut = TypedValue()
-                override fun evaluateAsString(row: Row): String {
-                    argTypes.forEachIndexed { index, type ->
-                        when (type) {
-                            IntTypes.TYPE_BOOLEAN -> scratchArgs[index].booleanValue =
-                                (args[index] as BooleanPhysicalExpression).evaluateAsBoolean(row)
-                            IntTypes.TYPE_NUMERIC -> scratchArgs[index].numericValue =
-                                (args[index] as NumericPhysicalExpression).evaluateAsNumeric(row)
-                            IntTypes.TYPE_STRING -> scratchArgs[index].stringValue =
-                                (args[index] as StringPhysicalExpression).evaluateAsString(row)
-                        }
-                    }
-                    return e.evalFunction!!.invoke(scratchArgs, scratchOut).stringValue
-                }
-            }
-        }
+        val argTypes = e.arguments.map { it.type }
+
+        // Convert function call to a physical expression
+        result = implementation.toPhysicalExpression(args, argTypes)
     }
 
     override fun visit(e: CustomExpression) {

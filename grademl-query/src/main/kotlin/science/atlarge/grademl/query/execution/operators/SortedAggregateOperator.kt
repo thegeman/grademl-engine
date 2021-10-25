@@ -55,7 +55,7 @@ private class SortedAggregateTimeSeriesIterator(
     private val endTimeColumn: Int,
     private val groupByColumns: IntArray,
     private val groupByColumnTypes: IntArray,
-    private val aggregators: Array<AggregatorV2>,
+    private val aggregators: Array<Aggregator>,
     private val aggregatorTypes: IntArray,
     private val aggregateColumns: List<Column>,
     private val projections: Array<PhysicalExpression>

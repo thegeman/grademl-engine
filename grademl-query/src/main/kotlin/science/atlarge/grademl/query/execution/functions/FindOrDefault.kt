@@ -4,41 +4,16 @@ import science.atlarge.grademl.query.execution.*
 import science.atlarge.grademl.query.language.FunctionDefinition
 import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.BuiltinFunctions
-import science.atlarge.grademl.query.model.TypedValue
 import science.atlarge.grademl.query.model.v2.Row
 
 object FindOrDefault : AggregatingFunctionImplementation {
+
     override val definition: FunctionDefinition = BuiltinFunctions.FIND_OR_DEFAULT
-    override fun newAggregator(argumentTypes: List<Type>) = object : Aggregator {
-        private var valueFound = false
-        private var firstRow = true
-        private val value = TypedValue()
-
-        override fun reset() {
-            valueFound = false
-            firstRow = true
-            value.clear()
-        }
-
-        override fun addRow(arguments: Array<TypedValue>) {
-            if (!valueFound && arguments[0].booleanValue) {
-                arguments[1].copyTo(value)
-                valueFound = true
-            } else if (!valueFound && firstRow) {
-                arguments[2].copyTo(value)
-                firstRow = false
-            }
-        }
-
-        override fun writeResultTo(outValue: TypedValue) {
-            value.copyTo(outValue)
-        }
-    }
 
     override fun newAggregator(
         argumentExpressions: List<PhysicalExpression>,
         argumentTypes: List<Type>
-    ): AggregatorV2 {
+    ): Aggregator {
         return when (argumentTypes[1]) {
             Type.UNDEFINED -> throw IllegalArgumentException()
             Type.BOOLEAN -> BooleanFindOrDefault(
@@ -63,7 +38,7 @@ object FindOrDefault : AggregatingFunctionImplementation {
         private val condition: BooleanPhysicalExpression,
         private val valueExpr: BooleanPhysicalExpression,
         private val defaultExpr: BooleanPhysicalExpression
-    ) : AggregatorV2 {
+    ) : Aggregator {
         private var valueFound = false
         private var firstRow = true
         private var value = false
@@ -93,7 +68,7 @@ object FindOrDefault : AggregatingFunctionImplementation {
         private val condition: BooleanPhysicalExpression,
         private val valueExpr: NumericPhysicalExpression,
         private val defaultExpr: NumericPhysicalExpression
-    ) : AggregatorV2 {
+    ) : Aggregator {
         private var valueFound = false
         private var firstRow = true
         private var value = Double.NaN
@@ -123,7 +98,7 @@ object FindOrDefault : AggregatingFunctionImplementation {
         private val condition: BooleanPhysicalExpression,
         private val valueExpr: StringPhysicalExpression,
         private val defaultExpr: StringPhysicalExpression
-    ) : AggregatorV2 {
+    ) : Aggregator {
         private var valueFound = false
         private var firstRow = true
         private var value: String? = null
@@ -148,4 +123,5 @@ object FindOrDefault : AggregatingFunctionImplementation {
             return value!!
         }
     }
+
 }
