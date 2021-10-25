@@ -3,6 +3,7 @@ package science.atlarge.grademl.query
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.query.execution.ConcreteTable
 import science.atlarge.grademl.query.execution.TablePrinterV2
+import science.atlarge.grademl.query.execution.VirtualTable
 import science.atlarge.grademl.query.execution.data.DefaultTables
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.plan.ExplainLogicalPlan
@@ -15,6 +16,7 @@ class QueryEngine(
 
     private val builtinTables = DefaultTables.create(gradeMLJob)
     private val concreteTables = mutableMapOf<String, ConcreteTable>()
+    private val virtualTables = mutableMapOf<String, VirtualTable>()
     private val tables = builtinTables.toMutableMap()
 
     fun executeStatement(statement: Statement) {
@@ -38,12 +40,12 @@ class QueryEngine(
                 val physicalQueryPlan = QueryPlanner.convertLogicalToPhysicalPlan(logicalPlan)
                 val optimizedQueryPlan = QueryPlanner.optimizePhysicalPlan(physicalQueryPlan)
 
-                TODO("Convert query plan to Table object")
+                val virtualTable = VirtualTable(optimizedQueryPlan)
+                virtualTables[tableName] = virtualTable
+                tables[tableName] = virtualTable
 
-//                tables[tableName] = ...
-
-//                println("Table \"$tableName\" created.")
-//                println()
+                println("Table \"$tableName\" created.")
+                println()
             }
             is DeleteTableStatement -> {
                 val tableName = statement.tableName.trim()
@@ -84,6 +86,12 @@ class QueryEngine(
                     "Table with name \"$tableName\" does not exist or is not cached"
                 )
                 tables.remove(tableName)
+
+                // Reinstate virtual table from which the concrete table was created (if it exists)
+                val virtualTable = virtualTables[tableName]
+                if (virtualTable != null) {
+                    tables[tableName] = virtualTable
+                }
 
                 println("Table \"$tableName\" dropped from the cache.")
                 println()
