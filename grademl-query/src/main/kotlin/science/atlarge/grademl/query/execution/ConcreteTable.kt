@@ -1,116 +1,201 @@
 package science.atlarge.grademl.query.execution
 
-import science.atlarge.grademl.query.ensureExhaustive
-import science.atlarge.grademl.query.language.Type
-import science.atlarge.grademl.query.model.*
+import science.atlarge.grademl.query.execution.operators.IntTypes
+import science.atlarge.grademl.query.execution.operators.IntTypes.toInt
+import science.atlarge.grademl.query.model.v2.*
 
 class ConcreteTable private constructor(
-    override val columns: List<Column>,
+    override val schema: TableSchema,
     private val booleanColumns: Array<BooleanArray>,
     private val numericColumns: Array<DoubleArray>,
-    private val stringColumns: Array<Array<String>>
+    private val stringColumns: Array<Array<String>>,
+    private val timeSeriesIndices: IntArray,
+    private val timeSeriesSizes: IntArray,
 ) : Table {
 
-    val rowCount =
-        booleanColumns.find { it.isNotEmpty() }?.size ?: numericColumns.find { it.isNotEmpty() }?.size
-        ?: stringColumns.find { it.isNotEmpty() }?.size ?: 0
+    val timeSeriesCount = timeSeriesSizes.size
+    val rowCount = timeSeriesSizes.sum()
 
-    override fun scan() = object : RowScanner() {
+    override fun timeSeriesIterator() = object : TimeSeriesIterator {
+        private var currentTimeSeriesId = -1
 
-        private var nextRowNumber = 0
+        override val schema: TableSchema
+            get() = this@ConcreteTable.schema
 
-        private val rowWrapper = object : Row {
+        override val currentTimeSeries = object : TimeSeries {
+            override val schema: TableSchema
+                get() = this@ConcreteTable.schema
 
-            var rowNumber = 0
+            override fun getBoolean(columnIndex: Int) = booleanColumns[columnIndex][currentTimeSeriesId]
+            override fun getNumeric(columnIndex: Int) = numericColumns[columnIndex][currentTimeSeriesId]
+            override fun getString(columnIndex: Int) = stringColumns[columnIndex][currentTimeSeriesId]
 
-            override val columnCount = columns.size
+            override fun rowIterator() = object : RowIterator {
+                private var currentRowId = timeSeriesIndices[currentTimeSeriesId] - 1
+                private val lastRowId = currentRowId + timeSeriesSizes[currentTimeSeriesId]
 
-            override fun readValue(columnId: Int, outValue: TypedValue): TypedValue {
-                when (columns[columnId].type) {
-                    Type.UNDEFINED -> outValue.clear()
-                    Type.BOOLEAN -> outValue.booleanValue = booleanColumns[columnId][rowNumber]
-                    Type.NUMERIC -> outValue.numericValue = numericColumns[columnId][rowNumber]
-                    Type.STRING -> outValue.stringValue = stringColumns[columnId][rowNumber]
-                }.ensureExhaustive
-                return outValue
+                override val schema: TableSchema
+                    get() = this@ConcreteTable.schema
+
+                override val currentRow = object : Row {
+                    override val schema: TableSchema
+                        get() = this@ConcreteTable.schema
+
+                    override fun getBoolean(columnIndex: Int) = booleanColumns[columnIndex][currentRowId]
+                    override fun getNumeric(columnIndex: Int) = numericColumns[columnIndex][currentRowId]
+                    override fun getString(columnIndex: Int) = stringColumns[columnIndex][currentRowId]
+                }
+
+                override fun loadNext(): Boolean {
+                    if (currentRowId >= lastRowId) return false
+                    currentRowId++
+                    return true
+                }
             }
-
         }
 
-        override fun fetchRow(): Row? {
-            if (nextRowNumber >= rowCount) return null
-            rowWrapper.rowNumber = nextRowNumber
-            nextRowNumber++
-            return rowWrapper
+        override fun loadNext(): Boolean {
+            if (currentTimeSeriesId + 1 >= timeSeriesCount) return false
+            currentTimeSeriesId++
+            return true
         }
-
     }
 
     companion object {
 
+        private const val INITIAL_ARRAY_SIZE = 16
+
         @Suppress("UNCHECKED_CAST")
-        fun from(table: Table): ConcreteTable {
-            // Create a copy of the column list
-            val columns = table.columns.toList()
+        fun from(timeSeriesIterator: TimeSeriesIterator): ConcreteTable {
+            // Determine the schema and column types
+            val schema = timeSeriesIterator.schema
+            val columnTypes = schema.columns.map { it.type.toInt() }.toIntArray()
+            val keyColumns = schema.columns
+                .mapIndexedNotNull { index, col -> if (col.isKey) index else null }
+                .toIntArray()
+            val valueColumns = schema.columns
+                .mapIndexedNotNull { index, col -> if (!col.isKey) index else null }
+                .toIntArray()
 
             // Construct data arrays for each column
-            var dataArraySize = 16
-            val booleanColumns = Array(columns.size) { columnId ->
-                if (columns[columnId].type == Type.BOOLEAN) BooleanArray(dataArraySize)
+            var timeSeriesArraySize = INITIAL_ARRAY_SIZE
+            var rowArraySize = INITIAL_ARRAY_SIZE
+            val booleanColumns = Array(columnTypes.size) { columnId ->
+                if (columnTypes[columnId] == IntTypes.TYPE_BOOLEAN) BooleanArray(INITIAL_ARRAY_SIZE)
                 else booleanArrayOf()
             }
-            val numericColumns = Array(columns.size) { columnId ->
-                if (columns[columnId].type == Type.NUMERIC) DoubleArray(dataArraySize)
+            val numericColumns = Array(columnTypes.size) { columnId ->
+                if (columnTypes[columnId] == IntTypes.TYPE_NUMERIC) DoubleArray(INITIAL_ARRAY_SIZE)
                 else doubleArrayOf()
             }
-            val stringColumns = Array(columns.size) { columnId ->
-                if (columns[columnId].type == Type.STRING) arrayOfNulls<String>(dataArraySize)
+            val stringColumns = Array(columnTypes.size) { columnId ->
+                if (columnTypes[columnId] == IntTypes.TYPE_STRING) arrayOfNulls<String>(INITIAL_ARRAY_SIZE)
                 else emptyArray()
             }
 
-            // Read every row from the input table and add it to the data arrays
+            // Track the row count and first row index for each time series
+            var timeSeriesIndices = IntArray(INITIAL_ARRAY_SIZE)
+            var timeSeriesSizes = IntArray(INITIAL_ARRAY_SIZE)
+
+            // Read every time series and every row from the input table and add it to the data arrays
+            var timeSeriesAdded = 0
             var rowsAdded = 0
-            val scratch = TypedValue()
-            for (row in table.scan()) {
-                // Extend the data arrays if needed
-                if (rowsAdded >= dataArraySize) {
-                    dataArraySize *= 2
-                    for (c in columns.indices) {
-                        when (columns[c].type) {
-                            Type.UNDEFINED -> continue
-                            Type.BOOLEAN -> booleanColumns[c] = booleanColumns[c].copyOf(dataArraySize)
-                            Type.NUMERIC -> numericColumns[c] = numericColumns[c].copyOf(dataArraySize)
-                            Type.STRING -> stringColumns[c] = stringColumns[c].copyOf(dataArraySize)
-                        }.ensureExhaustive
+            while (timeSeriesIterator.loadNext()) {
+                val timeSeries = timeSeriesIterator.currentTimeSeries
+                val timeSeriesId = timeSeriesAdded++
+
+                // Extend the data arrays if needed to store the time series' key column values
+                if (timeSeriesId >= timeSeriesArraySize) {
+                    timeSeriesArraySize *= 2
+                    timeSeriesIndices = timeSeriesIndices.copyOf(timeSeriesArraySize)
+                    timeSeriesSizes = timeSeriesSizes.copyOf(timeSeriesArraySize)
+                    for (c in keyColumns) {
+                        when (columnTypes[c]) {
+                            IntTypes.TYPE_BOOLEAN -> booleanColumns[c] = booleanColumns[c].copyOf(timeSeriesArraySize)
+                            IntTypes.TYPE_NUMERIC -> numericColumns[c] = numericColumns[c].copyOf(timeSeriesArraySize)
+                            IntTypes.TYPE_STRING -> stringColumns[c] = stringColumns[c].copyOf(timeSeriesArraySize)
+                            else -> throw IllegalArgumentException("Unsupported column type")
+                        }
                     }
                 }
 
-                // Add the next row
-                for (c in columns.indices) {
-                    row.readValue(c, scratch)
-                    when (columns[c].type) {
-                        Type.UNDEFINED -> continue
-                        Type.BOOLEAN -> booleanColumns[c][rowsAdded] = scratch.booleanValue
-                        Type.NUMERIC -> numericColumns[c][rowsAdded] = scratch.numericValue
-                        Type.STRING -> stringColumns[c][rowsAdded] = scratch.stringValue
-                    }.ensureExhaustive
+                // Add the key columns for this time series to the data arrays
+                for (c in keyColumns) {
+                    when (columnTypes[c]) {
+                        IntTypes.TYPE_BOOLEAN -> booleanColumns[c][timeSeriesId] = timeSeries.getBoolean(c)
+                        IntTypes.TYPE_NUMERIC -> numericColumns[c][timeSeriesId] = timeSeries.getNumeric(c)
+                        IntTypes.TYPE_STRING -> stringColumns[c][timeSeriesId] = timeSeries.getString(c)
+                        else -> throw IllegalArgumentException("Unsupported column type")
+                    }
                 }
 
-                rowsAdded++
+                // Iterate over rows to add them to the data arrays
+                val timeSeriesStartIndex = rowsAdded
+                var timeSeriesRowCount = 0
+                val rowIterator = timeSeries.rowIterator()
+                while (rowIterator.loadNext()) {
+                    val rowId = rowsAdded++
+                    val row = rowIterator.currentRow
+                    timeSeriesRowCount++
+
+                    // Extend the data arrays if needed to store the row's values
+                    if (rowId >= rowArraySize) {
+                        rowArraySize *= 2
+                        for (c in valueColumns) {
+                            when (columnTypes[c]) {
+                                IntTypes.TYPE_BOOLEAN -> booleanColumns[c] = booleanColumns[c].copyOf(rowArraySize)
+                                IntTypes.TYPE_NUMERIC -> numericColumns[c] = numericColumns[c].copyOf(rowArraySize)
+                                IntTypes.TYPE_STRING -> stringColumns[c] = stringColumns[c].copyOf(rowArraySize)
+                                else -> throw IllegalArgumentException("Unsupported column type")
+                            }
+                        }
+                    }
+
+                    // Add the row's values to the data arrays
+                    for (c in valueColumns) {
+                        when (columnTypes[c]) {
+                            IntTypes.TYPE_BOOLEAN -> booleanColumns[c][timeSeriesId] = timeSeries.getBoolean(c)
+                            IntTypes.TYPE_NUMERIC -> numericColumns[c][timeSeriesId] = timeSeries.getNumeric(c)
+                            IntTypes.TYPE_STRING -> stringColumns[c][timeSeriesId] = timeSeries.getString(c)
+                            else -> throw IllegalArgumentException("Unsupported column type")
+                        }
+                    }
+                }
+
+                // Store the time series' starting index and size
+                timeSeriesIndices[timeSeriesId] = timeSeriesStartIndex
+                timeSeriesSizes[timeSeriesId] = timeSeriesRowCount
             }
 
-            // Trim the data arrays to the correct size
-            for (c in columns.indices) {
-                when (columns[c].type) {
-                    Type.UNDEFINED -> continue
-                    Type.BOOLEAN -> booleanColumns[c] = booleanColumns[c].copyOf(rowsAdded)
-                    Type.NUMERIC -> numericColumns[c] = numericColumns[c].copyOf(rowsAdded)
-                    Type.STRING -> stringColumns[c] = stringColumns[c].copyOf(rowsAdded)
-                }.ensureExhaustive
+            // Trim the data and metadata arrays to the correct size
+            timeSeriesIndices = timeSeriesIndices.copyOf(timeSeriesAdded)
+            timeSeriesSizes = timeSeriesSizes.copyOf(timeSeriesAdded)
+            for (c in keyColumns) {
+                when (columnTypes[c]) {
+                    IntTypes.TYPE_BOOLEAN -> booleanColumns[c] = booleanColumns[c].copyOf(timeSeriesAdded)
+                    IntTypes.TYPE_NUMERIC -> numericColumns[c] = numericColumns[c].copyOf(timeSeriesAdded)
+                    IntTypes.TYPE_STRING -> stringColumns[c] = stringColumns[c].copyOf(timeSeriesAdded)
+                    else -> throw IllegalArgumentException("Unsupported column type")
+                }
+            }
+            for (c in valueColumns) {
+                when (columnTypes[c]) {
+                    IntTypes.TYPE_BOOLEAN -> booleanColumns[c] = booleanColumns[c].copyOf(rowsAdded)
+                    IntTypes.TYPE_NUMERIC -> numericColumns[c] = numericColumns[c].copyOf(rowsAdded)
+                    IntTypes.TYPE_STRING -> stringColumns[c] = stringColumns[c].copyOf(rowsAdded)
+                    else -> throw IllegalArgumentException("Unsupported column type")
+                }
             }
 
             // Create the ConcreteTable
-            return ConcreteTable(columns, booleanColumns, numericColumns, stringColumns as Array<Array<String>>)
+            return ConcreteTable(
+                schema,
+                booleanColumns,
+                numericColumns,
+                stringColumns as Array<Array<String>>,
+                timeSeriesIndices,
+                timeSeriesSizes
+            )
         }
 
     }

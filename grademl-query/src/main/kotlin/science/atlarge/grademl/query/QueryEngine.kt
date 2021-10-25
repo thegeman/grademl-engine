@@ -1,10 +1,10 @@
 package science.atlarge.grademl.query
 
 import science.atlarge.grademl.core.GradeMLJob
+import science.atlarge.grademl.query.execution.ConcreteTable
 import science.atlarge.grademl.query.execution.TablePrinterV2
 import science.atlarge.grademl.query.execution.data.DefaultTables
 import science.atlarge.grademl.query.language.*
-import science.atlarge.grademl.query.model.v2.Table
 import science.atlarge.grademl.query.plan.ExplainLogicalPlan
 import science.atlarge.grademl.query.plan.ExplainPhysicalPlan
 import science.atlarge.grademl.query.plan.QueryPlanner
@@ -14,8 +14,8 @@ class QueryEngine(
 ) {
 
     private val builtinTables = DefaultTables.create(gradeMLJob)
+    private val concreteTables = mutableMapOf<String, ConcreteTable>()
     private val tables = builtinTables.toMutableMap()
-    private val cachedTables = mutableMapOf<String, Table>()
 
     fun executeStatement(statement: Statement) {
         when (statement) {
@@ -51,7 +51,7 @@ class QueryEngine(
                 require(tableName in tables) { "Table with name \"$tableName\" does not exist" }
                 require(tableName !in builtinTables) { "Cannot delete built-in table \"$tableName\"" }
 
-                cachedTables.remove(tableName)
+                concreteTables.remove(tableName)
                 tables.remove(tableName)
 
                 println("Table \"$tableName\" deleted.")
@@ -62,11 +62,15 @@ class QueryEngine(
                 require(tableName.isNotEmpty()) { "Cannot delete table with an empty name" }
                 require(tableName in tables) { "Table with name \"$tableName\" does not exist" }
 
-                if (tableName !in cachedTables) {
-                    TODO("Cache table values")
-//                    cachedTables[tableName] = ConcreteTable.from(tables[tableName]!!)
-//                    println("Table \"$tableName\" with ${cachedTables[tableName]!!.rowCount} rows added to the cache.")
-//                    println()
+                if (tableName !in concreteTables) {
+                    val concreteTable = ConcreteTable.from(tables[tableName]!!.timeSeriesIterator())
+                    concreteTables[tableName] = concreteTable
+                    tables[tableName] = concreteTable
+                    println(
+                        "Table \"$tableName\" with ${concreteTable.timeSeriesCount} time series and " +
+                                "${concreteTable.rowCount} rows added to the cache."
+                    )
+                    println()
                 } else {
                     println("Table \"$tableName\" was already in the cache.")
                     println()
@@ -75,11 +79,11 @@ class QueryEngine(
             is DropTableFromCacheStatement -> {
                 val tableName = statement.tableName.trim()
                 require(tableName.isNotEmpty()) { "Cannot delete table with an empty name" }
-                require(tableName in cachedTables) {
-                    "Table with name \"$tableName\" does not exist or is not cached"
-                }
 
-                cachedTables.remove(tableName)
+                concreteTables.remove(tableName) ?: throw IllegalArgumentException(
+                    "Table with name \"$tableName\" does not exist or is not cached"
+                )
+                tables.remove(tableName)
 
                 println("Table \"$tableName\" dropped from the cache.")
                 println()
