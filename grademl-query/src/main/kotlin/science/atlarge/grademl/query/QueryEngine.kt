@@ -2,7 +2,7 @@ package science.atlarge.grademl.query
 
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.query.execution.ConcreteTable
-import science.atlarge.grademl.query.execution.TablePrinterV2
+import science.atlarge.grademl.query.execution.TablePrinter
 import science.atlarge.grademl.query.execution.VirtualTable
 import science.atlarge.grademl.query.execution.data.DefaultTables
 import science.atlarge.grademl.query.language.*
@@ -25,7 +25,7 @@ class QueryEngine(
                 val logicalPlan = QueryPlanner.createLogicalPlanFromSelect(statement, tables)
                 val physicalQueryPlan = QueryPlanner.convertLogicalToPhysicalPlan(logicalPlan)
                 val optimizedQueryPlan = QueryPlanner.optimizePhysicalPlan(physicalQueryPlan)
-                TablePrinterV2.print(
+                TablePrinter.print(
                     optimizedQueryPlan.toQueryOperator().execute(),
                     limit = statement.limit?.limitFirst
                 )

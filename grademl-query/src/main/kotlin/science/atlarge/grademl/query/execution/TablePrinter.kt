@@ -3,7 +3,7 @@ package science.atlarge.grademl.query.execution
 import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.v2.TimeSeriesIterator
 
-object TablePrinterV2 {
+object TablePrinter {
 
     fun print(timeSeriesIterator: TimeSeriesIterator, limit: Int? = null) {
         val showFirst = limit ?: 100
