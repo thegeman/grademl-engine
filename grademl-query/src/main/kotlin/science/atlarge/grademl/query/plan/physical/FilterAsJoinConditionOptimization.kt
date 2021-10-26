@@ -1,6 +1,7 @@
 package science.atlarge.grademl.query.plan.physical
 
 import science.atlarge.grademl.query.analysis.ASTUtils
+import science.atlarge.grademl.query.analysis.ColumnReplacementPass
 import science.atlarge.grademl.query.analysis.FilterConditionSeparation
 import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.language.*
@@ -15,11 +16,37 @@ object FilterAsJoinConditionOptimization : OptimizationStrategy, PhysicalQueryPl
     }
 
     override fun visit(filterPlan: FilterPlan): PhysicalQueryPlan? {
-        // Match on filters directly after a join
+        // Match on filters directly after a join, or filter after join and project
         return when (filterPlan.input) {
             is SortedTemporalJoinPlan -> collapseFilterIntoJoin(filterPlan.filterCondition, filterPlan.input)
+            is ProjectPlan -> {
+                val projectPlan = filterPlan.input
+                if (projectPlan.input is SortedTemporalJoinPlan) {
+                    tryCollapseFilterAndProjectIntoJoin(
+                        filterPlan.filterCondition,
+                        projectPlan.namedColumnExpressions,
+                        projectPlan.input
+                    )
+                } else {
+                    super.visit(filterPlan)
+                }
+            }
             else -> super.visit(filterPlan)
         }
+    }
+
+    private fun tryCollapseFilterAndProjectIntoJoin(
+        filterCondition: Expression,
+        projections: List<NamedExpression>,
+        sortedTemporalJoinPlan: SortedTemporalJoinPlan
+    ): PhysicalQueryPlan? {
+        // Substitute in all projections for ColumnLiterals in the filter condition, then try to push down the filter
+        val substitutedFilter = ColumnReplacementPass.replaceColumnLiterals(filterCondition) { col ->
+            projections.find { it.name == col.columnPath }!!.expr
+        }
+        val collapsedFilterJoin = collapseFilterIntoJoin(substitutedFilter, sortedTemporalJoinPlan) ?: return null
+        // Apply the original projections after the pushed down filter and join
+        return PhysicalQueryPlanBuilder.project(collapsedFilterJoin, projections)
     }
 
     private fun collapseFilterIntoJoin(
