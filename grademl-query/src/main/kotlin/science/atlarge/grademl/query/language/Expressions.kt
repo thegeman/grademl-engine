@@ -11,11 +11,11 @@ sealed class Expression : ASTNode, Typed {
     }
 }
 
-class NamedExpression(val expr: Expression, val name: String) {
+data class NamedExpression(val expr: Expression, val name: String) {
     override fun toString() = "$expr AS $name"
 }
 
-class BooleanLiteral(val value: Boolean) : Expression() {
+data class BooleanLiteral(val value: Boolean) : Expression() {
     override fun accept(visitor: ASTVisitor) {
         visitor.visit(this)
     }
@@ -38,7 +38,7 @@ class BooleanLiteral(val value: Boolean) : Expression() {
     }
 }
 
-class NumericLiteral(val value: Double) : Expression() {
+data class NumericLiteral(val value: Double) : Expression() {
     override fun accept(visitor: ASTVisitor) {
         visitor.visit(this)
     }
@@ -56,7 +56,7 @@ class NumericLiteral(val value: Double) : Expression() {
     override fun toString() = value.toString()
 }
 
-class StringLiteral(val value: String) : Expression() {
+data class StringLiteral(val value: String) : Expression() {
     override fun accept(visitor: ASTVisitor) {
         visitor.visit(this)
     }
@@ -74,8 +74,7 @@ class StringLiteral(val value: String) : Expression() {
     override fun toString() = "\"$value\""
 }
 
-class ColumnLiteral(val columnPath: String) : Expression() {
-    val columnName = columnPath.split('.').last()
+data class ColumnLiteral(val columnPath: String) : Expression() {
     var columnIndex = -1
 
     override fun accept(visitor: ASTVisitor) {
@@ -98,7 +97,7 @@ class ColumnLiteral(val columnPath: String) : Expression() {
     override fun toString() = columnPath
 }
 
-class UnaryExpression(val expr: Expression, val op: UnaryOp) : Expression() {
+data class UnaryExpression(val expr: Expression, val op: UnaryOp) : Expression() {
     override fun accept(visitor: ASTVisitor) {
         visitor.visit(this)
     }
@@ -121,7 +120,7 @@ enum class UnaryOp {
     NOT
 }
 
-class BinaryExpression(val lhs: Expression, val rhs: Expression, val op: BinaryOp) : Expression() {
+data class BinaryExpression(val lhs: Expression, val rhs: Expression, val op: BinaryOp) : Expression() {
     override fun accept(visitor: ASTVisitor) {
         visitor.visit(this)
     }
@@ -158,7 +157,7 @@ enum class BinaryOp {
     SMALLER_EQUAL
 }
 
-class FunctionCallExpression(val functionName: String, val arguments: List<Expression>) : Expression() {
+data class FunctionCallExpression(val functionName: String, val arguments: List<Expression>) : Expression() {
     private var _functionDefinition: FunctionDefinition? = null
     var functionDefinition: FunctionDefinition
         get() = _functionDefinition!!
