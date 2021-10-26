@@ -19,9 +19,9 @@ object PhysicalQueryPlanBuilder {
         return FilterPlan(nodeId, input, condition)
     }
 
-    fun linearScan(table: Table, tableName: String): PhysicalQueryPlan {
+    fun linearScan(table: Table, tableName: String, filter: Expression? = null): PhysicalQueryPlan {
         val nodeId = nextNodeId++
-        return LinearTableScanPlan(nodeId, table, tableName)
+        return LinearTableScanPlan(nodeId, table, tableName, filter)
     }
 
     fun intervalMerging(input: PhysicalQueryPlan): PhysicalQueryPlan {

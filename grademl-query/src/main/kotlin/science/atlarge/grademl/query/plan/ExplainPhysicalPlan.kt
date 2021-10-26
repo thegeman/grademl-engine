@@ -98,6 +98,13 @@ object ExplainPhysicalPlan {
             }
             stringBuilder.append(']')
                 .appendLine()
+            // Append an additional line for the filter condition, if any
+            if (linearTableScanPlan.filterCondition != null) {
+                stringBuilder.indentDetail(false)
+                    .append("Filter condition: ")
+                    .append(linearTableScanPlan.filterCondition.prettyPrintWithFormat())
+                    .appendLine()
+            }
         }
 
         override fun visit(projectPlan: ProjectPlan) {

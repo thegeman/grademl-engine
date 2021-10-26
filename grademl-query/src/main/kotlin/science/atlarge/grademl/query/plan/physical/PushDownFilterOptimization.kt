@@ -19,12 +19,13 @@ object PushDownFilterOptimization : OptimizationStrategy, PhysicalQueryPlanRewri
         // Pushing down a filter operation is possible from some types of input operations
         return when (filterPlan.input) {
             is FilterPlan -> mergeFilters(filterPlan.filterCondition, filterPlan.input)
+            is LinearTableScanPlan -> pushIntoLinearTableScan(filterPlan.filterCondition, filterPlan.input)
             is ProjectPlan -> pushPastProject(filterPlan.filterCondition, filterPlan.input)
             is SortedAggregatePlan -> pushPastSortedAggregate(filterPlan.filterCondition, filterPlan.input)
             is SortedTemporalJoinPlan -> pushPastSortedTemporalJoin(filterPlan.filterCondition, filterPlan.input)
             is SortPlan -> pushPastSort(filterPlan.filterCondition, filterPlan.input)
-            else -> super.visit(filterPlan)
-        }
+            else -> null
+        } ?: super.visit(filterPlan)
     }
 
     private fun mergeFilters(filterCondition: Expression, filterPlan: FilterPlan): PhysicalQueryPlan {
@@ -37,6 +38,43 @@ object PushDownFilterOptimization : OptimizationStrategy, PhysicalQueryPlanRewri
                 )
             )
         )
+    }
+
+    private fun pushIntoLinearTableScan(
+        filterCondition: Expression,
+        linearTableScanPlan: LinearTableScanPlan
+    ): PhysicalQueryPlan? {
+        // Return if the input table cannot be filtered
+        if (linearTableScanPlan.filterableColumns.isEmpty()) return null
+        // Separate from the filter condition a part using only filterableColumns
+        val separatedFilter = FilterConditionSeparation.splitFilterConditionByColumns(
+            filterCondition, listOf(
+                linearTableScanPlan.filterableColumns.map { column ->
+                    linearTableScanPlan.schema.indexOfColumn(column)!!
+                }.toSet()
+            )
+        )
+        val pushDownFilter = separatedFilter.filterExpressionPerSplit[0]
+        val remainingFilter = separatedFilter.remainingFilterExpression
+        // Return if no condition can be pushed into the table scan
+        if (pushDownFilter == null) return null
+        // Apply (part of) the filter to the table scan
+        val filteredTableScan = PhysicalQueryPlanBuilder.linearScan(
+            linearTableScanPlan.table,
+            linearTableScanPlan.tableName,
+            FilterConditionSeparation.mergeExpressions(
+                listOfNotNull(
+                    pushDownFilter,
+                    linearTableScanPlan.filterCondition
+                )
+            )
+        )
+        // Apply the remaining filter, if any
+        return if (remainingFilter != null) {
+            PhysicalQueryPlanBuilder.filter(filteredTableScan, remainingFilter)
+        } else {
+            filteredTableScan
+        }
     }
 
     private fun pushPastProject(filterCondition: Expression, projectPlan: ProjectPlan): PhysicalQueryPlan? {
