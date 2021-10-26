@@ -11,7 +11,9 @@ sealed class Expression : ASTNode, Typed {
     }
 }
 
-class NamedExpression(val expr: Expression, val name: String)
+class NamedExpression(val expr: Expression, val name: String) {
+    override fun toString() = "$expr AS $name"
+}
 
 class BooleanLiteral(val value: Boolean) : Expression() {
     override fun accept(visitor: ASTVisitor) {
@@ -27,6 +29,8 @@ class BooleanLiteral(val value: Boolean) : Expression() {
         if (other !is BooleanLiteral) return false
         return value == other.value
     }
+
+    override fun toString() = if (value) "TRUE" else "FALSE"
 
     companion object {
         val TRUE = BooleanLiteral(true)
@@ -48,6 +52,8 @@ class NumericLiteral(val value: Double) : Expression() {
         if (other !is NumericLiteral) return false
         return value == other.value
     }
+
+    override fun toString() = value.toString()
 }
 
 class StringLiteral(val value: String) : Expression() {
@@ -64,6 +70,8 @@ class StringLiteral(val value: String) : Expression() {
         if (other !is StringLiteral) return false
         return value == other.value
     }
+
+    override fun toString() = "\"$value\""
 }
 
 class ColumnLiteral(val columnPath: String) : Expression() {
@@ -86,6 +94,8 @@ class ColumnLiteral(val columnPath: String) : Expression() {
         if (other !is ColumnLiteral) return false
         return columnPath == other.columnPath
     }
+
+    override fun toString() = columnPath
 }
 
 class UnaryExpression(val expr: Expression, val op: UnaryOp) : Expression() {
@@ -103,6 +113,8 @@ class UnaryExpression(val expr: Expression, val op: UnaryOp) : Expression() {
         if (other !is UnaryExpression) return false
         return op == other.op && expr.isEquivalent(other.expr)
     }
+
+    override fun toString() = "__op_$op($expr)"
 }
 
 enum class UnaryOp {
@@ -125,6 +137,8 @@ class BinaryExpression(val lhs: Expression, val rhs: Expression, val op: BinaryO
         if (other !is BinaryExpression) return false
         return op == other.op && lhs.isEquivalent(other.lhs) && rhs.isEquivalent(other.rhs)
     }
+
+    override fun toString() = "__op_$op($lhs, $rhs)"
 }
 
 enum class BinaryOp {
@@ -175,6 +189,8 @@ class FunctionCallExpression(val functionName: String, val arguments: List<Expre
         if (arguments.size != other.arguments.size) return false
         return arguments.indices.all { arguments[it].isEquivalent(other.arguments[it]) }
     }
+
+    override fun toString() = "$functionName(${arguments.joinToString()})"
 }
 
 abstract class AbstractExpression(
@@ -186,4 +202,6 @@ abstract class AbstractExpression(
     }
 
     abstract override fun clone(): AbstractExpression
+
+    override fun toString() = "__optimized($originalExpression)"
 }
