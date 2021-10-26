@@ -28,7 +28,7 @@ object ASTUtils {
                 e.arguments.forEach { it.accept(this) }
             }
 
-            override fun visit(e: CustomExpression) {
+            override fun visit(e: AbstractExpression) {
                 e.arguments.forEach { it.accept(this) }
             }
         }
@@ -58,7 +58,7 @@ object ASTUtils {
                 e.arguments.forEach { it.accept(this) }
             }
 
-            override fun visit(e: CustomExpression) {
+            override fun visit(e: AbstractExpression) {
                 e.arguments.forEach { it.accept(this) }
             }
         }
@@ -101,7 +101,7 @@ object ASTUtils {
                 e.arguments.forEach { it.accept(this) }
             }
 
-            override fun visit(e: CustomExpression) {
+            override fun visit(e: AbstractExpression) {
                 allExpressions.add(e)
                 e.arguments.forEach { it.accept(this) }
             }

@@ -33,7 +33,7 @@ object ColumnResolution {
             e.arguments.forEach { it.accept(this) }
         }
 
-        override fun visit(e: CustomExpression) {
+        override fun visit(e: AbstractExpression) {
             e.arguments.forEach { it.accept(this) }
             e.originalExpression.accept(this)
         }

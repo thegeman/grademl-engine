@@ -36,7 +36,7 @@ class BooleanLiteral(val value: Boolean) : Expression() {
     }
 }
 
-class NumericLiteral(val value: Double): Expression() {
+class NumericLiteral(val value: Double) : Expression() {
     override fun accept(visitor: ASTVisitor) {
         visitor.visit(this)
     }
@@ -150,11 +150,16 @@ class FunctionCallExpression(val functionName: String, val arguments: List<Expre
     private var _functionDefinition: FunctionDefinition? = null
     var functionDefinition: FunctionDefinition
         get() = _functionDefinition!!
-        set(value) { _functionDefinition = value }
+        set(value) {
+            _functionDefinition = value
+        }
 
     var evalFunction: ((args: List<TypedValue>, outValue: TypedValue) -> TypedValue)? = null
 
-    override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+    override fun accept(visitor: ASTVisitor) {
+        visitor.visit(this)
+    }
+
     override fun clone() = FunctionCallExpression(functionName, arguments.map { it.clone() }).also {
         it.type = type
         it._functionDefinition = _functionDefinition
@@ -178,28 +183,13 @@ class FunctionCallExpression(val functionName: String, val arguments: List<Expre
     }
 }
 
-class CustomExpression(
+abstract class AbstractExpression(
     val arguments: List<Expression>,
-    val originalExpression: Expression,
-    val evalFunction: (args: List<TypedValue>, outValue: TypedValue) -> TypedValue
+    val originalExpression: Expression
 ) : Expression() {
     override fun accept(visitor: ASTVisitor) {
         visitor.visit(this)
     }
 
-    override fun clone() = CustomExpression(arguments.map { it.clone() }, originalExpression.clone(), evalFunction)
-        .also { it.type = type }
-
-    fun copy(newArguments: List<Expression> = arguments, newOriginalExpression: Expression = originalExpression) =
-        CustomExpression(newArguments, newOriginalExpression, evalFunction).also { it.type = type }
-
-    override val isDeterministic: Boolean
-        get() = originalExpression.isDeterministic && arguments.all { it.isDeterministic }
-
-    override fun isEquivalent(other: Expression): Boolean {
-        if (other !is CustomExpression) return false
-        if (!originalExpression.isEquivalent(other.originalExpression)) return false
-        if (arguments.size != other.arguments.size) return false
-        return arguments.indices.all { arguments[it].isEquivalent(other.arguments[it]) }
-    }
+    abstract override fun clone(): AbstractExpression
 }

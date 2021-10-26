@@ -49,15 +49,11 @@ abstract class ExpressionRewritePass(
         else e.copy(newArguments = rewrittenArgs)
     }
 
-    protected open fun rewrite(e: CustomExpression): Expression {
-        val rewrittenArgs = e.arguments.map { it.rewrite() }
+    protected open fun rewrite(e: AbstractExpression): Expression {
         val rewrittenOriginalExpression =
             if (rewriteOriginalOfCustomExpression) e.originalExpression.rewrite()
             else e.originalExpression
-        val hasChanged = rewrittenOriginalExpression !== e.originalExpression ||
-                e.arguments.indices.any { i -> rewrittenArgs[i] !== e.arguments[i] }
-        return if (!hasChanged) e
-        else e.copy(newArguments = rewrittenArgs, newOriginalExpression = rewrittenOriginalExpression)
+        return if (rewrittenOriginalExpression !== e.originalExpression) rewrittenOriginalExpression else e
     }
 
     override fun visit(e: BooleanLiteral) {
@@ -88,7 +84,7 @@ abstract class ExpressionRewritePass(
         lastRewritten = rewrite(e)
     }
 
-    override fun visit(e: CustomExpression) {
+    override fun visit(e: AbstractExpression) {
         lastRewritten = rewrite(e)
     }
 

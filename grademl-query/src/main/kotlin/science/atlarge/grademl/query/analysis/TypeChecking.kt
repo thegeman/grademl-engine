@@ -85,7 +85,7 @@ object TypeChecking {
             e.type = e.functionDefinition.resolveType(argTypes)
         }
 
-        override fun visit(e: CustomExpression) {
+        override fun visit(e: AbstractExpression) {
             e.arguments.forEach { it.checkType() }
             e.type = e.originalExpression.checkType()
         }

@@ -35,7 +35,7 @@ object FunctionResolution {
             e.functionDefinition = definition
         }
 
-        override fun visit(e: CustomExpression) {
+        override fun visit(e: AbstractExpression) {
             e.arguments.forEach { it.accept(this) }
         }
     }

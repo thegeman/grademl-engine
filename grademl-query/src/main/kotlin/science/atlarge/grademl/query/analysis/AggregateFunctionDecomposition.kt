@@ -6,8 +6,8 @@ import science.atlarge.grademl.query.model.v2.Column
 
 object AggregateFunctionDecomposition {
 
-    fun decompose(expressions: List<Expression>, inputColumnCount: Int): Result {
-        val visitor = Visitor(inputColumnCount)
+    fun decompose(expressions: List<Expression>, inputColumns: List<Column>): Result {
+        val visitor = Visitor(inputColumns)
         val rewrittenExpressions = expressions.map { e ->
             e.accept(visitor)
             visitor.rewrittenExpression
@@ -21,7 +21,7 @@ object AggregateFunctionDecomposition {
         )
     }
 
-    private class Visitor(private val inputColumnCount: Int) : ExpressionVisitor {
+    private class Visitor(private val inputColumns: List<Column>) : ExpressionVisitor {
 
         val aggregateFunctions = mutableListOf<FunctionDefinition>()
         val aggregateFunctionTypes = mutableListOf<Type>()
@@ -70,7 +70,7 @@ object AggregateFunctionDecomposition {
                     }
                 }
 
-                val newColumnIndex = inputColumnCount + aggregateFunctions.size
+                val newColumnIndex = inputColumns.size + aggregateFunctions.size
                 aggregateFunctions.add(e.functionDefinition)
                 aggregateFunctionTypes.add(e.type)
                 aggregateFunctionArguments.add(args)
@@ -86,10 +86,15 @@ object AggregateFunctionDecomposition {
             }
         }
 
-        override fun visit(e: CustomExpression) {
-            val args = e.arguments.map { it.rewrite() }
-            rewrittenExpression = if (args.indices.all { i -> args[i] === e.arguments[i] }) e
-            else e.copy(newArguments = args)
+        override fun visit(e: AbstractExpression) {
+            // Rewrite the original expression
+            val rewrittenOriginalExpression = e.originalExpression.rewrite()
+            // If the original expression changed, optimize it and substitute it for the AbstractExpression
+            rewrittenExpression = if (rewrittenOriginalExpression !== e.originalExpression) {
+                ASTAnalysis.analyzeExpressionV2(rewrittenOriginalExpression, inputColumns + aggregateColumns)
+            } else {
+                e
+            }
         }
 
     }

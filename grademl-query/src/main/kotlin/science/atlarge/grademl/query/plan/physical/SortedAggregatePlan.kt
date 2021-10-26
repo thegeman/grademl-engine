@@ -55,7 +55,7 @@ class SortedAggregatePlan(
     override fun toQueryOperator(): QueryOperator {
         // Decompose aggregate expressions into aggregate functions with arguments expression and final projections
         val aggregateDecomposition = AggregateFunctionDecomposition.decompose(
-            columnExpressions, input.schema.columns.size
+            columnExpressions, input.schema.columns
         )
         aggregateDecomposition.aggregateFunctions
 

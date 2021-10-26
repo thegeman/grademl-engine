@@ -91,7 +91,7 @@ object PrettyPrintExpressions {
             stringBuilder.append(')')
         }
 
-        override fun visit(e: CustomExpression) {
+        override fun visit(e: AbstractExpression) {
             e.originalExpression.accept(this)
         }
 
