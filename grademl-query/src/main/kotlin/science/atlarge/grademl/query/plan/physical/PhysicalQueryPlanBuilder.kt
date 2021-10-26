@@ -24,6 +24,11 @@ object PhysicalQueryPlanBuilder {
         return LinearTableScanPlan(nodeId, table, tableName)
     }
 
+    fun intervalMerging(input: PhysicalQueryPlan): PhysicalQueryPlan {
+        val nodeId = nextNodeId++
+        return IntervalMergingPlan(nodeId, input)
+    }
+
     fun project(input: PhysicalQueryPlan, columnExpressions: List<NamedExpression>): PhysicalQueryPlan {
         val nodeId = nextNodeId++
         return ProjectPlan(nodeId, input, columnExpressions)

@@ -7,6 +7,11 @@ interface PhysicalQueryPlanRewriter : PhysicalQueryPlanVisitor<PhysicalQueryPlan
         return PhysicalQueryPlanBuilder.filter(inputRewritten, filterPlan.filterCondition)
     }
 
+    override fun visit(intervalMergingPlan: IntervalMergingPlan): PhysicalQueryPlan? {
+        val inputRewritten = intervalMergingPlan.input.accept(this) ?: return null
+        return PhysicalQueryPlanBuilder.intervalMerging(inputRewritten)
+    }
+
     override fun visit(linearTableScanPlan: LinearTableScanPlan): PhysicalQueryPlan? {
         return null
     }

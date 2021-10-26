@@ -219,6 +219,8 @@ object QueryPlanner {
     }
 
     private val defaultOptimizationStrategies = listOf(
+        // First, remove interval merging operators to allow other optimizations to occur
+        DropIntervalMergingOptimization,
         // Eagerly drop columns to reduce data volume
         DropColumnsOptimization,
         // Merge adjacent projections
@@ -226,10 +228,12 @@ object QueryPlanner {
         // Split filter conditions to filter early and often
         PushDownFilterOptimization,
         // Merge adjacent filter and join operations into a join-on operation
-        FilterAsJoinConditionOptimization
+        FilterAsJoinConditionOptimization,
+        // Finally, insert interval merging operators
+        InsertIntervalMergingOptimization
     )
 
-    private val maxOptimizationIterations = 100
+    private const val MAX_OPTIMIZATION_ITERATIONS = 100
 
     fun optimizePhysicalPlan(
         physicalQueryPlan: PhysicalQueryPlan,
@@ -244,7 +248,7 @@ object QueryPlanner {
                 optimizedPlan = s.optimizeOrReturn(optimizedPlan)
             }
             iterationsCompleted++
-            if (iterationsCompleted == maxOptimizationIterations) return optimizedPlan
+            if (iterationsCompleted == MAX_OPTIMIZATION_ITERATIONS) return optimizedPlan
         } while (!optimizedPlan.isEquivalent(previousOptimizedPlan))
         return optimizedPlan
     }

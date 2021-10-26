@@ -66,6 +66,17 @@ object ExplainPhysicalPlan {
             recurse(filterPlan.input, true)
         }
 
+        override fun visit(intervalMergingPlan: IntervalMergingPlan) {
+            // Append one line with top-level description
+            stringBuilder.indentSummary()
+                .append("IntervalMerging[")
+                .append(intervalMergingPlan.nodeId)
+                .append("]")
+                .appendLine()
+            // Explain input node
+            recurse(intervalMergingPlan.input, true)
+        }
+
         override fun visit(linearTableScanPlan: LinearTableScanPlan) {
             // Append one line with top-level description
             stringBuilder.indentSummary()

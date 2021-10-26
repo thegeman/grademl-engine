@@ -66,6 +66,11 @@ private class DropColumnsRewriter(
         }
     }
 
+    override fun visit(intervalMergingPlan: IntervalMergingPlan): PhysicalQueryPlan? {
+        val rewrittenInput = intervalMergingPlan.input.recurseAndDropColumns(requiredColumns)
+        return if (rewrittenInput != null) PhysicalQueryPlanBuilder.intervalMerging(rewrittenInput) else null
+    }
+
     override fun visit(linearTableScanPlan: LinearTableScanPlan): PhysicalQueryPlan? {
         return null
     }
