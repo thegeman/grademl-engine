@@ -6,6 +6,7 @@ import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.Column
 import science.atlarge.grademl.query.model.Columns
+import science.atlarge.grademl.query.model.TableSchema
 
 object FilterAsJoinConditionOptimization : OptimizationStrategy, PhysicalQueryPlanRewriter {
 
@@ -40,14 +41,20 @@ object FilterAsJoinConditionOptimization : OptimizationStrategy, PhysicalQueryPl
         // Rewrite the left and right inputs with added columns
         var rewrittenLeft = projectInput(sortedTemporalJoinPlan.leftInput, newColumns.first)
         var rewrittenRight = projectInput(sortedTemporalJoinPlan.rightInput, newColumns.second)
-        // TODO: Determine equality sets to create more restrictive filters (e.g., for nested joins)
-        // Determine the column IDs of left and right join columns
-        val leftJoinColumns = columnEqualities.map {
-            rewrittenLeft.schema.column(it.first) ?: throw IllegalArgumentException()
-        }
-        val rightJoinColumns = columnEqualities.map {
-            rewrittenRight.schema.column(it.second) ?: throw IllegalArgumentException()
-        }
+        // Determine equality sets: sets of left and right columns that must all be equal
+        val existingJoinEqualities = sortedTemporalJoinPlan.leftJoinColumns.zip(sortedTemporalJoinPlan.rightJoinColumns)
+            .map { it.first.column.columnPath to it.second.column.columnPath }
+        val equalitySets = identifyEqualitySets(existingJoinEqualities + columnEqualities)
+        // For each equality set: pick a left and right column to join on
+        // and create equality conditions for the remaining columns
+        val (leftJoinColumns, rightJoinColumns) =
+            selectColumnsFromEqualitySets(equalitySets, rewrittenLeft.schema, rewrittenRight.schema).unzip()
+        val (leftFilter, rightFilter) = createFilterConditionsFromEqualitySets(
+            equalitySets, rewrittenLeft.schema, rewrittenRight.schema
+        )
+        // Push down the join conditions on the left and right inputs
+        if (leftFilter != null) rewrittenLeft = PhysicalQueryPlanBuilder.filter(rewrittenLeft, leftFilter)
+        if (rightFilter != null) rewrittenRight = PhysicalQueryPlanBuilder.filter(rewrittenRight, rightFilter)
         // Order the join columns to make sorting inputs as efficient as possible
         val (orderedLeftJoinColumns, orderedRightJoinColumns) = orderJoinColumns(leftJoinColumns, rightJoinColumns)
         // Sort the left and right inputs on the common join column order
@@ -57,8 +64,8 @@ object FilterAsJoinConditionOptimization : OptimizationStrategy, PhysicalQueryPl
         val newJoin = PhysicalQueryPlanBuilder.sortedTemporalJoin(
             leftInput = rewrittenLeft,
             rightInput = rewrittenRight,
-            leftJoinColumns = mergeJoinColumns(orderedLeftJoinColumns, sortedTemporalJoinPlan.leftJoinColumns),
-            rightJoinColumns = mergeJoinColumns(orderedRightJoinColumns, sortedTemporalJoinPlan.rightJoinColumns),
+            leftJoinColumns = orderedLeftJoinColumns,
+            rightJoinColumns = orderedRightJoinColumns,
             leftDropColumns = newColumns.first.map { it.name }.toSet() + sortedTemporalJoinPlan.leftDropColumns,
             rightDropColumns = newColumns.second.map { it.name }.toSet() + sortedTemporalJoinPlan.rightDropColumns
         )
@@ -107,6 +114,104 @@ object FilterAsJoinConditionOptimization : OptimizationStrategy, PhysicalQueryPl
             nonEqualityTerms + unmatchedEqualityTerms
         )
         return leftRightEqualityPairs to remainingCondition
+    }
+
+    private fun identifyEqualitySets(columnEqualities: List<Pair<String, String>>): List<Set<String>> {
+        if (columnEqualities.isEmpty()) return emptyList()
+        // Track for each column which equality set it belongs to
+        val columnNameToEqualitySet = mutableMapOf<String, Int>()
+        val equalitySets = mutableListOf<MutableSet<String>>()
+        // Go over each pair of equal columns and add them to an equality set
+        for ((left, right) in columnEqualities) {
+            // Check if either the left or right column is already in a set
+            val leftSet = columnNameToEqualitySet[left]
+            val rightSet = columnNameToEqualitySet[right]
+            when {
+                leftSet != null && rightSet != null -> {
+                    // Merge sets if they are different
+                    if (leftSet != rightSet) {
+                        val setToMerge = maxOf(leftSet, rightSet)
+                        val setToMergeInto = minOf(leftSet, rightSet)
+                        equalitySets[setToMergeInto].addAll(equalitySets[setToMerge])
+                        for (c in equalitySets[setToMerge]) {
+                            columnNameToEqualitySet[c] = setToMergeInto
+                        }
+                        equalitySets[setToMerge].clear()
+                    }
+                }
+                leftSet != null -> {
+                    // Add right column to existing equality set for left column
+                    equalitySets[leftSet].add(right)
+                    columnNameToEqualitySet[right] = leftSet
+                }
+                rightSet != null -> {
+                    // Add left column to existing equality set for right column
+                    equalitySets[rightSet].add(left)
+                    columnNameToEqualitySet[left] = rightSet
+                }
+                else -> {
+                    // Create new equality set
+                    val newSetId = equalitySets.size
+                    equalitySets.add(mutableSetOf(left, right))
+                    columnNameToEqualitySet[left] = newSetId
+                    columnNameToEqualitySet[right] = newSetId
+                }
+            }
+        }
+        return equalitySets.filter { it.isNotEmpty() }
+    }
+
+    private fun selectColumnsFromEqualitySets(
+        equalitySets: List<Set<String>>,
+        leftSchema: TableSchema,
+        rightSchema: TableSchema
+    ): List<Pair<Column, Column>> {
+        return equalitySets.map { equalitySet ->
+            // Separate equality set into left and right columns
+            val leftColumns = equalitySet.mapNotNull { leftSchema.column(it) }
+            val rightColumns = equalitySet.mapNotNull { rightSchema.column(it) }
+            // Select from each side the "optimal" column to join/sort on:
+            // - Prefer a key column to avoid sorting on a value column
+            // - Prefer a lower-indexed column for more likely joining on an already sorted column
+            // TODO: Track for each query node which columns its input/output is sorted by
+            val leftSelectedColumn = leftColumns.sortedBy { leftSchema.indexOfColumn(it) }.let { sortedColumns ->
+                sortedColumns.firstOrNull { it.isKey } ?: sortedColumns.first()
+            }
+            val rightSelectedColumn = rightColumns.sortedBy { rightSchema.indexOfColumn(it) }.let { sortedColumns ->
+                sortedColumns.firstOrNull { it.isKey } ?: sortedColumns.first()
+            }
+            leftSelectedColumn to rightSelectedColumn
+        }
+    }
+
+    private fun createFilterConditionsFromEqualitySets(
+        equalitySets: List<Set<String>>,
+        leftSchema: TableSchema,
+        rightSchema: TableSchema
+    ): Pair<Expression?, Expression?> {
+        val leftConditions = mutableListOf<Expression>()
+        val rightConditions = mutableListOf<Expression>()
+        for (equalitySet in equalitySets) {
+            // Separate equality set into left and right columns
+            val leftColumns = equalitySet.filter { leftSchema.column(it) != null }
+            val rightColumns = equalitySet.filter { rightSchema.column(it) != null }
+            // Create equality conditions for any set with two or more equal columns
+            if (leftColumns.size >= 2) {
+                val first = ColumnLiteral(leftColumns[0])
+                for (i in 1 until leftColumns.size) {
+                    leftConditions.add(BinaryExpression(first, ColumnLiteral(leftColumns[i]), BinaryOp.EQUAL))
+                }
+            }
+            if (rightColumns.size >= 2) {
+                val first = ColumnLiteral(rightColumns[0])
+                for (i in 1 until rightColumns.size) {
+                    rightConditions.add(BinaryExpression(first, ColumnLiteral(rightColumns[i]), BinaryOp.EQUAL))
+                }
+            }
+        }
+        // Merge equality checks into two conditions on the left and right table respectively
+        return FilterConditionSeparation.mergeExpressions(leftConditions) to
+                FilterConditionSeparation.mergeExpressions(rightConditions)
     }
 
     private fun convertLeftRightExpressionsToColumns(
@@ -159,23 +264,6 @@ object FilterAsJoinConditionOptimization : OptimizationStrategy, PhysicalQueryPl
             SortColumn(ColumnLiteral(it.identifier), true)
         } to rightColumns.map {
             SortColumn(ColumnLiteral(it.identifier), true)
-        }
-    }
-
-    private fun mergeJoinColumns(
-        newJoinColumns: List<SortColumn>,
-        oldJoinColumns: List<SortColumn>
-    ): List<SortColumn> {
-        val sortDirections = mutableMapOf<String, Boolean>()
-        return (newJoinColumns + oldJoinColumns).map {
-            if (it.column.columnPath in sortDirections) {
-                val direction = sortDirections[it.column.columnPath]!!
-                if (direction != it.ascending) SortColumn(it.column, direction)
-                else it
-            } else {
-                sortDirections[it.column.columnPath] = it.ascending
-                it
-            }
         }
     }
 
