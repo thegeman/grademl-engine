@@ -39,7 +39,7 @@ private class DropColumnsRewriter(
             val orderedColumnsToKeep = rewrittenPlan.schema.columns.filter { it.identifier in columnsToKeep }
             val columnExpressions = orderedColumnsToKeep.map { column ->
                 NamedExpression(
-                    ASTAnalysis.analyzeExpressionV2(ColumnLiteral(column.identifier), rewrittenPlan.schema.columns),
+                    ASTAnalysis.analyzeExpression(ColumnLiteral(column.identifier), rewrittenPlan.schema.columns),
                     column.identifier
                 )
             }

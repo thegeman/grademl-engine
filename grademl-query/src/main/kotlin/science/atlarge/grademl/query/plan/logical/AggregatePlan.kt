@@ -15,11 +15,11 @@ class AggregatePlan(
 ) : LogicalQueryPlan {
 
     val groupExpressions = groupByExpressions.map { expression ->
-        ASTAnalysis.analyzeExpressionV2(expression, input.schema.columns)
+        ASTAnalysis.analyzeExpression(expression, input.schema.columns)
     }
     val aggregateExpressions = aggregateExpressions.map { aggregateExpression ->
         NamedExpression(
-            ASTAnalysis.analyzeExpressionV2(aggregateExpression.expr, input.schema.columns),
+            ASTAnalysis.analyzeExpression(aggregateExpression.expr, input.schema.columns),
             aggregateExpression.name
         )
     }

@@ -2,7 +2,7 @@ package science.atlarge.grademl.query.analysis
 
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.language.Type.*
-import science.atlarge.grademl.query.model.Column
+import science.atlarge.grademl.query.model.v2.Column
 
 object TypeChecking {
 

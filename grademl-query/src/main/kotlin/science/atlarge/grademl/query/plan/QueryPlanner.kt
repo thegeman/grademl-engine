@@ -69,7 +69,7 @@ object QueryPlanner {
         val filteredInputPlan = if (selectStatement.where == null) {
             joinedInputPlan
         } else {
-            val filterExpression = ASTAnalysis.analyzeExpressionV2(
+            val filterExpression = ASTAnalysis.analyzeExpression(
                 selectStatement.where.conditionExpression, joinedInputPlan.schema.columns
             )
             builder.filter(joinedInputPlan, filterExpression)
@@ -89,7 +89,7 @@ object QueryPlanner {
                 }
             }
             .map {
-                ASTAnalysis.analyzeExpressionV2(it.first, filteredInputPlan.schema.columns) to it.second
+                ASTAnalysis.analyzeExpression(it.first, filteredInputPlan.schema.columns) to it.second
             }
             .mapIndexed { index, (expression, name) ->
                 // Assign names to anonymous select terms

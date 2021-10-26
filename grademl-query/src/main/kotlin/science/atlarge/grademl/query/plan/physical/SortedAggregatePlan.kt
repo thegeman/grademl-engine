@@ -38,7 +38,7 @@ class SortedAggregatePlan(
 
         // For each column expression provided: analyze the expression, create a named expression, and create a column
         columnExpressions.forEachIndexed { index, columnExpression ->
-            val rewrittenExpression = ASTAnalysis.analyzeExpressionV2(columnExpression.expr, input.schema.columns)
+            val rewrittenExpression = ASTAnalysis.analyzeExpression(columnExpression.expr, input.schema.columns)
             newColumnExpressions.add(rewrittenExpression)
             newNamedColumnExpressions.add(NamedExpression(rewrittenExpression, columnExpression.name))
             // Determine if the new column is a key

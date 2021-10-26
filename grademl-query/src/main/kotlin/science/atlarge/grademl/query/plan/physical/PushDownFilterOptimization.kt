@@ -31,7 +31,7 @@ object PushDownFilterOptimization : OptimizationStrategy, PhysicalQueryPlanRewri
         return optimizeOrReturn(
             PhysicalQueryPlanBuilder.filter(
                 filterPlan.input,
-                ASTAnalysis.analyzeExpressionV2(
+                ASTAnalysis.analyzeExpression(
                     BinaryExpression(filterCondition, filterPlan.filterCondition, BinaryOp.AND),
                     filterPlan.input.schema.columns
                 )

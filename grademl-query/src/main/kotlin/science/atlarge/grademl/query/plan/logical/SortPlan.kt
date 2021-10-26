@@ -23,7 +23,7 @@ class SortPlan(
         val uniqueSortColumns = mutableListOf<SortColumn>()
         val usedColumnNames = mutableListOf<String>()
         for (sc in sortByColumns) {
-            val resolvedColumn = ASTAnalysis.analyzeExpressionV2(sc.column, input.schema.columns) as ColumnLiteral
+            val resolvedColumn = ASTAnalysis.analyzeExpression(sc.column, input.schema.columns) as ColumnLiteral
             if (!usedColumnNames.contains(resolvedColumn.columnPath)) {
                 uniqueSortColumns.add(SortColumn(resolvedColumn, sc.ascending))
                 usedColumnNames.add(resolvedColumn.columnPath)

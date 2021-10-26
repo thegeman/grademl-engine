@@ -20,10 +20,10 @@ class SortedTemporalJoinPlan(
 ) : PhysicalQueryPlan {
 
     val leftJoinColumns = leftJoinColumns.map {
-        SortColumn(ASTAnalysis.analyzeExpressionV2(it.column, leftInput.schema.columns) as ColumnLiteral, it.ascending)
+        SortColumn(ASTAnalysis.analyzeExpression(it.column, leftInput.schema.columns) as ColumnLiteral, it.ascending)
     }
     val rightJoinColumns = rightJoinColumns.map {
-        SortColumn(ASTAnalysis.analyzeExpressionV2(it.column, rightInput.schema.columns) as ColumnLiteral, it.ascending)
+        SortColumn(ASTAnalysis.analyzeExpression(it.column, rightInput.schema.columns) as ColumnLiteral, it.ascending)
     }
 
     val leftDropColumns = leftDropColumns.filter {

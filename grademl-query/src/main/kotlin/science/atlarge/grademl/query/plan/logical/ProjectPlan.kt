@@ -25,7 +25,12 @@ class ProjectPlan(
 
         for (i in columnExpressions.indices) {
             // Analyze the project expression
-            analyzedColumnExpressions.add(ASTAnalysis.analyzeExpressionV2(columnExpressions[i].expr, input.schema.columns))
+            analyzedColumnExpressions.add(
+                ASTAnalysis.analyzeExpression(
+                    columnExpressions[i].expr,
+                    input.schema.columns
+                )
+            )
             // Find all columns used in the expression
             val columnsUsed = ASTUtils.findColumnLiterals(analyzedColumnExpressions[i])
             // Determine if all input columns are keys

@@ -16,7 +16,7 @@ class FilterPlan(
     filterCondition: Expression
 ) : PhysicalQueryPlan {
 
-    val filterCondition = ASTAnalysis.analyzeExpressionV2(filterCondition, input.schema.columns)
+    val filterCondition = ASTAnalysis.analyzeExpression(filterCondition, input.schema.columns)
 
     override val schema: TableSchema
         get() = input.schema

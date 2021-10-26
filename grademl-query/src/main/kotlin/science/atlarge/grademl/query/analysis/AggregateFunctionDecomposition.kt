@@ -91,7 +91,7 @@ object AggregateFunctionDecomposition {
             val rewrittenOriginalExpression = e.originalExpression.rewrite()
             // If the original expression changed, optimize it and substitute it for the AbstractExpression
             rewrittenExpression = if (rewrittenOriginalExpression !== e.originalExpression) {
-                ASTAnalysis.analyzeExpressionV2(rewrittenOriginalExpression, inputColumns + aggregateColumns)
+                ASTAnalysis.analyzeExpression(rewrittenOriginalExpression, inputColumns + aggregateColumns)
             } else {
                 e
             }
