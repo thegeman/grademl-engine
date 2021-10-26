@@ -1,7 +1,5 @@
 package science.atlarge.grademl.query.language
 
-import science.atlarge.grademl.query.model.TypedValue
-
 sealed class Expression : ASTNode, Typed {
     override var type = Type.UNDEFINED
     abstract fun clone(): Expression
@@ -154,8 +152,6 @@ class FunctionCallExpression(val functionName: String, val arguments: List<Expre
             _functionDefinition = value
         }
 
-    var evalFunction: ((args: List<TypedValue>, outValue: TypedValue) -> TypedValue)? = null
-
     override fun accept(visitor: ASTVisitor) {
         visitor.visit(this)
     }
@@ -163,13 +159,11 @@ class FunctionCallExpression(val functionName: String, val arguments: List<Expre
     override fun clone() = FunctionCallExpression(functionName, arguments.map { it.clone() }).also {
         it.type = type
         it._functionDefinition = _functionDefinition
-        it.evalFunction = evalFunction
     }
 
     fun copy(newArguments: List<Expression> = arguments) = FunctionCallExpression(functionName, newArguments).also {
         it.type = type
         it._functionDefinition = _functionDefinition
-        it.evalFunction = evalFunction
     }
 
     override val isDeterministic: Boolean
