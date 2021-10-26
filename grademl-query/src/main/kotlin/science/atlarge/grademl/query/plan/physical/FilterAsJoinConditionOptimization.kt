@@ -4,8 +4,8 @@ import science.atlarge.grademl.query.analysis.ASTUtils
 import science.atlarge.grademl.query.analysis.FilterConditionSeparation
 import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.language.*
-import science.atlarge.grademl.query.model.v2.Column
-import science.atlarge.grademl.query.model.v2.Columns
+import science.atlarge.grademl.query.model.Column
+import science.atlarge.grademl.query.model.Columns
 
 object FilterAsJoinConditionOptimization : OptimizationStrategy, PhysicalQueryPlanRewriter {
 

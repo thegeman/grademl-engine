@@ -4,7 +4,7 @@ import science.atlarge.grademl.query.execution.BooleanPhysicalExpression
 import science.atlarge.grademl.query.execution.NumericPhysicalExpression
 import science.atlarge.grademl.query.execution.PhysicalExpression
 import science.atlarge.grademl.query.execution.StringPhysicalExpression
-import science.atlarge.grademl.query.model.v2.*
+import science.atlarge.grademl.query.model.*
 
 class ProjectOperator(
     private val input: QueryOperator,

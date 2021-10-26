@@ -1,7 +1,7 @@
 package science.atlarge.grademl.query.plan.logical
 
-import science.atlarge.grademl.query.model.v2.Table
-import science.atlarge.grademl.query.model.v2.TableSchema
+import science.atlarge.grademl.query.model.Table
+import science.atlarge.grademl.query.model.TableSchema
 
 class ScanTablePlan(
     override val nodeId: Int,

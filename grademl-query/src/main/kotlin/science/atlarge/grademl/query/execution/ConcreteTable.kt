@@ -1,7 +1,7 @@
 package science.atlarge.grademl.query.execution
 
 import science.atlarge.grademl.query.execution.IntTypes.toInt
-import science.atlarge.grademl.query.model.v2.*
+import science.atlarge.grademl.query.model.*
 
 class ConcreteTable private constructor(
     override val schema: TableSchema,

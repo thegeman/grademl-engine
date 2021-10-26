@@ -2,8 +2,8 @@ package science.atlarge.grademl.query.plan.physical
 
 import science.atlarge.grademl.query.execution.operators.LinearTableScanOperator
 import science.atlarge.grademl.query.execution.operators.QueryOperator
-import science.atlarge.grademl.query.model.v2.Table
-import science.atlarge.grademl.query.model.v2.TableSchema
+import science.atlarge.grademl.query.model.Table
+import science.atlarge.grademl.query.model.TableSchema
 
 class LinearTableScanPlan(
     override val nodeId: Int,

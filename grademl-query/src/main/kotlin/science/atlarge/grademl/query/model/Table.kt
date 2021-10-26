@@ -1,4 +1,4 @@
-package science.atlarge.grademl.query.model.v2
+package science.atlarge.grademl.query.model
 
 interface Table {
 

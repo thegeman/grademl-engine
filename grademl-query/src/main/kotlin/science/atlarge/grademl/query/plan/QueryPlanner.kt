@@ -4,8 +4,8 @@ import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.ASTUtils
 import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.language.*
-import science.atlarge.grademl.query.model.v2.Columns
-import science.atlarge.grademl.query.model.v2.Table
+import science.atlarge.grademl.query.model.Columns
+import science.atlarge.grademl.query.model.Table
 import science.atlarge.grademl.query.plan.logical.*
 import science.atlarge.grademl.query.plan.logical.FilterPlan
 import science.atlarge.grademl.query.plan.logical.ProjectPlan

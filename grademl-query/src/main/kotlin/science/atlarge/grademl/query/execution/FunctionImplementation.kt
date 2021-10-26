@@ -2,7 +2,7 @@ package science.atlarge.grademl.query.execution
 
 import science.atlarge.grademl.query.language.FunctionDefinition
 import science.atlarge.grademl.query.language.Type
-import science.atlarge.grademl.query.model.v2.Row
+import science.atlarge.grademl.query.model.Row
 
 sealed interface FunctionImplementation {
     val definition: FunctionDefinition

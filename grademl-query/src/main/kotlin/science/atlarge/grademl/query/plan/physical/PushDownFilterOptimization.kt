@@ -7,7 +7,7 @@ import science.atlarge.grademl.query.language.BinaryExpression
 import science.atlarge.grademl.query.language.BinaryOp
 import science.atlarge.grademl.query.language.ColumnLiteral
 import science.atlarge.grademl.query.language.Expression
-import science.atlarge.grademl.query.model.v2.Columns
+import science.atlarge.grademl.query.model.Columns
 
 object PushDownFilterOptimization : OptimizationStrategy, PhysicalQueryPlanRewriter {
 

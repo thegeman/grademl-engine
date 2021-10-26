@@ -1,7 +1,7 @@
 package science.atlarge.grademl.query.plan.logical
 
 import science.atlarge.grademl.query.language.Expression
-import science.atlarge.grademl.query.model.v2.TableSchema
+import science.atlarge.grademl.query.model.TableSchema
 
 class FilterPlan(
     override val nodeId: Int,

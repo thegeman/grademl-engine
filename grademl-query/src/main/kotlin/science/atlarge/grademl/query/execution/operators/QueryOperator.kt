@@ -1,7 +1,7 @@
 package science.atlarge.grademl.query.execution.operators
 
-import science.atlarge.grademl.query.model.v2.TableSchema
-import science.atlarge.grademl.query.model.v2.TimeSeriesIterator
+import science.atlarge.grademl.query.model.TableSchema
+import science.atlarge.grademl.query.model.TimeSeriesIterator
 
 interface QueryOperator {
 

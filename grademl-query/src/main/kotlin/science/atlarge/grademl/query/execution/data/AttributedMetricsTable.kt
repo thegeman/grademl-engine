@@ -5,7 +5,7 @@ import science.atlarge.grademl.core.attribution.AttributedResourceData
 import science.atlarge.grademl.core.models.execution.ExecutionPhase
 import science.atlarge.grademl.core.models.resource.Metric
 import science.atlarge.grademl.query.language.Type
-import science.atlarge.grademl.query.model.v2.*
+import science.atlarge.grademl.query.model.*
 
 class AttributedMetricsTable(
     private val gradeMLJob: GradeMLJob

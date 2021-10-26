@@ -1,7 +1,7 @@
 package science.atlarge.grademl.query.execution.operators
 
 import science.atlarge.grademl.query.execution.BooleanPhysicalExpression
-import science.atlarge.grademl.query.model.v2.*
+import science.atlarge.grademl.query.model.*
 
 class FilterOperator(
     private val input: QueryOperator,

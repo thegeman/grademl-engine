@@ -1,7 +1,7 @@
 package science.atlarge.grademl.query.plan.physical
 
 import science.atlarge.grademl.query.execution.operators.QueryOperator
-import science.atlarge.grademl.query.model.v2.TableSchema
+import science.atlarge.grademl.query.model.TableSchema
 
 interface PhysicalQueryPlan {
 

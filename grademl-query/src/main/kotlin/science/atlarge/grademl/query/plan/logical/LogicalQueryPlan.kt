@@ -1,7 +1,6 @@
 package science.atlarge.grademl.query.plan.logical
 
-import science.atlarge.grademl.query.model.v2.TableSchema
-import kotlin.text.StringBuilder
+import science.atlarge.grademl.query.model.TableSchema
 
 sealed interface LogicalQueryPlan {
 

@@ -4,7 +4,7 @@ import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.ASTUtils
 import science.atlarge.grademl.query.language.ColumnLiteral
 import science.atlarge.grademl.query.language.NamedExpression
-import science.atlarge.grademl.query.model.v2.Columns
+import science.atlarge.grademl.query.model.Columns
 
 object DropColumnsOptimization : OptimizationStrategy {
 

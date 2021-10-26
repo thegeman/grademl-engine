@@ -5,7 +5,7 @@ import science.atlarge.grademl.query.execution.ExpressionImplementation
 import science.atlarge.grademl.query.execution.PhysicalExpression
 import science.atlarge.grademl.query.execution.StringPhysicalExpression
 import science.atlarge.grademl.query.language.*
-import science.atlarge.grademl.query.model.v2.Row
+import science.atlarge.grademl.query.model.Row
 
 object PatternMatchCompilationPass {
 

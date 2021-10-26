@@ -3,7 +3,7 @@ package science.atlarge.grademl.query.plan.physical
 import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.NamedExpression
-import science.atlarge.grademl.query.model.v2.Table
+import science.atlarge.grademl.query.model.Table
 
 object PhysicalQueryPlanBuilder {
 

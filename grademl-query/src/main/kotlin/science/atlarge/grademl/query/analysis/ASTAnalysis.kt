@@ -1,7 +1,7 @@
 package science.atlarge.grademl.query.analysis
 
 import science.atlarge.grademl.query.language.Expression
-import science.atlarge.grademl.query.model.v2.Column
+import science.atlarge.grademl.query.model.Column
 
 object ASTAnalysis {
 

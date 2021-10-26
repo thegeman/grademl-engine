@@ -1,10 +1,10 @@
 package science.atlarge.grademl.query.execution
 
 import science.atlarge.grademl.query.language.Type
-import science.atlarge.grademl.query.model.v2.Column
-import science.atlarge.grademl.query.model.v2.Columns
-import science.atlarge.grademl.query.model.v2.Row
-import science.atlarge.grademl.query.model.v2.TableSchema
+import science.atlarge.grademl.query.model.Column
+import science.atlarge.grademl.query.model.Columns
+import science.atlarge.grademl.query.model.Row
+import science.atlarge.grademl.query.model.TableSchema
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 

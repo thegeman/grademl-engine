@@ -2,7 +2,7 @@ package science.atlarge.grademl.query.execution.util
 
 import science.atlarge.grademl.query.execution.DataGenerator
 import science.atlarge.grademl.query.language.Type
-import science.atlarge.grademl.query.model.v2.*
+import science.atlarge.grademl.query.model.*
 
 class ConcreteRow(private val values: List<Any>) {
     fun value(columnIndex: Int) = values[columnIndex]

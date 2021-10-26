@@ -8,7 +8,7 @@ import science.atlarge.grademl.query.execution.operators.QueryOperator
 import science.atlarge.grademl.query.execution.toPhysicalExpression
 import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.Type
-import science.atlarge.grademl.query.model.v2.TableSchema
+import science.atlarge.grademl.query.model.TableSchema
 
 class FilterPlan(
     override val nodeId: Int,

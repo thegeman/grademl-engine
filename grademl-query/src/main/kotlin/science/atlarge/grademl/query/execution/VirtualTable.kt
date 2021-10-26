@@ -1,8 +1,8 @@
 package science.atlarge.grademl.query.execution
 
-import science.atlarge.grademl.query.model.v2.Table
-import science.atlarge.grademl.query.model.v2.TableSchema
-import science.atlarge.grademl.query.model.v2.TimeSeriesIterator
+import science.atlarge.grademl.query.model.Table
+import science.atlarge.grademl.query.model.TableSchema
+import science.atlarge.grademl.query.model.TimeSeriesIterator
 import science.atlarge.grademl.query.plan.physical.PhysicalQueryPlan
 
 class VirtualTable(

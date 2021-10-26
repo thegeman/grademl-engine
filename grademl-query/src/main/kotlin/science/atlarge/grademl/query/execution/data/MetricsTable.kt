@@ -3,7 +3,7 @@ package science.atlarge.grademl.query.execution.data
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.core.models.resource.Metric
 import science.atlarge.grademl.query.language.Type
-import science.atlarge.grademl.query.model.v2.*
+import science.atlarge.grademl.query.model.*
 
 class MetricsTable(
     private val gradeMLJob: GradeMLJob

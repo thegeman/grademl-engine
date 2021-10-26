@@ -6,8 +6,8 @@ import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.execution.operators.QueryOperator
 import science.atlarge.grademl.query.execution.operators.SortedTemporalJoinOperator
 import science.atlarge.grademl.query.language.ColumnLiteral
-import science.atlarge.grademl.query.model.v2.Columns
-import science.atlarge.grademl.query.model.v2.TableSchema
+import science.atlarge.grademl.query.model.Columns
+import science.atlarge.grademl.query.model.TableSchema
 
 class SortedTemporalJoinPlan(
     override val nodeId: Int,

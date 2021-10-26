@@ -1,8 +1,8 @@
 package science.atlarge.grademl.query.execution.util
 
 import science.atlarge.grademl.query.language.Type
-import science.atlarge.grademl.query.model.v2.Column
-import science.atlarge.grademl.query.model.v2.TableSchema
+import science.atlarge.grademl.query.model.Column
+import science.atlarge.grademl.query.model.TableSchema
 
 class ConcreteRowBuilder private constructor() {
 

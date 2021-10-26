@@ -1,7 +1,7 @@
 package science.atlarge.grademl.query.execution
 
 import science.atlarge.grademl.query.language.Type
-import science.atlarge.grademl.query.model.v2.TimeSeriesIterator
+import science.atlarge.grademl.query.model.TimeSeriesIterator
 
 object TablePrinter {
 

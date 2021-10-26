@@ -7,7 +7,7 @@ import science.atlarge.grademl.query.execution.IntTypes.TYPE_STRING
 import science.atlarge.grademl.query.execution.IntTypes.toInt
 import science.atlarge.grademl.query.execution.TimeSeriesCache
 import science.atlarge.grademl.query.language.Type
-import science.atlarge.grademl.query.model.v2.*
+import science.atlarge.grademl.query.model.*
 
 class SortedTemporalJoinOperator(
     private val leftInput: QueryOperator,

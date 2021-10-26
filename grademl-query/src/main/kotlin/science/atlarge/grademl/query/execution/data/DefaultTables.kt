@@ -1,7 +1,7 @@
 package science.atlarge.grademl.query.execution.data
 
 import science.atlarge.grademl.core.GradeMLJob
-import science.atlarge.grademl.query.model.v2.Table
+import science.atlarge.grademl.query.model.Table
 
 object DefaultTables {
 

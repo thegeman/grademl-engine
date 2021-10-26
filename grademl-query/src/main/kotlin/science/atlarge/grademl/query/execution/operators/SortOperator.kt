@@ -2,7 +2,7 @@ package science.atlarge.grademl.query.execution.operators
 
 import science.atlarge.grademl.query.execution.IndexedSortColumn
 import science.atlarge.grademl.query.language.Type
-import science.atlarge.grademl.query.model.v2.*
+import science.atlarge.grademl.query.model.*
 
 class SortOperator(
     private val input: QueryOperator,

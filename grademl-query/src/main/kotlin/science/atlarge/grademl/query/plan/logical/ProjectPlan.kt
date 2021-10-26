@@ -4,8 +4,8 @@ import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.ASTUtils
 import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.NamedExpression
-import science.atlarge.grademl.query.model.v2.Column
-import science.atlarge.grademl.query.model.v2.TableSchema
+import science.atlarge.grademl.query.model.Column
+import science.atlarge.grademl.query.model.TableSchema
 
 class ProjectPlan(
     override val nodeId: Int,

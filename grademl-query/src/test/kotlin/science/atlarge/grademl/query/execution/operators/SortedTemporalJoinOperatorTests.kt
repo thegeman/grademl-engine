@@ -6,9 +6,9 @@ import science.atlarge.grademl.query.execution.util.ConcreteRow
 import science.atlarge.grademl.query.execution.util.ConcreteRowBuilder
 import science.atlarge.grademl.query.execution.util.toConcreteRows
 import science.atlarge.grademl.query.execution.util.toTimeSeriesIterator
-import science.atlarge.grademl.query.model.v2.Columns
-import science.atlarge.grademl.query.model.v2.Table
-import science.atlarge.grademl.query.model.v2.TableSchema
+import science.atlarge.grademl.query.model.Columns
+import science.atlarge.grademl.query.model.Table
+import science.atlarge.grademl.query.model.TableSchema
 import kotlin.test.Test
 
 class SortedTemporalJoinOperatorTests {

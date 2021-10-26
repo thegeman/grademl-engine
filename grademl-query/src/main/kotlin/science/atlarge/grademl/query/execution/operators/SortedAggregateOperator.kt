@@ -4,7 +4,7 @@ import science.atlarge.grademl.query.execution.*
 import science.atlarge.grademl.query.execution.IntTypes.toInt
 import science.atlarge.grademl.query.language.FunctionDefinition
 import science.atlarge.grademl.query.language.Type
-import science.atlarge.grademl.query.model.v2.*
+import science.atlarge.grademl.query.model.*
 
 class SortedAggregateOperator(
     private val input: QueryOperator,
