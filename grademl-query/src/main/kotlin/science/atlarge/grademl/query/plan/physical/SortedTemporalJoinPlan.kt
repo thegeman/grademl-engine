@@ -34,10 +34,10 @@ class SortedTemporalJoinPlan(
     }.toSet()
 
     private val leftOutputColumns = leftInput.schema.columns.filter {
-        it.identifier !in Columns.RESERVED_COLUMN_NAMES && it.identifier !in leftDropColumns
+        !it.isReserved && it.identifier !in leftDropColumns
     }
     private val rightOutputColumns = rightInput.schema.columns.filter {
-        it.identifier !in Columns.RESERVED_COLUMN_NAMES && it.identifier !in rightDropColumns
+        !it.isReserved && it.identifier !in rightDropColumns
     }
 
     override val schema = TableSchema(

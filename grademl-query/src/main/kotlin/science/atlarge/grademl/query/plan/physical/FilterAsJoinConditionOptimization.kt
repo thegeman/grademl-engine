@@ -6,7 +6,6 @@ import science.atlarge.grademl.query.analysis.FilterConditionSeparation
 import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.Column
-import science.atlarge.grademl.query.model.Columns
 import science.atlarge.grademl.query.model.TableSchema
 
 object FilterAsJoinConditionOptimization : OptimizationStrategy, PhysicalQueryPlanRewriter {
@@ -56,10 +55,8 @@ object FilterAsJoinConditionOptimization : OptimizationStrategy, PhysicalQueryPl
         // Find equality checks in the filter condition that compare one input to the other
         val (leftRightEqualities, remainingFilter) = extractLeftRightEqualityTerms(
             filterCondition,
-            sortedTemporalJoinPlan.leftInput.schema.columns.map { it.identifier }.toSet() -
-                    Columns.RESERVED_COLUMN_NAMES,
-            sortedTemporalJoinPlan.rightInput.schema.columns.map { it.identifier }.toSet() -
-                    Columns.RESERVED_COLUMN_NAMES
+            sortedTemporalJoinPlan.leftInput.schema.columns.filter { !it.isReserved }.map { it.identifier }.toSet(),
+            sortedTemporalJoinPlan.rightInput.schema.columns.filter { !it.isReserved }.map { it.identifier }.toSet()
         )
         // Return early if there are no equalities that can be used as join conditions
         if (leftRightEqualities.isEmpty()) return null

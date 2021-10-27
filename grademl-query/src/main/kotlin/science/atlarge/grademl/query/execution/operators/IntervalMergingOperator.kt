@@ -26,7 +26,7 @@ class IntervalMergingOperator(
         private val timeSeriesIterator = input.execute()
         private val columnTypes = input.schema.columns.map { it.type.toInt() }.toIntArray()
         private val nonReservedValueColumns = input.schema.columns.mapIndexedNotNull { index, column ->
-            if (!column.isKey && column.identifier !in Columns.RESERVED_COLUMN_NAMES) index else null
+            if (!column.isKey && !column.isReserved) index else null
         }
 
         override val schema: TableSchema

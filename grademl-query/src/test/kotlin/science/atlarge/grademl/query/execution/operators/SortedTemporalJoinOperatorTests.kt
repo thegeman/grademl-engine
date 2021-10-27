@@ -140,12 +140,8 @@ class SortedTemporalJoinOperatorTests {
         val newSchema = TableSchema(
             Columns.RESERVED_COLUMNS + leftInputData.schema.columns + rightInputData.schema.columns
         )
-        val leftOutputColumns = leftInputData.schema.columns.filter {
-            it.identifier !in Columns.RESERVED_COLUMN_NAMES
-        }
-        val rightOutputColumns = rightInputData.schema.columns.filter {
-            it.identifier !in Columns.RESERVED_COLUMN_NAMES
-        }
+        val leftOutputColumns = leftInputData.schema.columns.filter { !it.isReserved }
+        val rightOutputColumns = rightInputData.schema.columns.filter { !it.isReserved }
         return SortedTemporalJoinOperator(
             leftTableScan,
             rightTableScan,

@@ -7,7 +7,6 @@ import science.atlarge.grademl.query.language.BinaryExpression
 import science.atlarge.grademl.query.language.BinaryOp
 import science.atlarge.grademl.query.language.ColumnLiteral
 import science.atlarge.grademl.query.language.Expression
-import science.atlarge.grademl.query.model.Columns
 
 object PushDownFilterOptimization : OptimizationStrategy, PhysicalQueryPlanRewriter {
 
@@ -157,10 +156,10 @@ object PushDownFilterOptimization : OptimizationStrategy, PhysicalQueryPlanRewri
     ): PhysicalQueryPlan? {
         // Split the filter condition into a left-only condition, a right-only condition, and a joint condition
         val leftColumns = sortedTemporalJoinPlan.schema.columns.withIndex()
-            .filter { it.value.identifier !in Columns.RESERVED_COLUMN_NAMES }
+            .filter { !it.value.isReserved }
             .filter { sortedTemporalJoinPlan.leftInput.schema.column(it.value.identifier) != null }
         val rightColumns = sortedTemporalJoinPlan.schema.columns.withIndex()
-            .filter { it.value.identifier !in Columns.RESERVED_COLUMN_NAMES }
+            .filter { !it.value.isReserved }
             .filter { sortedTemporalJoinPlan.rightInput.schema.column(it.value.identifier) != null }
         val separatedFilter = FilterConditionSeparation.splitFilterConditionByColumns(
             filterCondition, listOf(leftColumns.map { it.index }.toSet(), rightColumns.map { it.index }.toSet())
