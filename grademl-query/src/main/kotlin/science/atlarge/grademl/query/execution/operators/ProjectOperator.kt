@@ -12,14 +12,15 @@ class ProjectOperator(
 ) : QueryOperator {
 
     override fun execute(): TimeSeriesIterator =
-        ProjectTimeSeriesIterator(input.execute(), columnExpressions)
+        ProjectTimeSeriesIterator(input.execute(), schema, columnExpressions)
 
 }
 
 private class ProjectTimeSeriesIterator(
     private val input: TimeSeriesIterator,
+    schema: TableSchema,
     columnExpressions: List<PhysicalExpression>
-) : AbstractTimeSeriesIterator<ProjectRowIterator>(input.schema) {
+) : AbstractTimeSeriesIterator<ProjectRowIterator>(schema) {
 
     private val booleanColumnExpressions = Array(columnExpressions.size) { i ->
         columnExpressions[i] as? BooleanPhysicalExpression
