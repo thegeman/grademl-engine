@@ -18,7 +18,7 @@ object PushDownProjectOptimization : OptimizationStrategy, PhysicalQueryPlanRewr
         val shouldPushDown = projectPlan.namedColumnExpressions.any {
             it.expr !is ColumnLiteral
         }
-        if (!shouldPushDown) return null
+        if (!shouldPushDown) return super.visit(projectPlan)
         // Attempt to push down projections
         return when (projectPlan.input) {
             is FilterPlan -> pushPastFilter(projectPlan.namedColumnExpressions, projectPlan.input)
@@ -26,8 +26,8 @@ object PushDownProjectOptimization : OptimizationStrategy, PhysicalQueryPlanRewr
                 projectPlan.namedColumnExpressions, projectPlan.input
             )
             is SortPlan -> pushPastSort(projectPlan.namedColumnExpressions, projectPlan.input)
-            else -> super.visit(projectPlan)
-        }
+            else -> null
+        } ?: super.visit(projectPlan)
     }
 
     private fun pushPastFilter(projections: List<NamedExpression>, filterPlan: FilterPlan): PhysicalQueryPlan? {
