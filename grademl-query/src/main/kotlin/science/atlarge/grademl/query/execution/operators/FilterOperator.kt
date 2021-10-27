@@ -1,7 +1,11 @@
 package science.atlarge.grademl.query.execution.operators
 
+import science.atlarge.grademl.query.execution.AbstractRowIterator
+import science.atlarge.grademl.query.execution.AbstractTimeSeriesIterator
 import science.atlarge.grademl.query.execution.BooleanPhysicalExpression
-import science.atlarge.grademl.query.model.*
+import science.atlarge.grademl.query.model.RowIterator
+import science.atlarge.grademl.query.model.TableSchema
+import science.atlarge.grademl.query.model.TimeSeriesIterator
 
 class FilterOperator(
     private val input: QueryOperator,
@@ -21,81 +25,63 @@ private class FilterTimeSeriesIterator(
     private val input: TimeSeriesIterator,
     private val timeSeriesCondition: BooleanPhysicalExpression,
     private val rowCondition: BooleanPhysicalExpression
-) : TimeSeriesIterator {
+) : AbstractTimeSeriesIterator<FilterRowIterator>(input.schema) {
 
-    private var peekedAtTimeSeries = false
+    private var peekedInputRowIterator: RowIterator? = null
 
-    override val schema: TableSchema
-        get() = input.schema
-    override val currentTimeSeries
-        get() = timeSeriesWrapper
+    override fun getBoolean(columnIndex: Int) = input.currentTimeSeries.getBoolean(columnIndex)
+    override fun getNumeric(columnIndex: Int) = input.currentTimeSeries.getNumeric(columnIndex)
+    override fun getString(columnIndex: Int) = input.currentTimeSeries.getString(columnIndex)
 
-    private val timeSeriesWrapper = object : TimeSeries {
-        override val schema: TableSchema
-            get() = input.schema
+    override fun createRowIterator() = FilterRowIterator(schema, rowCondition)
 
-        override fun getBoolean(columnIndex: Int) = input.currentTimeSeries.getBoolean(columnIndex)
-        override fun getNumeric(columnIndex: Int) = input.currentTimeSeries.getNumeric(columnIndex)
-        override fun getString(columnIndex: Int) = input.currentTimeSeries.getString(columnIndex)
-
-        private var cachedRowIterator: FilterRowIterator? = null
-
-        override fun rowIterator(): RowIterator {
-            if (cachedRowIterator == null) return input.currentTimeSeries.rowIterator()
-            val result = cachedRowIterator!!
-            cachedRowIterator = null
-            return result
-        }
-
-        fun isNotEmpty(): Boolean {
-            if (cachedRowIterator == null) {
-                cachedRowIterator = FilterRowIterator(input.currentTimeSeries.rowIterator(), rowCondition)
-            }
-            return cachedRowIterator!!.isNotEmpty()
+    override fun resetRowIteratorWithCurrentTimeSeries(rowIterator: FilterRowIterator) {
+        if (peekedInputRowIterator != null) {
+            rowIterator.input = peekedInputRowIterator!!
+            rowIterator.peekedAtInput = true
+            peekedInputRowIterator = null
+        } else {
+            rowIterator.input = input.currentTimeSeries.rowIterator()
+            rowIterator.peekedAtInput = false
         }
     }
 
-    override fun loadNext(): Boolean {
-        // If a matching time series has already been loaded (by isNotEmpty), return it
-        if (peekedAtTimeSeries) {
-            peekedAtTimeSeries = false
-            return true
-        }
+    override fun internalLoadNext(): Boolean {
         // Find a time series matching the filter condition
         while (input.loadNext()) {
             if (timeSeriesCondition.evaluateAsBoolean(input.currentTimeSeries)) {
                 // Check if the time series has any matching rows
-                if (timeSeriesWrapper.isNotEmpty()) return true
+                val rowIterator = input.currentTimeSeries.rowIterator()
+                while (rowIterator.loadNext()) {
+                    // If any row matches the filter condition, return this time series
+                    if (rowCondition.evaluateAsBoolean(rowIterator.currentRow)) {
+                        peekedInputRowIterator = rowIterator
+                        return true
+                    }
+                }
             }
         }
         return false
     }
 
-    fun isNotEmpty(): Boolean {
-        if (peekedAtTimeSeries) return true
-        if (!loadNext()) return false
-        peekedAtTimeSeries = true
-        return true
-    }
-
 }
 
 private class FilterRowIterator(
-    private val input: RowIterator,
+    schema: TableSchema,
     private val rowCondition: BooleanPhysicalExpression
-) : RowIterator {
+) : AbstractRowIterator(schema) {
 
-    private var peekedAtRow = false
+    lateinit var input: RowIterator
+    var peekedAtInput = false
 
-    override val schema: TableSchema
-        get() = input.schema
-    override val currentRow: Row
-        get() = input.currentRow
+    override fun getBoolean(columnIndex: Int) = input.currentRow.getBoolean(columnIndex)
+    override fun getNumeric(columnIndex: Int) = input.currentRow.getNumeric(columnIndex)
+    override fun getString(columnIndex: Int) = input.currentRow.getString(columnIndex)
 
     override fun loadNext(): Boolean {
-        // If a matching row has already been loaded (by isNotEmpty), return it
-        if (peekedAtRow) {
-            peekedAtRow = false
+        // If a matching row has already been loaded (to check if any matching rows exist), return it
+        if (peekedAtInput) {
+            peekedAtInput = false
             return true
         }
         // Find a row matching the filter condition
@@ -103,13 +89,6 @@ private class FilterRowIterator(
             if (rowCondition.evaluateAsBoolean(input.currentRow)) return true
         }
         return false
-    }
-
-    fun isNotEmpty(): Boolean {
-        if (peekedAtRow) return true
-        if (!loadNext()) return false
-        peekedAtRow = true
-        return true
     }
 
 }
