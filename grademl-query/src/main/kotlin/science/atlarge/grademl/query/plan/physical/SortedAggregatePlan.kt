@@ -3,6 +3,7 @@ package science.atlarge.grademl.query.plan.physical
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.ASTUtils
 import science.atlarge.grademl.query.analysis.AggregateFunctionDecomposition
+import science.atlarge.grademl.query.execution.QueryExecutionStatistics
 import science.atlarge.grademl.query.execution.operators.QueryOperator
 import science.atlarge.grademl.query.execution.operators.SortedAggregateOperator
 import science.atlarge.grademl.query.execution.toPhysicalExpression
@@ -59,7 +60,7 @@ class SortedAggregatePlan(
         )
         aggregateDecomposition.aggregateFunctions
 
-        return SortedAggregateOperator(
+        lastOperator = SortedAggregateOperator(
             input.toQueryOperator(),
             schema,
             groupByColumnIndices,
@@ -70,6 +71,13 @@ class SortedAggregatePlan(
             aggregateDecomposition.aggregateColumns,
             aggregateDecomposition.rewrittenExpressions.map(Expression::toPhysicalExpression)
         )
+        return lastOperator
+    }
+
+    private lateinit var lastOperator: SortedAggregateOperator
+
+    override fun collectLastExecutionStatisticsPerOperator(): Map<String, QueryExecutionStatistics> {
+        return mapOf("SortedAggregateOperator" to lastOperator.collectExecutionStatistics())
     }
 
     override fun <T> accept(visitor: PhysicalQueryPlanVisitor<T>): T {

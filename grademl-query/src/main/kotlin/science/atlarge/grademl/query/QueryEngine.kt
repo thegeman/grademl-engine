@@ -9,6 +9,7 @@ import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.plan.ExplainLogicalPlan
 import science.atlarge.grademl.query.plan.ExplainPhysicalPlan
 import science.atlarge.grademl.query.plan.QueryPlanner
+import science.atlarge.grademl.query.plan.StatisticsPhysicalPlan
 
 class QueryEngine(
     gradeMLJob: GradeMLJob
@@ -109,6 +110,26 @@ class QueryEngine(
                 val optimizedQueryPlan = QueryPlanner.optimizePhysicalPlan(physicalQueryPlan)
                 println("OPTIMIZED PHYSICAL QUERY PLAN:")
                 println(ExplainPhysicalPlan.explain(optimizedQueryPlan))
+                println()
+            }
+            is StatisticsStatement -> {
+                val logicalPlan = QueryPlanner.createLogicalPlanFromSelect(statement.selectStatement, tables)
+                val physicalQueryPlan = QueryPlanner.convertLogicalToPhysicalPlan(logicalPlan)
+                val optimizedQueryPlan = QueryPlanner.optimizePhysicalPlan(physicalQueryPlan)
+                // Read as many rows as needed for the select statement
+                var rowsRead = 0L
+                val maxRows = statement.selectStatement.limit?.limitFirst?.toLong() ?: Long.MAX_VALUE
+                val tsIterator = optimizedQueryPlan.toQueryOperator().execute()
+                while (rowsRead < maxRows && tsIterator.loadNext()) {
+                    val rowIterator = tsIterator.currentTimeSeries.rowIterator()
+                    while (rowsRead < maxRows && rowIterator.loadNext()) {
+                        rowsRead++
+                    }
+                }
+                // Print execution statistics
+                println()
+                println("EXECUTION STATISTICS PER PHYSICAL QUERY OPERATOR:")
+                println(StatisticsPhysicalPlan.collectStatistics(optimizedQueryPlan))
                 println()
             }
         }

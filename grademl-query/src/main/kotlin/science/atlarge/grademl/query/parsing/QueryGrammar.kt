@@ -35,6 +35,7 @@ object QueryGrammar : Grammar<List<Statement>>() {
     private val limit by caseInsensitiveRegexToken("limit")
     private val order by caseInsensitiveRegexToken("order")
     private val select by caseInsensitiveRegexToken("select")
+    private val statistics by caseInsensitiveRegexToken("statistics")
     private val table by caseInsensitiveRegexToken("table")
     private val temporal by caseInsensitiveRegexToken("temporal")
     private val where by caseInsensitiveRegexToken("where")
@@ -162,9 +163,11 @@ object QueryGrammar : Grammar<List<Statement>>() {
 
     private val explainStatement by -explain * selectStatement map { ExplainStatement(it) }
 
+    private val statisticsStatement by -statistics * selectStatement map { StatisticsStatement(it) }
+
     // Putting it all together
     private val topLevelStatement by selectStatement or createTableStatement or deleteTableStatement or
-            cacheTableStatement or dropTableFromCacheStatement or explainStatement
+            cacheTableStatement or dropTableFromCacheStatement or explainStatement or statisticsStatement
 
     override val rootParser by oneOrMore((topLevelStatement) * -semicolon)
 

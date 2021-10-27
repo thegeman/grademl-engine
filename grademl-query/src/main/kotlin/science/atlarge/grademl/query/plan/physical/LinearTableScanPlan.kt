@@ -3,6 +3,7 @@ package science.atlarge.grademl.query.plan.physical
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.ASTUtils
 import science.atlarge.grademl.query.execution.FilterableTable
+import science.atlarge.grademl.query.execution.QueryExecutionStatistics
 import science.atlarge.grademl.query.execution.operators.LinearTableScanOperator
 import science.atlarge.grademl.query.execution.operators.QueryOperator
 import science.atlarge.grademl.query.language.Expression
@@ -41,7 +42,14 @@ class LinearTableScanPlan(
         } else {
             table
         }
-        return LinearTableScanOperator(filteredTable)
+        lastOperator = LinearTableScanOperator(filteredTable)
+        return lastOperator
+    }
+
+    private lateinit var lastOperator: LinearTableScanOperator
+
+    override fun collectLastExecutionStatisticsPerOperator(): Map<String, QueryExecutionStatistics> {
+        return mapOf("LinearTableScanOperator" to lastOperator.collectExecutionStatistics())
     }
 
     override fun <T> accept(visitor: PhysicalQueryPlanVisitor<T>): T {

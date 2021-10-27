@@ -77,3 +77,9 @@ class ExplainStatement(val selectStatement: SelectStatement) : Statement {
         visitor.visit(this)
     }
 }
+
+class StatisticsStatement(val selectStatement: SelectStatement) : Statement {
+    override fun accept(visitor: ASTVisitor) {
+        visitor.visit(this)
+    }
+}

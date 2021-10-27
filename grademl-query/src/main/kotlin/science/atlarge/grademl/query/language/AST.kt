@@ -22,6 +22,7 @@ interface ASTVisitor {
     fun visit(s: CacheTableStatement)
     fun visit(s: DropTableFromCacheStatement)
     fun visit(s: ExplainStatement)
+    fun visit(s: StatisticsStatement)
 
     // Clauses
     fun visit(c: FromClause)
@@ -34,24 +35,18 @@ interface ASTVisitor {
 
 interface ExpressionVisitor : ASTVisitor {
     // Provide default implementations for unsupported statements and clauses
-    override fun visit(s: SelectStatement) { throw UnsupportedOperationException() }
-    override fun visit(s: CreateTableStatement) { throw UnsupportedOperationException() }
-    override fun visit(s: DeleteTableStatement) { throw UnsupportedOperationException() }
-    override fun visit(s: CacheTableStatement) { throw UnsupportedOperationException() }
-    override fun visit(s: DropTableFromCacheStatement) {
-        throw UnsupportedOperationException()
-    }
+    override fun visit(s: SelectStatement) = throw UnsupportedOperationException()
+    override fun visit(s: CreateTableStatement) = throw UnsupportedOperationException()
+    override fun visit(s: DeleteTableStatement) = throw UnsupportedOperationException()
+    override fun visit(s: CacheTableStatement) = throw UnsupportedOperationException()
+    override fun visit(s: DropTableFromCacheStatement) = throw UnsupportedOperationException()
+    override fun visit(s: ExplainStatement) = throw UnsupportedOperationException()
+    override fun visit(s: StatisticsStatement) = throw UnsupportedOperationException()
 
-    override fun visit(s: ExplainStatement) {
-        throw UnsupportedOperationException()
-    }
-
-    override fun visit(c: FromClause) {
-        throw UnsupportedOperationException()
-    }
-    override fun visit(c: WhereClause) { throw UnsupportedOperationException() }
-    override fun visit(c: GroupByClause) { throw UnsupportedOperationException() }
-    override fun visit(c: SelectClause) { throw UnsupportedOperationException() }
-    override fun visit(c: OrderByClause) { throw UnsupportedOperationException() }
-    override fun visit(c: LimitClause) { throw UnsupportedOperationException() }
+    override fun visit(c: FromClause) = throw UnsupportedOperationException()
+    override fun visit(c: WhereClause) = throw UnsupportedOperationException()
+    override fun visit(c: GroupByClause) = throw UnsupportedOperationException()
+    override fun visit(c: SelectClause) = throw UnsupportedOperationException()
+    override fun visit(c: OrderByClause) = throw UnsupportedOperationException()
+    override fun visit(c: LimitClause) = throw UnsupportedOperationException()
 }

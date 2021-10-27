@@ -2,6 +2,7 @@ package science.atlarge.grademl.query.plan.physical
 
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.execution.IndexedSortColumn
+import science.atlarge.grademl.query.execution.QueryExecutionStatistics
 import science.atlarge.grademl.query.execution.SortColumn
 import science.atlarge.grademl.query.execution.operators.QueryOperator
 import science.atlarge.grademl.query.execution.operators.SortOperator
@@ -42,11 +43,18 @@ class SortPlan(
     }
 
     override fun toQueryOperator(): QueryOperator {
-        return SortOperator(
+        lastOperator = SortOperator(
             input.toQueryOperator(), schema,
             preSortedColumns = emptyList(),
             remainingSortColumns = sortByColumns.map { IndexedSortColumn(it.column.columnIndex, it.ascending) }
         )
+        return lastOperator
+    }
+
+    private lateinit var lastOperator: SortOperator
+
+    override fun collectLastExecutionStatisticsPerOperator(): Map<String, QueryExecutionStatistics> {
+        return mapOf("SortOperator" to lastOperator.collectExecutionStatistics())
     }
 
     override fun <T> accept(visitor: PhysicalQueryPlanVisitor<T>): T {

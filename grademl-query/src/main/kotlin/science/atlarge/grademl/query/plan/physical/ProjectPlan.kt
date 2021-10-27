@@ -2,6 +2,7 @@ package science.atlarge.grademl.query.plan.physical
 
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.ASTUtils
+import science.atlarge.grademl.query.execution.QueryExecutionStatistics
 import science.atlarge.grademl.query.execution.operators.ProjectOperator
 import science.atlarge.grademl.query.execution.operators.QueryOperator
 import science.atlarge.grademl.query.execution.toPhysicalExpression
@@ -45,11 +46,18 @@ class ProjectPlan(
         get() = listOf(input)
 
     override fun toQueryOperator(): QueryOperator {
-        return ProjectOperator(
+        lastOperator = ProjectOperator(
             input.toQueryOperator(),
             schema,
             columnExpressions.map { it.toPhysicalExpression() }
         )
+        return lastOperator
+    }
+
+    private lateinit var lastOperator: ProjectOperator
+
+    override fun collectLastExecutionStatisticsPerOperator(): Map<String, QueryExecutionStatistics> {
+        return mapOf("ProjectOperator" to lastOperator.collectExecutionStatistics())
     }
 
     override fun <T> accept(visitor: PhysicalQueryPlanVisitor<T>): T {

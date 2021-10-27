@@ -3,6 +3,7 @@ package science.atlarge.grademl.query.plan.physical
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.FilterConditionSeparation
 import science.atlarge.grademl.query.execution.BooleanPhysicalExpression
+import science.atlarge.grademl.query.execution.QueryExecutionStatistics
 import science.atlarge.grademl.query.execution.operators.FilterOperator
 import science.atlarge.grademl.query.execution.operators.QueryOperator
 import science.atlarge.grademl.query.execution.toPhysicalExpression
@@ -48,11 +49,18 @@ class FilterPlan(
         } else {
             BooleanPhysicalExpression.ALWAYS_TRUE
         }
-        return FilterOperator(
+        lastOperator = FilterOperator(
             input.toQueryOperator(),
             physicalTimeSeriesCondition,
             physicalRowCondition
         )
+        return lastOperator
+    }
+
+    private lateinit var lastOperator: FilterOperator
+
+    override fun collectLastExecutionStatisticsPerOperator(): Map<String, QueryExecutionStatistics> {
+        return mapOf("FilterOperator" to lastOperator.collectExecutionStatistics())
     }
 
     override fun <T> accept(visitor: PhysicalQueryPlanVisitor<T>): T {
