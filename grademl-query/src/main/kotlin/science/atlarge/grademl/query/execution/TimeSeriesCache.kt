@@ -38,6 +38,7 @@ class TimeSeriesCache(
     private var maxCachedRowCount = INITIAL_CACHE_SIZE
 
     // Track how many time series are cached and which rows map to which time series
+    private var timeSeriesIdPerRow = IntArray(INITIAL_CACHE_SIZE)
     private var rowsPerTimeSeries = IntArray(INITIAL_CACHE_SIZE)
     private var cachedTimeSeriesCount = 0
     private var maxCachedTimeSeriesCount = INITIAL_CACHE_SIZE
@@ -46,6 +47,24 @@ class TimeSeriesCache(
         get() = cachedTimeSeriesCount
     val numCachedRows: Int
         get() = cachedRowCount
+
+    // Random access of rows and time series
+    fun timeSeriesIdOf(rowId: Int) = timeSeriesIdPerRow[rowId]
+
+    fun getBoolean(columnId: Int, rowId: Int): Boolean {
+        return if (isKeyColumn[columnId]) cachedBooleanValues[columnId][timeSeriesIdOf(rowId)]
+        else cachedBooleanValues[columnId][rowId]
+    }
+
+    fun getNumeric(columnId: Int, rowId: Int): Double {
+        return if (isKeyColumn[columnId]) cachedNumericValues[columnId][timeSeriesIdOf(rowId)]
+        else cachedNumericValues[columnId][rowId]
+    }
+
+    fun getString(columnId: Int, rowId: Int): String {
+        return if (isKeyColumn[columnId]) cachedStringValues[columnId][timeSeriesIdOf(rowId)]!!
+        else cachedStringValues[columnId][rowId]!!
+    }
 
     fun addTimeSeries(timeSeries: TimeSeries) {
         // Prepare the time series-level cache
@@ -64,12 +83,14 @@ class TimeSeriesCache(
         var addedRowCount = 0
         var lCachedRowCount = cachedRowCount
         var lMaxCachedRowCount = maxCachedRowCount
+        var lTimeSeriesIdPerRow = timeSeriesIdPerRow
         while (rowIterator.loadNext()) {
             val row = rowIterator.currentRow
             // Expand the row cache if needed
             if (lCachedRowCount == lMaxCachedRowCount) {
                 expandRowCache()
                 lMaxCachedRowCount = maxCachedRowCount
+                lTimeSeriesIdPerRow = timeSeriesIdPerRow
             }
             // Add row values to the cache
             for (c in valueColumns) {
@@ -79,6 +100,8 @@ class TimeSeriesCache(
                     IntTypes.TYPE_STRING -> cachedStringValues[c][lCachedRowCount] = row.getString(c)
                 }
             }
+            // Set time series ID
+            lTimeSeriesIdPerRow[lCachedRowCount] = timeSeriesId
             // Increment row counters
             addedRowCount++
             lCachedRowCount++
@@ -177,6 +200,7 @@ class TimeSeriesCache(
         Arrays.fill(cachedBooleanValues, booleanArrayOf())
         Arrays.fill(cachedNumericValues, doubleArrayOf())
         Arrays.fill(cachedStringValues, emptyArray<String?>())
+        timeSeriesIdPerRow = intArrayOf()
         rowsPerTimeSeries = intArrayOf()
     }
 
@@ -208,6 +232,9 @@ class TimeSeriesCache(
                 IntTypes.TYPE_STRING -> cachedStringValues[c] = cachedStringValues[c].copyOf(newSize)
             }
         }
+
+        // Expand time series ID map
+        timeSeriesIdPerRow = timeSeriesIdPerRow.copyOf(newSize)
 
         maxCachedRowCount = newSize
     }
