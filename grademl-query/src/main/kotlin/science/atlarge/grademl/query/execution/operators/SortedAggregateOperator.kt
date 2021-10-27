@@ -50,7 +50,7 @@ class SortedAggregateOperator(
 
 private class SortedAggregateTimeSeriesIterator(
     private val input: TimeSeriesIterator,
-    override val schema: TableSchema,
+    schema: TableSchema,
     private val startTimeColumn: Int,
     private val endTimeColumn: Int,
     private val groupByColumns: IntArray,
@@ -59,7 +59,8 @@ private class SortedAggregateTimeSeriesIterator(
     private val aggregatorTypes: IntArray,
     private val aggregateColumns: List<Column>,
     private val projections: Array<PhysicalExpression>
-) : TimeSeriesIterator {
+) : AbstractTimeSeriesIterator<SortedAggregateRowIterator>(schema) {
+
     // Input types
     private val inputColumnTypes = input.schema.columns.map { it.type.toInt() }.toIntArray()
 
@@ -68,12 +69,17 @@ private class SortedAggregateTimeSeriesIterator(
     private val addedColumnCount = aggregators.size
     private val cacheColumnCount = inputColumnCount + addedColumnCount
 
+    // Cast projections to specific types
+    private val booleanProjections = Array(projections.size) { projections[it] as? BooleanPhysicalExpression }
+    private val numericProjections = Array(projections.size) { projections[it] as? NumericPhysicalExpression }
+    private val stringProjections = Array(projections.size) { projections[it] as? StringPhysicalExpression }
+
     // Store values of first row in group and of completed aggregations for final projections
     private val rowBooleanValues = BooleanArray(cacheColumnCount)
     private val rowNumericValues = DoubleArray(cacheColumnCount)
     private val rowStringValues = arrayOfNulls<String?>(cacheColumnCount)
 
-    private val intermediateRowWrapper = object : Row {
+    private val aggregatedRow = object : Row {
         override val schema = TableSchema(input.schema.columns + aggregateColumns)
 
         override fun getBoolean(columnIndex: Int) = rowBooleanValues[columnIndex]
@@ -84,47 +90,22 @@ private class SortedAggregateTimeSeriesIterator(
     // Track if we have peeked at the next time series
     private var inputTimeSeriesValid = false
 
-    override val currentTimeSeries = object : TimeSeries {
-        override val schema: TableSchema
-            get() = this@SortedAggregateTimeSeriesIterator.schema
+    override fun getBoolean(columnIndex: Int) = booleanProjections[columnIndex]!!.evaluateAsBoolean(aggregatedRow)
+    override fun getNumeric(columnIndex: Int) = numericProjections[columnIndex]!!.evaluateAsNumeric(aggregatedRow)
+    override fun getString(columnIndex: Int) = stringProjections[columnIndex]!!.evaluateAsString(aggregatedRow)
 
-        override fun getBoolean(columnIndex: Int) =
-            (projections[columnIndex] as BooleanPhysicalExpression).evaluateAsBoolean(intermediateRowWrapper)
+    override fun createRowIterator() = SortedAggregateRowIterator(
+        schema,
+        booleanProjections,
+        numericProjections,
+        stringProjections
+    )
 
-        override fun getNumeric(columnIndex: Int) =
-            (projections[columnIndex] as NumericPhysicalExpression).evaluateAsNumeric(intermediateRowWrapper)
-
-        override fun getString(columnIndex: Int) =
-            (projections[columnIndex] as StringPhysicalExpression).evaluateAsString(intermediateRowWrapper)
-
-        override fun rowIterator() = object : RowIterator {
-            private var isValid = true
-
-            override val schema: TableSchema
-                get() = this@SortedAggregateTimeSeriesIterator.schema
-            override val currentRow = object : Row {
-                override val schema: TableSchema
-                    get() = this@SortedAggregateTimeSeriesIterator.schema
-
-                override fun getBoolean(columnIndex: Int) =
-                    (projections[columnIndex] as BooleanPhysicalExpression).evaluateAsBoolean(intermediateRowWrapper)
-
-                override fun getNumeric(columnIndex: Int) =
-                    (projections[columnIndex] as NumericPhysicalExpression).evaluateAsNumeric(intermediateRowWrapper)
-
-                override fun getString(columnIndex: Int) =
-                    (projections[columnIndex] as StringPhysicalExpression).evaluateAsString(intermediateRowWrapper)
-            }
-
-            override fun loadNext(): Boolean {
-                if (!isValid) return false
-                isValid = false
-                return true
-            }
-        }
+    override fun resetRowIteratorWithCurrentTimeSeries(rowIterator: SortedAggregateRowIterator) {
+        rowIterator.reset(aggregatedRow)
     }
 
-    override fun loadNext(): Boolean {
+    override fun internalLoadNext(): Boolean {
         while (true) {
             // Process the next group
             if (!inputTimeSeriesValid && !input.loadNext()) return false
@@ -206,5 +187,31 @@ private class SortedAggregateTimeSeriesIterator(
         return true
     }
 
+}
+
+private class SortedAggregateRowIterator(
+    schema: TableSchema,
+    private val booleanProjections: Array<BooleanPhysicalExpression?>,
+    private val numericProjections: Array<NumericPhysicalExpression?>,
+    private val stringProjections: Array<StringPhysicalExpression?>
+) : AbstractRowIterator(schema) {
+
+    private lateinit var aggregatedRow: Row
+    private var isValid = true
+
+    fun reset(aggregatedRow: Row) {
+        this.aggregatedRow = aggregatedRow
+        this.isValid = true
+    }
+
+    override fun getBoolean(columnIndex: Int) = booleanProjections[columnIndex]!!.evaluateAsBoolean(aggregatedRow)
+    override fun getNumeric(columnIndex: Int) = numericProjections[columnIndex]!!.evaluateAsNumeric(aggregatedRow)
+    override fun getString(columnIndex: Int) = stringProjections[columnIndex]!!.evaluateAsString(aggregatedRow)
+
+    override fun loadNext(): Boolean {
+        if (!isValid) return false
+        isValid = false
+        return true
+    }
 
 }
