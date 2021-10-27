@@ -1,5 +1,7 @@
 package science.atlarge.grademl.query.execution.operators
 
+import science.atlarge.grademl.query.execution.AbstractRowIterator
+import science.atlarge.grademl.query.execution.AbstractTimeSeriesIterator
 import science.atlarge.grademl.query.execution.IndexedSortColumn
 import science.atlarge.grademl.query.execution.IntTypes.TYPE_BOOLEAN
 import science.atlarge.grademl.query.execution.IntTypes.TYPE_NUMERIC
@@ -80,20 +82,20 @@ class SortedTemporalJoinOperator(
 }
 
 private class TemporalJoinTimeSeriesIterator(
-    override val schema: TableSchema,
+    schema: TableSchema,
     private val leftInput: TimeSeriesIterator,
     private val rightInput: TimeSeriesIterator,
     joinColumnTypes: Array<Type>,
     private val joinColumnAscending: BooleanArray,
     private val leftJoinColumnIndices: IntArray,
     private val rightJoinColumnIndices: IntArray,
-    leftColumnMap: IntArray,
-    leftStartColumn: Int,
-    leftEndColumn: Int,
-    rightColumnMap: IntArray,
-    rightStartColumn: Int,
-    rightEndColumn: Int
-) : TimeSeriesIterator {
+    private val leftColumnMap: IntArray,
+    private val leftStartColumn: Int,
+    private val leftEndColumn: Int,
+    private val rightColumnMap: IntArray,
+    private val rightStartColumn: Int,
+    private val rightEndColumn: Int
+) : AbstractTimeSeriesIterator<SortedTemporalJoinRowIterator>(schema) {
 
     // Store column types as integers for faster look-ups
     private val joinColumnTypes = joinColumnTypes.map { it.toInt() }.toIntArray()
@@ -110,6 +112,10 @@ private class TemporalJoinTimeSeriesIterator(
     // Track whether we have peeked at the input iterators
     private var leftInputValid = false
     private var rightInputValid = false
+
+    // Cache pointers to left and right input time series
+    private lateinit var leftTimeSeries: TimeSeries
+    private lateinit var rightTimeSeries: TimeSeries
 
     // Create a comparator that determines if two time series can be joined
     private val comparator = object : Comparator<TimeSeries> {
@@ -134,23 +140,56 @@ private class TemporalJoinTimeSeriesIterator(
         }
     }
 
-    private val temporalJoinTimeSeries = TemporalJoinTimeSeries(
+    // Pre-compute column offsets for left and right input
+    private val leftColumnOffset = Columns.INDEX_NOT_RESERVED
+    private val rightColumnOffset = leftColumnOffset + leftColumnMap.size
+
+    override fun getBoolean(columnIndex: Int): Boolean {
+        return when {
+            columnIndex >= rightColumnOffset -> rightTimeSeries.getBoolean(rightColumnMap[columnIndex - rightColumnOffset])
+            columnIndex >= leftColumnOffset -> leftTimeSeries.getBoolean(leftColumnMap[columnIndex - leftColumnOffset])
+            else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a key column")
+        }
+    }
+
+    override fun getNumeric(columnIndex: Int): Double {
+        return when {
+            columnIndex >= rightColumnOffset -> rightTimeSeries.getNumeric(rightColumnMap[columnIndex - rightColumnOffset])
+            columnIndex >= leftColumnOffset -> leftTimeSeries.getNumeric(leftColumnMap[columnIndex - leftColumnOffset])
+            else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a key column")
+        }
+    }
+
+    override fun getString(columnIndex: Int): String {
+        return when {
+            columnIndex >= rightColumnOffset -> rightTimeSeries.getString(rightColumnMap[columnIndex - rightColumnOffset])
+            columnIndex >= leftColumnOffset -> leftTimeSeries.getString(leftColumnMap[columnIndex - leftColumnOffset])
+            else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a key column")
+        }
+    }
+
+    override fun createRowIterator() = SortedTemporalJoinRowIterator(
         schema = schema,
         leftColumnMap = leftColumnMap,
         leftStartColumn = leftStartColumn,
         leftEndColumn = leftEndColumn,
+        leftColumnOffset = leftColumnOffset,
         rightColumnMap = rightColumnMap,
         rightStartColumn = rightStartColumn,
-        rightEndColumn = rightEndColumn
+        rightEndColumn = rightEndColumn,
+        rightColumnOffset = rightColumnOffset
     )
-    override val currentTimeSeries: TimeSeries
-        get() = temporalJoinTimeSeries
 
-    override fun loadNext(): Boolean {
+    override fun resetRowIteratorWithCurrentTimeSeries(rowIterator: SortedTemporalJoinRowIterator) {
+        rowIterator.reset(leftTimeSeries.rowIterator(), rightTimeSeries.rowIterator())
+    }
+
+    override fun internalLoadNext(): Boolean {
         // Join the next time series from the cache with the current right input
         if (leftCacheIterator != null && rightInputValid) {
             if (leftCacheIterator!!.loadNext()) {
-                temporalJoinTimeSeries.setInputs(leftCacheIterator!!.currentTimeSeries, rightInput.currentTimeSeries)
+                leftTimeSeries = leftCacheIterator!!.currentTimeSeries
+                rightTimeSeries = rightInput.currentTimeSeries
                 return true
             } else {
                 leftCacheIterator = null
@@ -162,7 +201,8 @@ private class TemporalJoinTimeSeriesIterator(
                 // Restart the left cache iterator to be joined with the new right input
                 leftCacheIterator = leftTimeSeriesCache.iterator()
                 if (!leftCacheIterator!!.loadNext()) throw IllegalStateException("Cache iterator is empty after filling the cache")
-                temporalJoinTimeSeries.setInputs(leftCacheIterator!!.currentTimeSeries, rightInput.currentTimeSeries)
+                leftTimeSeries = leftCacheIterator!!.currentTimeSeries
+                rightTimeSeries = rightInput.currentTimeSeries
                 return true
             } else if (!rightInputValid) {
                 // Abort if no right input was loaded
@@ -176,13 +216,13 @@ private class TemporalJoinTimeSeriesIterator(
         // Load all matching time series from the left input into the cache
         leftTimeSeriesCache.addTimeSeries(leftInput.currentTimeSeries)
         leftInputValid = false
-        val rightTimeSeries = rightInput.currentTimeSeries
+        val currentRightTimeSeries = rightInput.currentTimeSeries
         while (true) {
             // Read a time series from the left input
             if (!leftInput.loadNext()) break
             val leftTimeSeries = leftInput.currentTimeSeries
             // Check if it can be joined with the current right time series
-            if (comparator.compare(leftTimeSeries, rightTimeSeries) == 0) {
+            if (comparator.compare(leftTimeSeries, currentRightTimeSeries) == 0) {
                 leftTimeSeriesCache.addTimeSeries(leftTimeSeries)
             } else {
                 // If not, mark that we have peeked at the next left input and stop
@@ -195,14 +235,18 @@ private class TemporalJoinTimeSeriesIterator(
         // Cache the join column values from our right input
         for (c in rightJoinColumnIndices.indices) {
             when (joinColumnTypes[c]) {
-                TYPE_BOOLEAN -> cachedBooleanJoinColumnValue[c] = rightTimeSeries.getBoolean(rightJoinColumnIndices[c])
-                TYPE_NUMERIC -> cachedNumericJoinColumnValue[c] = rightTimeSeries.getNumeric(rightJoinColumnIndices[c])
-                TYPE_STRING -> cachedStringJoinColumnValue[c] = rightTimeSeries.getString(rightJoinColumnIndices[c])
+                TYPE_BOOLEAN -> cachedBooleanJoinColumnValue[c] =
+                    currentRightTimeSeries.getBoolean(rightJoinColumnIndices[c])
+                TYPE_NUMERIC -> cachedNumericJoinColumnValue[c] =
+                    currentRightTimeSeries.getNumeric(rightJoinColumnIndices[c])
+                TYPE_STRING -> cachedStringJoinColumnValue[c] =
+                    currentRightTimeSeries.getString(rightJoinColumnIndices[c])
             }
         }
         // Prepare the next joined time series
         if (!leftCacheIterator!!.loadNext()) throw IllegalStateException("Cache iterator is empty after filling the cache")
-        temporalJoinTimeSeries.setInputs(leftCacheIterator!!.currentTimeSeries, rightTimeSeries)
+        leftTimeSeries = leftCacheIterator!!.currentTimeSeries
+        rightTimeSeries = currentRightTimeSeries
         return true
     }
 
@@ -262,144 +306,113 @@ private class TemporalJoinTimeSeriesIterator(
 
 }
 
-private class TemporalJoinTimeSeries(
-    override val schema: TableSchema,
+private class SortedTemporalJoinRowIterator(
+    schema: TableSchema,
     private val leftColumnMap: IntArray,
     private val leftStartColumn: Int,
     private val leftEndColumn: Int,
+    private val leftColumnOffset: Int,
     private val rightColumnMap: IntArray,
     private val rightStartColumn: Int,
-    private val rightEndColumn: Int
-) : TimeSeries {
+    private val rightEndColumn: Int,
+    private val rightColumnOffset: Int
+) : AbstractRowIterator(schema) {
 
-    private val leftColumnOffset = Columns.INDEX_NOT_RESERVED
-    private val rightColumnOffset = leftColumnOffset + leftColumnMap.size
+    private lateinit var leftIterator: RowIterator
+    private lateinit var rightIterator: RowIterator
 
-    private lateinit var leftTimeSeries: TimeSeries
-    private lateinit var rightTimeSeries: TimeSeries
+    private var leftStart: Double = 0.0
+    private var leftEnd: Double = 0.0
+    private var rightStart: Double = 0.0
+    private var rightEnd: Double = 0.0
 
-    fun setInputs(leftTimeSeries: TimeSeries, rightTimeSeries: TimeSeries) {
-        this.leftTimeSeries = leftTimeSeries
-        this.rightTimeSeries = rightTimeSeries
+    private var leftRow: Row? = null
+    private var rightRow: Row? = null
+
+    fun reset(leftIterator: RowIterator, rightIterator: RowIterator) {
+        this.leftIterator = leftIterator
+        this.rightIterator = rightIterator
+        this.leftStart = 0.0
+        this.leftEnd = 0.0
+        this.rightStart = 0.0
+        this.rightEnd = 0.0
+        this.leftRow = null
+        this.rightRow = null
     }
 
     override fun getBoolean(columnIndex: Int): Boolean {
         return when {
-            columnIndex >= rightColumnOffset -> rightTimeSeries.getBoolean(rightColumnMap[columnIndex - rightColumnOffset])
-            columnIndex >= leftColumnOffset -> leftTimeSeries.getBoolean(leftColumnMap[columnIndex - leftColumnOffset])
-            else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a key column")
+            columnIndex >= rightColumnOffset ->
+                rightRow!!.getBoolean(rightColumnMap[columnIndex - rightColumnOffset])
+            columnIndex >= leftColumnOffset ->
+                leftRow!!.getBoolean(leftColumnMap[columnIndex - leftColumnOffset])
+            else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a BOOLEAN column")
         }
     }
 
     override fun getNumeric(columnIndex: Int): Double {
         return when {
-            columnIndex >= rightColumnOffset -> rightTimeSeries.getNumeric(rightColumnMap[columnIndex - rightColumnOffset])
-            columnIndex >= leftColumnOffset -> leftTimeSeries.getNumeric(leftColumnMap[columnIndex - leftColumnOffset])
-            else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a key column")
+            columnIndex == 0 -> maxOf(leftStart, rightStart)
+            columnIndex == 1 -> minOf(leftEnd, rightEnd)
+            columnIndex == 2 -> minOf(leftEnd, rightEnd) - maxOf(leftStart, rightStart)
+            columnIndex >= rightColumnOffset ->
+                rightRow!!.getNumeric(rightColumnMap[columnIndex - rightColumnOffset])
+            columnIndex >= leftColumnOffset ->
+                leftRow!!.getNumeric(leftColumnMap[columnIndex - leftColumnOffset])
+            else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a NUMERIC column")
         }
     }
 
     override fun getString(columnIndex: Int): String {
         return when {
-            columnIndex >= rightColumnOffset -> rightTimeSeries.getString(rightColumnMap[columnIndex - rightColumnOffset])
-            columnIndex >= leftColumnOffset -> leftTimeSeries.getString(leftColumnMap[columnIndex - leftColumnOffset])
-            else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a key column")
+            columnIndex >= rightColumnOffset ->
+                rightRow!!.getString(rightColumnMap[columnIndex - rightColumnOffset])
+            columnIndex >= leftColumnOffset ->
+                leftRow!!.getString(leftColumnMap[columnIndex - leftColumnOffset])
+            else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a STRING column")
         }
     }
 
-    override fun rowIterator(): RowIterator {
-        val leftIterator = leftTimeSeries.rowIterator()
-        val rightIterator = rightTimeSeries.rowIterator()
-        return object : RowIterator {
-            private var leftStart: Double = 0.0
-            private var leftEnd: Double = 0.0
-            private var rightStart: Double = 0.0
-            private var rightEnd: Double = 0.0
-
-            private var leftRow: Row? = null
-            private var rightRow: Row? = null
-
-            override val schema: TableSchema
-                get() = this@TemporalJoinTimeSeries.schema
-            override val currentRow: Row = object : Row {
-                override val schema: TableSchema
-                    get() = this@TemporalJoinTimeSeries.schema
-
-                override fun getBoolean(columnIndex: Int): Boolean {
-                    return when {
-                        columnIndex >= rightColumnOffset ->
-                            rightRow!!.getBoolean(rightColumnMap[columnIndex - rightColumnOffset])
-                        columnIndex >= leftColumnOffset ->
-                            leftRow!!.getBoolean(leftColumnMap[columnIndex - leftColumnOffset])
-                        else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a BOOLEAN column")
-                    }
-                }
-
-                override fun getNumeric(columnIndex: Int): Double {
-                    return when {
-                        columnIndex == 0 -> maxOf(leftStart, rightStart)
-                        columnIndex == 1 -> minOf(leftEnd, rightEnd)
-                        columnIndex == 2 -> minOf(leftEnd, rightEnd) - maxOf(leftStart, rightStart)
-                        columnIndex >= rightColumnOffset ->
-                            rightRow!!.getNumeric(rightColumnMap[columnIndex - rightColumnOffset])
-                        columnIndex >= leftColumnOffset ->
-                            leftRow!!.getNumeric(leftColumnMap[columnIndex - leftColumnOffset])
-                        else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a NUMERIC column")
-                    }
-                }
-
-                override fun getString(columnIndex: Int): String {
-                    return when {
-                        columnIndex >= rightColumnOffset ->
-                            rightRow!!.getString(rightColumnMap[columnIndex - rightColumnOffset])
-                        columnIndex >= leftColumnOffset ->
-                            leftRow!!.getString(leftColumnMap[columnIndex - leftColumnOffset])
-                        else -> throw IllegalArgumentException("Column $columnIndex does not exist or is not a STRING column")
-                    }
-                }
-            }
-
-            override fun loadNext(): Boolean {
-                // Load new rows if either the left or right input is not cached
-                val loadNewRows = leftRow == null || rightRow == null
-                if (leftRow == null && !nextLeft()) return false
-                if (rightRow == null && !nextRight()) return false
-                // If both rows were cached, advance either left or right (whichever ends first)
-                if (!loadNewRows) {
-                    when {
-                        leftEnd < rightEnd -> if (!nextLeft()) return false
-                        leftEnd > rightEnd -> if (!nextRight()) return false
-                        else -> if (!nextLeft() || !nextRight()) return false
-                    }
-                }
-                // Keep loading new rows until overlap is found
-                while (leftEnd <= rightStart || rightEnd <= leftStart) {
-                    when {
-                        leftEnd < rightEnd -> if (!nextLeft()) return false
-                        leftEnd > rightEnd -> if (!nextRight()) return false
-                    }
-                }
-                // We have found an overlapping pair of input rows
-                return true
-            }
-
-            private fun nextLeft(): Boolean {
-                leftRow = null
-                if (!leftIterator.loadNext()) return false
-                leftRow = leftIterator.currentRow
-                leftStart = leftRow!!.getNumeric(leftStartColumn)
-                leftEnd = leftRow!!.getNumeric(leftEndColumn)
-                return true
-            }
-
-            private fun nextRight(): Boolean {
-                rightRow = null
-                if (!rightIterator.loadNext()) return false
-                rightRow = rightIterator.currentRow
-                rightStart = rightRow!!.getNumeric(rightStartColumn)
-                rightEnd = rightRow!!.getNumeric(rightEndColumn)
-                return true
+    override fun loadNext(): Boolean {
+        // Load new rows if either the left or right input is not cached
+        val loadNewRows = leftRow == null || rightRow == null
+        if (leftRow == null && !nextLeft()) return false
+        if (rightRow == null && !nextRight()) return false
+        // If both rows were cached, advance either left or right (whichever ends first)
+        if (!loadNewRows) {
+            when {
+                leftEnd < rightEnd -> if (!nextLeft()) return false
+                leftEnd > rightEnd -> if (!nextRight()) return false
+                else -> if (!nextLeft() || !nextRight()) return false
             }
         }
+        // Keep loading new rows until overlap is found
+        while (leftEnd <= rightStart || rightEnd <= leftStart) {
+            when {
+                leftEnd < rightEnd -> if (!nextLeft()) return false
+                leftEnd > rightEnd -> if (!nextRight()) return false
+            }
+        }
+        // We have found an overlapping pair of input rows
+        return true
     }
+
+    private fun nextLeft(): Boolean {
+        leftRow = null
+        if (!leftIterator.loadNext()) return false
+        leftRow = leftIterator.currentRow
+        leftStart = leftRow!!.getNumeric(leftStartColumn)
+        leftEnd = leftRow!!.getNumeric(leftEndColumn)
+        return true
+    }
+
+    private fun nextRight(): Boolean {
+        rightRow = null
+        if (!rightIterator.loadNext()) return false
+        rightRow = rightIterator.currentRow
+        rightStart = rightRow!!.getNumeric(rightStartColumn)
+        rightEnd = rightRow!!.getNumeric(rightEndColumn)
+        return true
+    }
+
 }
