@@ -59,7 +59,7 @@ private class IntervalMergingRowIterator(
     private val nonReservedValueColumns = schema.columns.mapIndexedNotNull { index, column ->
         if (!column.isKey && !column.isReserved) index else null
     }
-    private val hasDurationColumn = input.schema.indexOfColumn(Columns.DURATION) == Columns.INDEX_DURATION
+    private val hasDurationColumn = schema.indexOfColumn(Columns.DURATION) == Columns.INDEX_DURATION
 
     private val booleanValues = BooleanArray(columnTypes.size)
     private val numericValues = DoubleArray(columnTypes.size)
