@@ -221,6 +221,8 @@ object QueryPlanner {
     private val defaultOptimizationStrategies = listOf(
         // First, remove interval merging operators to allow other optimizations to occur
         DropIntervalMergingOptimization,
+        // Push down projections
+        PushDownProjectOptimization,
         // Eagerly drop columns to reduce data volume
         DropColumnsOptimization,
         // Merge adjacent projections
