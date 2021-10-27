@@ -5,10 +5,10 @@ import science.atlarge.grademl.query.model.RowIterator
 import science.atlarge.grademl.query.model.TableSchema
 
 abstract class AbstractRowIterator(
-    override val schema: TableSchema
+    final override val schema: TableSchema
 ) : RowIterator, Row {
 
-    override val currentRow: Row
+    final override val currentRow: Row
         get() = this
 
 }

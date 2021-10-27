@@ -6,10 +6,10 @@ import science.atlarge.grademl.query.model.TimeSeries
 import science.atlarge.grademl.query.model.TimeSeriesIterator
 
 abstract class AbstractTimeSeriesIterator<T : AbstractRowIterator>(
-    override val schema: TableSchema
+    final override val schema: TableSchema
 ) : TimeSeriesIterator, TimeSeries {
 
-    override val currentTimeSeries: TimeSeries
+    final override val currentTimeSeries: TimeSeries
         get() = this
 
     private val rowIterators = mutableListOf<T>()
@@ -18,7 +18,7 @@ abstract class AbstractTimeSeriesIterator<T : AbstractRowIterator>(
     protected abstract fun createRowIterator(): T
     protected abstract fun resetRowIteratorWithCurrentTimeSeries(rowIterator: T)
 
-    override fun rowIterator(): RowIterator {
+    final override fun rowIterator(): RowIterator {
         if (rowIteratorsInUse == rowIterators.size) rowIterators.add(createRowIterator())
         val rowIterator = rowIterators[rowIteratorsInUse++]
         resetRowIteratorWithCurrentTimeSeries(rowIterator)
@@ -27,7 +27,7 @@ abstract class AbstractTimeSeriesIterator<T : AbstractRowIterator>(
 
     protected abstract fun internalLoadNext(): Boolean
 
-    override fun loadNext(): Boolean {
+    final override fun loadNext(): Boolean {
         // Reset the iterator count
         rowIteratorsInUse = 0
         // Load the next time series
