@@ -1,16 +1,25 @@
 package science.atlarge.grademl.query.execution.operators
 
-import science.atlarge.grademl.query.execution.BooleanPhysicalExpression
-import science.atlarge.grademl.query.execution.NumericPhysicalExpression
-import science.atlarge.grademl.query.execution.PhysicalExpression
-import science.atlarge.grademl.query.execution.StringPhysicalExpression
-import science.atlarge.grademl.query.model.*
+import science.atlarge.grademl.query.execution.*
+import science.atlarge.grademl.query.model.RowIterator
+import science.atlarge.grademl.query.model.TableSchema
+import science.atlarge.grademl.query.model.TimeSeriesIterator
 
 class ProjectOperator(
     private val input: QueryOperator,
     override val schema: TableSchema,
-    columnExpressions: List<PhysicalExpression>
+    private val columnExpressions: List<PhysicalExpression>
 ) : QueryOperator {
+
+    override fun execute(): TimeSeriesIterator =
+        ProjectTimeSeriesIterator(input.execute(), columnExpressions)
+
+}
+
+private class ProjectTimeSeriesIterator(
+    private val input: TimeSeriesIterator,
+    columnExpressions: List<PhysicalExpression>
+) : AbstractTimeSeriesIterator<ProjectRowIterator>(input.schema) {
 
     private val booleanColumnExpressions = Array(columnExpressions.size) { i ->
         columnExpressions[i] as? BooleanPhysicalExpression
@@ -22,70 +31,44 @@ class ProjectOperator(
         columnExpressions[i] as? StringPhysicalExpression
     }
 
-    override fun execute(): TimeSeriesIterator = ProjectTimeSeriesIterator(
-        input.execute(), schema, booleanColumnExpressions, numericColumnExpressions, stringColumnExpressions
-    )
+    override fun getBoolean(columnIndex: Int) =
+        booleanColumnExpressions[columnIndex]!!.evaluateAsBoolean(input.currentTimeSeries)
+
+    override fun getNumeric(columnIndex: Int) =
+        numericColumnExpressions[columnIndex]!!.evaluateAsNumeric(input.currentTimeSeries)
+
+    override fun getString(columnIndex: Int) =
+        stringColumnExpressions[columnIndex]!!.evaluateAsString(input.currentTimeSeries)
+
+    override fun createRowIterator() =
+        ProjectRowIterator(schema, booleanColumnExpressions, numericColumnExpressions, stringColumnExpressions)
+
+    override fun resetRowIteratorWithCurrentTimeSeries(rowIterator: ProjectRowIterator) {
+        rowIterator.input = input.currentTimeSeries.rowIterator()
+    }
+
+    override fun internalLoadNext() = input.loadNext()
 
 }
 
-private class ProjectTimeSeriesIterator(
-    private val inputIterator: TimeSeriesIterator,
-    override val schema: TableSchema,
+private class ProjectRowIterator(
+    schema: TableSchema,
     private val booleanColumnExpressions: Array<BooleanPhysicalExpression?>,
     private val numericColumnExpressions: Array<NumericPhysicalExpression?>,
     private val stringColumnExpressions: Array<StringPhysicalExpression?>
-) : TimeSeriesIterator {
+) : AbstractRowIterator(schema) {
 
-    private val projectTimeSeries = object : TimeSeries {
-        lateinit var input: TimeSeries
+    lateinit var input: RowIterator
 
-        override val schema: TableSchema
-            get() = this@ProjectTimeSeriesIterator.schema
+    override fun getBoolean(columnIndex: Int) =
+        booleanColumnExpressions[columnIndex]!!.evaluateAsBoolean(input.currentRow)
 
-        override fun getBoolean(columnIndex: Int) = booleanColumnExpressions[columnIndex]!!.evaluateAsBoolean(input)
-        override fun getNumeric(columnIndex: Int) = numericColumnExpressions[columnIndex]!!.evaluateAsNumeric(input)
-        override fun getString(columnIndex: Int) = stringColumnExpressions[columnIndex]!!.evaluateAsString(input)
+    override fun getNumeric(columnIndex: Int) =
+        numericColumnExpressions[columnIndex]!!.evaluateAsNumeric(input.currentRow)
 
-        override fun rowIterator(): RowIterator = ProjectRowIterator(
-            input.rowIterator(), schema, booleanColumnExpressions, numericColumnExpressions, stringColumnExpressions
-        )
-    }
-    override val currentTimeSeries: TimeSeries
-        get() = projectTimeSeries
+    override fun getString(columnIndex: Int) =
+        stringColumnExpressions[columnIndex]!!.evaluateAsString(input.currentRow)
 
-    override fun loadNext(): Boolean {
-        if (!inputIterator.loadNext()) return false
-        projectTimeSeries.input = inputIterator.currentTimeSeries
-        return true
-    }
-
-}
-
-class ProjectRowIterator(
-    private val inputIterator: RowIterator,
-    override val schema: TableSchema,
-    private val booleanColumnExpressions: Array<BooleanPhysicalExpression?>,
-    private val numericColumnExpressions: Array<NumericPhysicalExpression?>,
-    private val stringColumnExpressions: Array<StringPhysicalExpression?>
-) : RowIterator {
-
-    private val projectRow = object : Row {
-        lateinit var input: Row
-
-        override val schema: TableSchema
-            get() = this@ProjectRowIterator.schema
-
-        override fun getBoolean(columnIndex: Int) = booleanColumnExpressions[columnIndex]!!.evaluateAsBoolean(input)
-        override fun getNumeric(columnIndex: Int) = numericColumnExpressions[columnIndex]!!.evaluateAsNumeric(input)
-        override fun getString(columnIndex: Int) = stringColumnExpressions[columnIndex]!!.evaluateAsString(input)
-    }
-    override val currentRow: Row
-        get() = projectRow
-
-    override fun loadNext(): Boolean {
-        if (!inputIterator.loadNext()) return false
-        projectRow.input = inputIterator.currentRow
-        return true
-    }
+    override fun loadNext() = input.loadNext()
 
 }
