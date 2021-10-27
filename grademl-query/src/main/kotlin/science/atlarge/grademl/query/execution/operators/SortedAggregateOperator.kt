@@ -16,7 +16,7 @@ class SortedAggregateOperator(
     private val aggregateFunctionArgumentTypes: List<List<Type>>,
     private val aggregateColumns: List<Column>,
     private val projections: List<PhysicalExpression>
-) : QueryOperator {
+) : AccountingQueryOperator() {
 
     private val groupByColumns = groupByColumns.toIntArray()
     private val groupByColumnTypes = groupByColumns.map { c -> input.schema.columns[c].type.toInt() }.toIntArray()
@@ -27,24 +27,22 @@ class SortedAggregateOperator(
         implementation.newAggregator(aggregateFunctionArguments[i], aggregateFunctionArgumentTypes[i])
     }
 
-    override fun execute(): TimeSeriesIterator {
-        return SortedAggregateTimeSeriesIterator(
-            input = input.execute(),
-            schema = schema,
-            startTimeColumn = input.schema.indexOfStartTimeColumn() ?: throw IllegalArgumentException(
-                "Input to SortedAggregateOperator must have _start_time column"
-            ),
-            endTimeColumn = input.schema.indexOfEndTimeColumn() ?: throw IllegalArgumentException(
-                "Input to SortedAggregateOperator must have _start_time column"
-            ),
-            groupByColumns = groupByColumns,
-            groupByColumnTypes = groupByColumnTypes,
-            aggregators = aggregators.toTypedArray(),
-            aggregatorTypes = aggregateFunctionTypes.map { it.toInt() }.toIntArray(),
-            aggregateColumns = aggregateColumns,
-            projections = projections.toTypedArray()
-        )
-    }
+    override fun createTimeSeriesIterator(): AccountingTimeSeriesIterator<*> = SortedAggregateTimeSeriesIterator(
+        input = input.execute(),
+        schema = schema,
+        startTimeColumn = input.schema.indexOfStartTimeColumn() ?: throw IllegalArgumentException(
+            "Input to SortedAggregateOperator must have _start_time column"
+        ),
+        endTimeColumn = input.schema.indexOfEndTimeColumn() ?: throw IllegalArgumentException(
+            "Input to SortedAggregateOperator must have _start_time column"
+        ),
+        groupByColumns = groupByColumns,
+        groupByColumnTypes = groupByColumnTypes,
+        aggregators = aggregators.toTypedArray(),
+        aggregatorTypes = aggregateFunctionTypes.map { it.toInt() }.toIntArray(),
+        aggregateColumns = aggregateColumns,
+        projections = projections.toTypedArray()
+    )
 
 }
 
@@ -59,7 +57,7 @@ private class SortedAggregateTimeSeriesIterator(
     private val aggregatorTypes: IntArray,
     private val aggregateColumns: List<Column>,
     private val projections: Array<PhysicalExpression>
-) : AbstractTimeSeriesIterator<SortedAggregateRowIterator>(schema) {
+) : AccountingTimeSeriesIterator<SortedAggregateRowIterator>(schema) {
 
     // Input types
     private val inputColumnTypes = input.schema.columns.map { it.type.toInt() }.toIntArray()
@@ -194,7 +192,7 @@ private class SortedAggregateRowIterator(
     private val booleanProjections: Array<BooleanPhysicalExpression?>,
     private val numericProjections: Array<NumericPhysicalExpression?>,
     private val stringProjections: Array<StringPhysicalExpression?>
-) : AbstractRowIterator(schema) {
+) : AccountingRowIterator(schema) {
 
     private lateinit var aggregatedRow: Row
     private var isValid = true
@@ -208,7 +206,7 @@ private class SortedAggregateRowIterator(
     override fun getNumeric(columnIndex: Int) = numericProjections[columnIndex]!!.evaluateAsNumeric(aggregatedRow)
     override fun getString(columnIndex: Int) = stringProjections[columnIndex]!!.evaluateAsString(aggregatedRow)
 
-    override fun loadNext(): Boolean {
+    override fun internalLoadNext(): Boolean {
         if (!isValid) return false
         isValid = false
         return true

@@ -5,7 +5,7 @@ import science.atlarge.grademl.query.model.TableSchema
 import science.atlarge.grademl.query.model.TimeSeries
 import science.atlarge.grademl.query.model.TimeSeriesIterator
 
-abstract class AbstractTimeSeriesIterator<T : AbstractRowIterator>(
+abstract class AccountingTimeSeriesIterator<T : AccountingRowIterator>(
     final override val schema: TableSchema
 ) : TimeSeriesIterator, TimeSeries {
 
@@ -25,13 +25,33 @@ abstract class AbstractTimeSeriesIterator<T : AbstractRowIterator>(
         return rowIterator
     }
 
+    var timeSeriesProduced = 0L
+        private set
+    var totalRowsProduced = 0L
+        private set
+    var uniqueRowsProduced = 0L
+        private set
+
     protected abstract fun internalLoadNext(): Boolean
 
     final override fun loadNext(): Boolean {
-        // Reset the iterator count
-        rowIteratorsInUse = 0
+        // Collect statistics from row iterators and reset the iterator count
+        if (rowIteratorsInUse > 0) {
+            var maxRowsProduced = 0L
+            for (i in 0 until rowIteratorsInUse) {
+                val rowIterator = rowIterators[i]
+                val rowsProduced = rowIterator.rowsProduced
+                rowIterator.resetRowsProduced()
+                totalRowsProduced += rowsProduced
+                maxRowsProduced = maxOf(maxRowsProduced, rowsProduced)
+            }
+            uniqueRowsProduced += maxRowsProduced
+            rowIteratorsInUse = 0
+        }
         // Load the next time series
-        return internalLoadNext()
+        if (!internalLoadNext()) return false
+        timeSeriesProduced++
+        return true
     }
 
 }

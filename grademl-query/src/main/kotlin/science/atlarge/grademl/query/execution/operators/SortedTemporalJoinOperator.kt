@@ -1,7 +1,7 @@
 package science.atlarge.grademl.query.execution.operators
 
-import science.atlarge.grademl.query.execution.AbstractRowIterator
-import science.atlarge.grademl.query.execution.AbstractTimeSeriesIterator
+import science.atlarge.grademl.query.execution.AccountingRowIterator
+import science.atlarge.grademl.query.execution.AccountingTimeSeriesIterator
 import science.atlarge.grademl.query.execution.IndexedSortColumn
 import science.atlarge.grademl.query.execution.IntTypes.TYPE_BOOLEAN
 import science.atlarge.grademl.query.execution.IntTypes.TYPE_NUMERIC
@@ -19,7 +19,7 @@ class SortedTemporalJoinOperator(
     rightJoinColumns: List<IndexedSortColumn>,
     leftSelectedColumns: List<Column>,
     rightSelectedColumns: List<Column>
-) : QueryOperator {
+) : AccountingQueryOperator() {
 
     private val joinColumnTypes = leftJoinColumns.map {
         leftInput.schema.columns[it.columnIndex].type
@@ -63,7 +63,7 @@ class SortedTemporalJoinOperator(
         require(schema.indexOfDurationColumn() == 2) { "Temporal join must produce _duration column" }
     }
 
-    override fun execute(): TimeSeriesIterator = TemporalJoinTimeSeriesIterator(
+    override fun createTimeSeriesIterator(): AccountingTimeSeriesIterator<*> = TemporalJoinTimeSeriesIterator(
         schema = schema,
         leftInput = leftInput.execute(),
         rightInput = rightInput.execute(),
@@ -95,7 +95,7 @@ private class TemporalJoinTimeSeriesIterator(
     private val rightColumnMap: IntArray,
     private val rightStartColumn: Int,
     private val rightEndColumn: Int
-) : AbstractTimeSeriesIterator<SortedTemporalJoinRowIterator>(schema) {
+) : AccountingTimeSeriesIterator<SortedTemporalJoinRowIterator>(schema) {
 
     // Store column types as integers for faster look-ups
     private val joinColumnTypes = joinColumnTypes.map { it.toInt() }.toIntArray()
@@ -316,7 +316,7 @@ private class SortedTemporalJoinRowIterator(
     private val rightStartColumn: Int,
     private val rightEndColumn: Int,
     private val rightColumnOffset: Int
-) : AbstractRowIterator(schema) {
+) : AccountingRowIterator(schema) {
 
     private lateinit var leftIterator: RowIterator
     private lateinit var rightIterator: RowIterator
@@ -373,7 +373,7 @@ private class SortedTemporalJoinRowIterator(
         }
     }
 
-    override fun loadNext(): Boolean {
+    override fun internalLoadNext(): Boolean {
         // Load new rows if either the left or right input is not cached
         val loadNewRows = leftRow == null || rightRow == null
         if (leftRow == null && !nextLeft()) return false

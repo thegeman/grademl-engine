@@ -1,7 +1,7 @@
 package science.atlarge.grademl.query.execution.operators
 
-import science.atlarge.grademl.query.execution.AbstractRowIterator
-import science.atlarge.grademl.query.execution.AbstractTimeSeriesIterator
+import science.atlarge.grademl.query.execution.AccountingRowIterator
+import science.atlarge.grademl.query.execution.AccountingTimeSeriesIterator
 import science.atlarge.grademl.query.execution.IntTypes
 import science.atlarge.grademl.query.execution.IntTypes.toInt
 import science.atlarge.grademl.query.model.Columns
@@ -11,7 +11,7 @@ import science.atlarge.grademl.query.model.TimeSeriesIterator
 
 class IntervalMergingOperator(
     private val input: QueryOperator
-) : QueryOperator {
+) : AccountingQueryOperator() {
 
     override val schema: TableSchema
         get() = input.schema
@@ -25,14 +25,14 @@ class IntervalMergingOperator(
         }
     }
 
-    override fun execute(): TimeSeriesIterator =
+    override fun createTimeSeriesIterator(): AccountingTimeSeriesIterator<*> =
         IntervalMergingTimeSeriesIterator(input.execute())
 
 }
 
 private class IntervalMergingTimeSeriesIterator(
     private val input: TimeSeriesIterator
-) : AbstractTimeSeriesIterator<IntervalMergingRowIterator>(input.schema) {
+) : AccountingTimeSeriesIterator<IntervalMergingRowIterator>(input.schema) {
 
     override fun getBoolean(columnIndex: Int) = input.currentTimeSeries.getBoolean(columnIndex)
     override fun getNumeric(columnIndex: Int) = input.currentTimeSeries.getNumeric(columnIndex)
@@ -50,7 +50,7 @@ private class IntervalMergingTimeSeriesIterator(
 
 private class IntervalMergingRowIterator(
     schema: TableSchema
-) : AbstractRowIterator(schema) {
+) : AccountingRowIterator(schema) {
 
     lateinit var input: RowIterator
     private var peekedAtRow = false
@@ -69,7 +69,7 @@ private class IntervalMergingRowIterator(
     override fun getNumeric(columnIndex: Int) = numericValues[columnIndex]
     override fun getString(columnIndex: Int) = stringValues[columnIndex]!!
 
-    override fun loadNext(): Boolean {
+    override fun internalLoadNext(): Boolean {
         // Read the next row
         if (!peekedAtRow && !input.loadNext()) return false
         peekedAtRow = false

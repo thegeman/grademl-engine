@@ -9,9 +9,9 @@ class ProjectOperator(
     private val input: QueryOperator,
     override val schema: TableSchema,
     private val columnExpressions: List<PhysicalExpression>
-) : QueryOperator {
+) : AccountingQueryOperator() {
 
-    override fun execute(): TimeSeriesIterator =
+    override fun createTimeSeriesIterator(): AccountingTimeSeriesIterator<*> =
         ProjectTimeSeriesIterator(input.execute(), schema, columnExpressions)
 
 }
@@ -20,7 +20,7 @@ private class ProjectTimeSeriesIterator(
     private val input: TimeSeriesIterator,
     schema: TableSchema,
     columnExpressions: List<PhysicalExpression>
-) : AbstractTimeSeriesIterator<ProjectRowIterator>(schema) {
+) : AccountingTimeSeriesIterator<ProjectRowIterator>(schema) {
 
     private val booleanColumnExpressions = Array(columnExpressions.size) { i ->
         columnExpressions[i] as? BooleanPhysicalExpression
@@ -57,7 +57,7 @@ private class ProjectRowIterator(
     private val booleanColumnExpressions: Array<BooleanPhysicalExpression?>,
     private val numericColumnExpressions: Array<NumericPhysicalExpression?>,
     private val stringColumnExpressions: Array<StringPhysicalExpression?>
-) : AbstractRowIterator(schema) {
+) : AccountingRowIterator(schema) {
 
     lateinit var input: RowIterator
 
@@ -70,6 +70,6 @@ private class ProjectRowIterator(
     override fun getString(columnIndex: Int) =
         stringColumnExpressions[columnIndex]!!.evaluateAsString(input.currentRow)
 
-    override fun loadNext() = input.loadNext()
+    override fun internalLoadNext() = input.loadNext()
 
 }

@@ -1,7 +1,7 @@
 package science.atlarge.grademl.query.execution.operators
 
-import science.atlarge.grademl.query.execution.AbstractRowIterator
-import science.atlarge.grademl.query.execution.AbstractTimeSeriesIterator
+import science.atlarge.grademl.query.execution.AccountingRowIterator
+import science.atlarge.grademl.query.execution.AccountingTimeSeriesIterator
 import science.atlarge.grademl.query.execution.BooleanPhysicalExpression
 import science.atlarge.grademl.query.model.RowIterator
 import science.atlarge.grademl.query.model.TableSchema
@@ -11,12 +11,12 @@ class FilterOperator(
     private val input: QueryOperator,
     private val timeSeriesCondition: BooleanPhysicalExpression,
     private val rowCondition: BooleanPhysicalExpression
-) : QueryOperator {
+) : AccountingQueryOperator() {
 
     override val schema: TableSchema
         get() = input.schema
 
-    override fun execute(): TimeSeriesIterator =
+    override fun createTimeSeriesIterator(): AccountingTimeSeriesIterator<*> =
         FilterTimeSeriesIterator(input.execute(), timeSeriesCondition, rowCondition)
 
 }
@@ -25,7 +25,7 @@ private class FilterTimeSeriesIterator(
     private val input: TimeSeriesIterator,
     private val timeSeriesCondition: BooleanPhysicalExpression,
     private val rowCondition: BooleanPhysicalExpression
-) : AbstractTimeSeriesIterator<FilterRowIterator>(input.schema) {
+) : AccountingTimeSeriesIterator<FilterRowIterator>(input.schema) {
 
     private var peekedInputRowIterator: RowIterator? = null
 
@@ -69,7 +69,7 @@ private class FilterTimeSeriesIterator(
 private class FilterRowIterator(
     schema: TableSchema,
     private val rowCondition: BooleanPhysicalExpression
-) : AbstractRowIterator(schema) {
+) : AccountingRowIterator(schema) {
 
     lateinit var input: RowIterator
     var peekedAtInput = false
@@ -78,7 +78,7 @@ private class FilterRowIterator(
     override fun getNumeric(columnIndex: Int) = input.currentRow.getNumeric(columnIndex)
     override fun getString(columnIndex: Int) = input.currentRow.getString(columnIndex)
 
-    override fun loadNext(): Boolean {
+    override fun internalLoadNext(): Boolean {
         // If a matching row has already been loaded (to check if any matching rows exist), return it
         if (peekedAtInput) {
             peekedAtInput = false

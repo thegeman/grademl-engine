@@ -11,9 +11,9 @@ class SortOperator(
     override val schema: TableSchema,
     private val preSortedColumns: List<Int>,
     private val remainingSortColumns: List<IndexedSortColumn>
-) : QueryOperator {
+) : AccountingQueryOperator() {
 
-    override fun execute(): TimeSeriesIterator = SortTimeSeriesIterator(
+    override fun createTimeSeriesIterator(): AccountingTimeSeriesIterator<*> = SortTimeSeriesIterator(
         input.execute(),
         preSortedColumns.toIntArray(),
         remainingSortColumns.map { it.columnIndex }.toIntArray(),
@@ -124,7 +124,7 @@ private class SortTimeSeriesIterator(
     private val preSortedColumns: IntArray,
     private val remainingSortColumns: IntArray,
     private val remainingSortColumnsAscending: BooleanArray
-) : AbstractTimeSeriesIterator<SortRowIterator>(input.schema) {
+) : AccountingTimeSeriesIterator<SortRowIterator>(input.schema) {
 
     // Store time series and rows for sorting
     private val inputCache = TimeSeriesCache(schema)
@@ -207,7 +207,7 @@ private class SortTimeSeriesIterator(
 private class SortRowIterator(
     schema: TableSchema,
     private val inputCache: TimeSeriesCache
-) : AbstractRowIterator(schema) {
+) : AccountingRowIterator(schema) {
 
     private lateinit var sortResult: SortResult
     private var firstOutRowId = -1
@@ -227,7 +227,7 @@ private class SortRowIterator(
     override fun getNumeric(columnIndex: Int) = inputCache.getNumeric(columnIndex, currentInRowId)
     override fun getString(columnIndex: Int) = inputCache.getString(columnIndex, currentInRowId)
 
-    override fun loadNext(): Boolean {
+    override fun internalLoadNext(): Boolean {
         if (!isValid) return false
         // The first row is always valid
         if (isFirst) {
