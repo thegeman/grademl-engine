@@ -289,6 +289,8 @@ value class ExecutionPhaseType(val path: ExecutionPhasePath) {
         } else {
             null
         }
+
+    override fun toString() = path.toString()
 }
 
 typealias ExecutionPhasePath = Path
