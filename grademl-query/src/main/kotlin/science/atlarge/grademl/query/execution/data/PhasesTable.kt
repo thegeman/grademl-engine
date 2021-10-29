@@ -2,6 +2,8 @@ package science.atlarge.grademl.query.execution.data
 
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.core.models.execution.ExecutionPhase
+import science.atlarge.grademl.query.execution.AbstractRowIterator
+import science.atlarge.grademl.query.execution.AbstractTimeSeriesIterator
 import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.*
 
@@ -14,9 +16,7 @@ class PhasesTable(
     override fun timeSeriesIterator(): TimeSeriesIterator {
         val allPhases = gradeMLJob.unifiedExecutionModel.phases.iterator()
         val firstTimestampNs = gradeMLJob.unifiedExecutionModel.rootPhase.startTime
-        return object : TimeSeriesIterator {
-            override val schema: TableSchema
-                get() = this@PhasesTable.schema
+        return object : AbstractTimeSeriesIterator(this@PhasesTable.schema) {
             override val currentTimeSeries: TimeSeries
                 get() = phaseTimeSeries
 
@@ -49,9 +49,7 @@ class PhasesTable(
                 }
 
                 override fun rowIterator(): RowIterator {
-                    return object : RowIterator {
-                        override val schema: TableSchema
-                            get() = this@PhasesTable.schema
+                    return object : AbstractRowIterator(this@PhasesTable.schema) {
                         override val currentRow = object : Row {
                             override val schema: TableSchema
                                 get() = this@PhasesTable.schema
@@ -85,7 +83,7 @@ class PhasesTable(
                         }
 
                         private var hasStarted = false
-                        override fun loadNext(): Boolean {
+                        override fun internalLoadNext(): Boolean {
                             if (hasStarted) return false
                             hasStarted = true
                             return true
@@ -94,7 +92,7 @@ class PhasesTable(
                 }
             }
 
-            override fun loadNext(): Boolean {
+            override fun internalLoadNext(): Boolean {
                 while (allPhases.hasNext()) {
                     phaseTimeSeries.phase = allPhases.next()
                     return true

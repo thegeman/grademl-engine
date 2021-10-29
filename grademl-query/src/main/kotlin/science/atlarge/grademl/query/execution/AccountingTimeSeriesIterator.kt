@@ -11,6 +11,8 @@ abstract class AccountingTimeSeriesIterator<T : AccountingRowIterator>(
 
     final override val currentTimeSeries: TimeSeries
         get() = this
+    private var isCurrentTimeSeriesValid = false
+    private var isCurrentTimeSeriesPushedBack = false
 
     private val rowIterators = mutableListOf<T>()
     private var rowIteratorsInUse = 0
@@ -35,6 +37,11 @@ abstract class AccountingTimeSeriesIterator<T : AccountingRowIterator>(
     protected abstract fun internalLoadNext(): Boolean
 
     final override fun loadNext(): Boolean {
+        if (isCurrentTimeSeriesPushedBack) {
+            isCurrentTimeSeriesPushedBack = false
+            isCurrentTimeSeriesValid = true
+            return true
+        }
         // Collect statistics from row iterators and reset the iterator count
         if (rowIteratorsInUse > 0) {
             var maxRowsProduced = 0L
@@ -49,8 +56,18 @@ abstract class AccountingTimeSeriesIterator<T : AccountingRowIterator>(
             rowIteratorsInUse = 0
         }
         // Load the next time series
-        if (!internalLoadNext()) return false
-        timeSeriesProduced++
+        isCurrentTimeSeriesValid = internalLoadNext()
+        if (isCurrentTimeSeriesValid) timeSeriesProduced++
+        return isCurrentTimeSeriesValid
+    }
+
+    override fun pushBack(): Boolean {
+        if (!isCurrentTimeSeriesValid || isCurrentTimeSeriesPushedBack) return false
+        if (rowIteratorsInUse > 0) {
+            throw UnsupportedOperationException("Cannot pushBack a TimeSeries after a RowIterator has been created")
+        }
+        isCurrentTimeSeriesValid = false
+        isCurrentTimeSeriesPushedBack = true
         return true
     }
 

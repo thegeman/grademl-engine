@@ -2,6 +2,8 @@ package science.atlarge.grademl.query.execution.data
 
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.core.models.resource.Metric
+import science.atlarge.grademl.query.execution.AbstractRowIterator
+import science.atlarge.grademl.query.execution.AbstractTimeSeriesIterator
 import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.*
 
@@ -14,9 +16,7 @@ class MetricsTable(
     override fun timeSeriesIterator(): TimeSeriesIterator {
         val allMetrics = gradeMLJob.unifiedResourceModel.rootResource.metricsInTree.iterator()
         val firstTimestampNs = gradeMLJob.unifiedExecutionModel.rootPhase.startTime
-        return object : TimeSeriesIterator {
-            override val schema: TableSchema
-                get() = this@MetricsTable.schema
+        return object : AbstractTimeSeriesIterator(this@MetricsTable.schema) {
             override val currentTimeSeries: TimeSeries
                 get() = metricTimeSeries
 
@@ -53,9 +53,7 @@ class MetricsTable(
 
                 override fun rowIterator(): RowIterator {
                     val usageIterator = metric.data.iterator()
-                    return object : RowIterator {
-                        override val schema: TableSchema
-                            get() = this@MetricsTable.schema
+                    return object : AbstractRowIterator(this@MetricsTable.schema) {
                         override val currentRow = object : Row {
                             override val schema: TableSchema
                                 get() = this@MetricsTable.schema
@@ -91,7 +89,7 @@ class MetricsTable(
                             }
                         }
 
-                        override fun loadNext(): Boolean {
+                        override fun internalLoadNext(): Boolean {
                             if (!usageIterator.hasNext) return false
                             usageIterator.next()
                             return true
@@ -100,7 +98,7 @@ class MetricsTable(
                 }
             }
 
-            override fun loadNext(): Boolean {
+            override fun internalLoadNext(): Boolean {
                 while (allMetrics.hasNext()) {
                     metricTimeSeries.metric = allMetrics.next()
                     return true

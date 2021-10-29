@@ -15,11 +15,8 @@ class ConcreteTable private constructor(
     val timeSeriesCount = timeSeriesSizes.size
     val rowCount = timeSeriesSizes.sum()
 
-    override fun timeSeriesIterator() = object : TimeSeriesIterator {
+    override fun timeSeriesIterator() = object : AbstractTimeSeriesIterator(this@ConcreteTable.schema) {
         private var currentTimeSeriesId = -1
-
-        override val schema: TableSchema
-            get() = this@ConcreteTable.schema
 
         override val currentTimeSeries = object : TimeSeries {
             override val schema: TableSchema
@@ -29,12 +26,9 @@ class ConcreteTable private constructor(
             override fun getNumeric(columnIndex: Int) = numericColumns[columnIndex][currentTimeSeriesId]
             override fun getString(columnIndex: Int) = stringColumns[columnIndex][currentTimeSeriesId]
 
-            override fun rowIterator() = object : RowIterator {
+            override fun rowIterator() = object : AbstractRowIterator(this@ConcreteTable.schema) {
                 private var currentRowId = timeSeriesIndices[currentTimeSeriesId] - 1
                 private val lastRowId = currentRowId + timeSeriesSizes[currentTimeSeriesId]
-
-                override val schema: TableSchema
-                    get() = this@ConcreteTable.schema
 
                 override val currentRow = object : Row {
                     override val schema: TableSchema
@@ -45,7 +39,7 @@ class ConcreteTable private constructor(
                     override fun getString(columnIndex: Int) = stringColumns[columnIndex][currentRowId]
                 }
 
-                override fun loadNext(): Boolean {
+                override fun internalLoadNext(): Boolean {
                     if (currentRowId >= lastRowId) return false
                     currentRowId++
                     return true
@@ -53,7 +47,7 @@ class ConcreteTable private constructor(
             }
         }
 
-        override fun loadNext(): Boolean {
+        override fun internalLoadNext(): Boolean {
             if (currentTimeSeriesId + 1 >= timeSeriesCount) return false
             currentTimeSeriesId++
             return true

@@ -113,12 +113,10 @@ class TimeSeriesCache(
         cachedTimeSeriesCount++
     }
 
-    fun iterator(): TimeSeriesIterator = object : TimeSeriesIterator {
+    fun iterator(): TimeSeriesIterator = object : AbstractTimeSeriesIterator(this@TimeSeriesCache.schema) {
         private var currentTimeSeriesId = -1
         private var currentTimeSeriesFirstRow = -1
 
-        override val schema: TableSchema
-            get() = this@TimeSeriesCache.schema
         override val currentTimeSeries: TimeSeries = object : TimeSeries {
             override val schema: TableSchema
                 get() = this@TimeSeriesCache.schema
@@ -138,13 +136,11 @@ class TimeSeriesCache(
                 return cachedStringValues[columnIndex][currentTimeSeriesId]!!
             }
 
-            override fun rowIterator(): RowIterator = object : RowIterator {
+            override fun rowIterator(): RowIterator = object : AbstractRowIterator(this@TimeSeriesCache.schema) {
                 private val timeSeriesId = currentTimeSeriesId
                 private var currentRowId = currentTimeSeriesFirstRow - 1
                 private val lastRowId = currentTimeSeriesFirstRow + rowsPerTimeSeries[timeSeriesId] - 1
 
-                override val schema: TableSchema
-                    get() = this@TimeSeriesCache.schema
                 override val currentRow: Row = object : Row {
                     override val schema: TableSchema
                         get() = this@TimeSeriesCache.schema
@@ -165,7 +161,7 @@ class TimeSeriesCache(
                     }
                 }
 
-                override fun loadNext(): Boolean {
+                override fun internalLoadNext(): Boolean {
                     if (currentRowId == lastRowId) return false
                     currentRowId++
                     return true
@@ -173,7 +169,7 @@ class TimeSeriesCache(
             }
         }
 
-        override fun loadNext(): Boolean {
+        override fun internalLoadNext(): Boolean {
             // Return false if all cache time series have been read
             if (currentTimeSeriesId + 1 >= cachedTimeSeriesCount) return false
             // Move to the first row of the next time series

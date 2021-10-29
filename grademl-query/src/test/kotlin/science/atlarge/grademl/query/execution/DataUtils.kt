@@ -67,11 +67,10 @@ object DataUtils {
         return result
     }
 
-    fun List<List<GeneratedRow>>.toTimeSeriesIterator() = object : TimeSeriesIterator {
+    fun List<List<GeneratedRow>>.toTimeSeriesIterator() = object : AbstractTimeSeriesIterator(DataGenerator.schema) {
         private val mappedData = this@toTimeSeriesIterator.map { ts -> ts.map { it.asQueryEngineRow() } }
         private var currentTimeSeriesIndex = -1
 
-        override val schema: TableSchema = DataGenerator.schema
         override val currentTimeSeries: TimeSeries = object : TimeSeries {
             override val schema: TableSchema = DataGenerator.schema
 
@@ -90,15 +89,14 @@ object DataUtils {
                 return mappedData[currentTimeSeriesIndex][0].getString(columnIndex)
             }
 
-            override fun rowIterator(): RowIterator = object : RowIterator {
+            override fun rowIterator(): RowIterator = object : AbstractRowIterator(DataGenerator.schema) {
                 private val timeSeriesIndex = currentTimeSeriesIndex
                 private var currentRowIndex = -1
 
-                override val schema: TableSchema = DataGenerator.schema
                 override val currentRow: Row
                     get() = mappedData[timeSeriesIndex][currentRowIndex]
 
-                override fun loadNext(): Boolean {
+                override fun internalLoadNext(): Boolean {
                     if (currentRowIndex + 1 >= mappedData[timeSeriesIndex].size) return false
                     currentRowIndex++
                     return true
@@ -106,7 +104,7 @@ object DataUtils {
             }
         }
 
-        override fun loadNext(): Boolean {
+        override fun internalLoadNext(): Boolean {
             if (currentTimeSeriesIndex + 1 >= mappedData.size) return false
             currentTimeSeriesIndex++
             return true

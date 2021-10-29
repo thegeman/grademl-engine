@@ -1,6 +1,7 @@
 package science.atlarge.grademl.query.execution.util
 
-import science.atlarge.grademl.query.execution.DataGenerator
+import science.atlarge.grademl.query.execution.AbstractRowIterator
+import science.atlarge.grademl.query.execution.AbstractTimeSeriesIterator
 import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.*
 
@@ -55,49 +56,47 @@ fun ConcreteRow.toRow(schema: TableSchema) = object : Row {
     override fun getString(columnIndex: Int) = string(columnIndex)
 }
 
-fun List<List<ConcreteRow>>.toTimeSeriesIterator(schema: TableSchema) = object : TimeSeriesIterator {
-    private val tableSchema = schema
-    private val mappedData = map { ts -> ts.map { it.toRow(tableSchema) } }
-    private var currentTimeSeriesIndex = -1
+fun List<List<ConcreteRow>>.toTimeSeriesIterator(tableSchema: TableSchema) =
+    object : AbstractTimeSeriesIterator(tableSchema) {
+        private val mappedData = map { ts -> ts.map { it.toRow(tableSchema) } }
+        private var currentTimeSeriesIndex = -1
 
-    override val schema = tableSchema
-    override val currentTimeSeries: TimeSeries = object : TimeSeries {
-        override val schema: TableSchema = DataGenerator.schema
+        override val currentTimeSeries: TimeSeries = object : TimeSeries {
+            override val schema: TableSchema = tableSchema
 
-        override fun getBoolean(columnIndex: Int): Boolean {
-            require(tableSchema.columns[columnIndex].isKey)
-            return mappedData[currentTimeSeriesIndex][0].getBoolean(columnIndex)
-        }
+            override fun getBoolean(columnIndex: Int): Boolean {
+                require(tableSchema.columns[columnIndex].isKey)
+                return mappedData[currentTimeSeriesIndex][0].getBoolean(columnIndex)
+            }
 
-        override fun getNumeric(columnIndex: Int): Double {
-            require(tableSchema.columns[columnIndex].isKey)
-            return mappedData[currentTimeSeriesIndex][0].getNumeric(columnIndex)
-        }
+            override fun getNumeric(columnIndex: Int): Double {
+                require(tableSchema.columns[columnIndex].isKey)
+                return mappedData[currentTimeSeriesIndex][0].getNumeric(columnIndex)
+            }
 
-        override fun getString(columnIndex: Int): String {
-            require(tableSchema.columns[columnIndex].isKey)
-            return mappedData[currentTimeSeriesIndex][0].getString(columnIndex)
-        }
+            override fun getString(columnIndex: Int): String {
+                require(tableSchema.columns[columnIndex].isKey)
+                return mappedData[currentTimeSeriesIndex][0].getString(columnIndex)
+            }
 
-        override fun rowIterator(): RowIterator = object : RowIterator {
-            private val timeSeriesIndex = currentTimeSeriesIndex
-            private var currentRowIndex = -1
+            override fun rowIterator(): RowIterator = object : AbstractRowIterator(tableSchema) {
+                private val timeSeriesIndex = currentTimeSeriesIndex
+                private var currentRowIndex = -1
 
-            override val schema = tableSchema
-            override val currentRow: Row
-                get() = mappedData[timeSeriesIndex][currentRowIndex]
+                override val currentRow: Row
+                    get() = mappedData[timeSeriesIndex][currentRowIndex]
 
-            override fun loadNext(): Boolean {
-                if (currentRowIndex + 1 >= mappedData[timeSeriesIndex].size) return false
-                currentRowIndex++
-                return true
+                override fun internalLoadNext(): Boolean {
+                    if (currentRowIndex + 1 >= mappedData[timeSeriesIndex].size) return false
+                    currentRowIndex++
+                    return true
+                }
             }
         }
-    }
 
-    override fun loadNext(): Boolean {
-        if (currentTimeSeriesIndex + 1 >= mappedData.size) return false
-        currentTimeSeriesIndex++
-        return true
+        override fun internalLoadNext(): Boolean {
+            if (currentTimeSeriesIndex + 1 >= mappedData.size) return false
+            currentTimeSeriesIndex++
+            return true
+        }
     }
-}

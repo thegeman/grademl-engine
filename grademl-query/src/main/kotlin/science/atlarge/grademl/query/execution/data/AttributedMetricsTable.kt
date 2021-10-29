@@ -7,9 +7,7 @@ import science.atlarge.grademl.core.models.resource.Metric
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.ASTUtils
 import science.atlarge.grademl.query.analysis.FilterConditionSeparation
-import science.atlarge.grademl.query.execution.BooleanPhysicalExpression
-import science.atlarge.grademl.query.execution.FilterableTable
-import science.atlarge.grademl.query.execution.toPhysicalExpression
+import science.atlarge.grademl.query.execution.*
 import science.atlarge.grademl.query.language.Expression
 import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.*
@@ -175,9 +173,7 @@ class AttributedMetricsTable(
             findSelectedMetrics(), findSelectedPhases()
         ).iterator()
         val firstTimestampNs = gradeMLJob.unifiedExecutionModel.rootPhase.startTime
-        return object : TimeSeriesIterator {
-            override val schema: TableSchema
-                get() = this@AttributedMetricsTable.schema
+        return object : AbstractTimeSeriesIterator(this@AttributedMetricsTable.schema) {
             override val currentTimeSeries: TimeSeries
                 get() = metricPhaseTimeSeries
 
@@ -216,9 +212,7 @@ class AttributedMetricsTable(
                 override fun rowIterator(): RowIterator {
                     val usageIterator = attributedResourceData.metricData.iterator()
                     val capacityIterator = attributedResourceData.availableCapacity.iterator()
-                    return object : RowIterator {
-                        override val schema: TableSchema
-                            get() = this@AttributedMetricsTable.schema
+                    return object : AbstractRowIterator(this@AttributedMetricsTable.schema) {
                         override val currentRow = object : Row {
                             override val schema: TableSchema
                                 get() = this@AttributedMetricsTable.schema
@@ -258,7 +252,7 @@ class AttributedMetricsTable(
                             }
                         }
 
-                        override fun loadNext(): Boolean {
+                        override fun internalLoadNext(): Boolean {
                             if (!usageIterator.hasNext) return false
                             usageIterator.next()
                             capacityIterator.next()
@@ -268,7 +262,7 @@ class AttributedMetricsTable(
                 }
             }
 
-            override fun loadNext(): Boolean {
+            override fun internalLoadNext(): Boolean {
                 while (selectedMetricPhasePairs.hasNext()) {
                     val (metric, phase) = selectedMetricPhasePairs.next()
                     // Get resource attribution result for this metric-phase pair
