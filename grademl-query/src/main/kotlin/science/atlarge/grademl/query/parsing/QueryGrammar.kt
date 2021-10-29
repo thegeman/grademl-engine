@@ -65,6 +65,8 @@ object QueryGrammar : Grammar<List<Statement>>() {
     private val greater by literalToken(">")
     private val smallerEqual by literalToken("<=")
     private val smaller by literalToken("<")
+    private val amp2 by literalToken("&&")
+    private val pipe2 by literalToken("||")
 
     // Ignore whitespace
     private val whitespace by regexToken("""\s+""", ignore = true)
@@ -104,11 +106,13 @@ object QueryGrammar : Grammar<List<Statement>>() {
         BinaryExpression(l, r, toBinaryOp(op.text))
     }
 
-    private val andChain by leftAssociative(comparisonChain, and) { l, op, r ->
+    private val andChain by leftAssociative(comparisonChain, and or amp2) { l, op, r ->
         BinaryExpression(l, r, toBinaryOp(op.text))
     }
 
-    private val expression by leftAssociative(andChain, or) { l, op, r -> BinaryExpression(l, r, toBinaryOp(op.text)) }
+    private val expression by leftAssociative(andChain, or or pipe2) { l, op, r ->
+        BinaryExpression(l, r, toBinaryOp(op.text))
+    }
 
     private val namedExpression by expression * -`as` * id map { NamedExpression(it.t1, it.t2.text) }
 
@@ -188,6 +192,8 @@ object QueryGrammar : Grammar<List<Statement>>() {
             ">=" -> BinaryOp.GREATER_EQUAL
             "<" -> BinaryOp.SMALLER
             "<=" -> BinaryOp.SMALLER_EQUAL
+            "&&" -> BinaryOp.AND
+            "||" -> BinaryOp.OR
             else -> throw IllegalArgumentException()
         }
     }
