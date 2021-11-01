@@ -171,17 +171,35 @@ object QueryPlanner {
                     input
                 }
 
+                // Determine if the group-by uses time columns
+                val nonTemporalGroupByLiterals = rewrittenGroupByLiterals.filter {
+                    it.columnPath != Columns.START_TIME.identifier && it.columnPath != Columns.END_TIME.identifier
+                }
+                val isTemporal = rewrittenGroupByLiterals.size != nonTemporalGroupByLiterals.size
+
                 // Sort the input by the group-by columns
-                val sortedInput = PhysicalQueryPlanBuilder.sort(projectedInput, rewrittenGroupByLiterals.map {
-                    SortColumn(it, true)
-                })
+                val sortedInput = if (nonTemporalGroupByLiterals.isNotEmpty()) {
+                    PhysicalQueryPlanBuilder.sort(projectedInput, nonTemporalGroupByLiterals.map {
+                        SortColumn(it, true)
+                    })
+                } else {
+                    projectedInput
+                }
 
                 // Apply the final aggregations
-                lastResult = PhysicalQueryPlanBuilder.sortedAggregate(
-                    sortedInput,
-                    rewrittenGroupByLiterals.map { it.columnPath },
-                    aggregatePlan.aggregateExpressions
-                )
+                lastResult = if (isTemporal) {
+                    PhysicalQueryPlanBuilder.sortedTemporalAggregate(
+                        sortedInput,
+                        nonTemporalGroupByLiterals.map { it.columnPath },
+                        aggregatePlan.aggregateExpressions
+                    )
+                } else {
+                    PhysicalQueryPlanBuilder.sortedAggregate(
+                        sortedInput,
+                        nonTemporalGroupByLiterals.map { it.columnPath },
+                        aggregatePlan.aggregateExpressions
+                    )
+                }
             }
 
             override fun visit(filterPlan: FilterPlan) {

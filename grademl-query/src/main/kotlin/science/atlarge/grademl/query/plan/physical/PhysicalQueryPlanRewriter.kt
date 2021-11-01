@@ -30,6 +30,15 @@ interface PhysicalQueryPlanRewriter : PhysicalQueryPlanVisitor<PhysicalQueryPlan
         )
     }
 
+    override fun visit(sortedTemporalAggregatePlan: SortedTemporalAggregatePlan): PhysicalQueryPlan? {
+        val inputRewritten = sortedTemporalAggregatePlan.input.accept(this) ?: return null
+        return PhysicalQueryPlanBuilder.sortedTemporalAggregate(
+            inputRewritten,
+            sortedTemporalAggregatePlan.groupByColumns,
+            sortedTemporalAggregatePlan.namedColumnExpressions
+        )
+    }
+
     override fun visit(sortedTemporalJoinPlan: SortedTemporalJoinPlan): PhysicalQueryPlan? {
         val leftRewritten = sortedTemporalJoinPlan.leftInput.accept(this)
         val rightRewritten = sortedTemporalJoinPlan.rightInput.accept(this)

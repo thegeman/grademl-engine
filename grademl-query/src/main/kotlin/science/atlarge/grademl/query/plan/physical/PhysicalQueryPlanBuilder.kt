@@ -43,6 +43,15 @@ object PhysicalQueryPlanBuilder {
         return SortedAggregatePlan(nodeId, input, groupByColumns, columnExpressions)
     }
 
+    fun sortedTemporalAggregate(
+        input: PhysicalQueryPlan,
+        groupByColumns: List<String>,
+        columnExpressions: List<NamedExpression>
+    ): PhysicalQueryPlan {
+        val nodeId = nextNodeId++
+        return SortedTemporalAggregatePlan(nodeId, input, groupByColumns, columnExpressions)
+    }
+
     fun sortedTemporalJoin(
         leftInput: PhysicalQueryPlan,
         rightInput: PhysicalQueryPlan,

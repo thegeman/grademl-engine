@@ -106,6 +106,25 @@ private class DropColumnsRewriter(
         )
     }
 
+    override fun visit(sortedTemporalAggregatePlan: SortedTemporalAggregatePlan): PhysicalQueryPlan? {
+        // Determine which aggregation/projection expressions to keep and which input columns they need
+        val requiredAggregations = sortedTemporalAggregatePlan.namedColumnExpressions
+            .filter { it.name in requiredColumns }
+        val requiredInputs = setOf(Columns.START_TIME.identifier, Columns.END_TIME.identifier) +
+                sortedTemporalAggregatePlan.groupByColumns +
+                requiredAggregations.flatMap { ASTUtils.findColumnLiterals(it.expr) }.map { it.columnPath }
+        // Rewrite the input to drop any columns not required for this aggregation
+        val rewrittenInput = sortedTemporalAggregatePlan.input.recurse(requiredInputs)
+        // Don't rewrite this aggregation if the input hasn't changed and no output columns can be dropped
+        if (rewrittenInput == null && requiredAggregations.size == sortedTemporalAggregatePlan.namedColumnExpressions.size)
+            return null
+        return PhysicalQueryPlanBuilder.sortedTemporalAggregate(
+            rewrittenInput ?: sortedTemporalAggregatePlan.input,
+            sortedTemporalAggregatePlan.groupByColumns,
+            requiredAggregations
+        )
+    }
+
     override fun visit(sortedTemporalJoinPlan: SortedTemporalJoinPlan): PhysicalQueryPlan? {
         // Determine which inputs are needed from the left and right input tables
         val requiredInputs = setOf(Columns.START_TIME.identifier, Columns.END_TIME.identifier) + requiredColumns

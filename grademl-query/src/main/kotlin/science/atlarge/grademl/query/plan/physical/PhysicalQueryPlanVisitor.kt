@@ -7,6 +7,7 @@ interface PhysicalQueryPlanVisitor<out T> {
     fun visit(linearTableScanPlan: LinearTableScanPlan): T
     fun visit(projectPlan: ProjectPlan): T
     fun visit(sortedAggregatePlan: SortedAggregatePlan): T
+    fun visit(sortedTemporalAggregatePlan: SortedTemporalAggregatePlan): T
     fun visit(sortedTemporalJoinPlan: SortedTemporalJoinPlan): T
     fun visit(sortPlan: SortPlan): T
 
