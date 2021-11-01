@@ -8,6 +8,7 @@ import science.atlarge.grademl.query.execution.IntTypes.TYPE_NUMERIC
 import science.atlarge.grademl.query.execution.IntTypes.TYPE_STRING
 import science.atlarge.grademl.query.execution.IntTypes.toInt
 import science.atlarge.grademl.query.execution.TimeSeriesCache
+import science.atlarge.grademl.query.execution.util.TimeSeriesCacheUtil
 import science.atlarge.grademl.query.language.Type
 import science.atlarge.grademl.query.model.*
 
@@ -108,10 +109,6 @@ private class TemporalJoinTimeSeriesIterator(
     // Cache time series from the left input
     private val leftTimeSeriesCache = TimeSeriesCache(leftInput.schema)
     private var leftCacheIterator: TimeSeriesIterator? = null
-
-    // Track whether we have peeked at the input iterators
-    private var leftInputValid = false
-    private var rightInputValid = false
 
     // Cache pointers to left and right input time series
     private lateinit var leftTimeSeries: TimeSeries
@@ -217,38 +214,28 @@ private class TemporalJoinTimeSeriesIterator(
         // Find matching time series from the left and right input to join
         if (!findMatchingTimeSeries()) return false
         // Load all matching time series from the left input into the cache
-        leftTimeSeriesCache.addTimeSeries(leftInput.currentTimeSeries)
-        val currentRightTimeSeries = rightInput.currentTimeSeries
-        while (true) {
-            // Read a time series from the left input
-            if (!leftInput.loadNext()) break
-            val leftTimeSeries = leftInput.currentTimeSeries
-            // Check if it can be joined with the current right time series
-            if (comparator.compare(leftTimeSeries, currentRightTimeSeries) == 0) {
-                leftTimeSeriesCache.addTimeSeries(leftTimeSeries)
-            } else {
-                // If not, push back the left input and stop
-                leftInput.pushBack()
-                break
-            }
+        leftInput.pushBack()
+        TimeSeriesCacheUtil.addTimeSeriesGroupToCache(leftInput, leftTimeSeriesCache) { left, right ->
+            comparator.compare(left, right) == 0
         }
         // Create a new iterator over the cached inputs
         leftCacheIterator = leftTimeSeriesCache.iterator()
-        // Cache the join column values from our right input
-        for (c in rightJoinColumnIndices.indices) {
+        if (!leftCacheIterator!!.loadNext()) throw IllegalStateException("Cache iterator is empty after filling the cache")
+        // Cache the join column values from our left input
+        val firstLeftTimeSeries = leftCacheIterator!!.currentTimeSeries
+        for (c in leftJoinColumnIndices.indices) {
             when (joinColumnTypes[c]) {
                 TYPE_BOOLEAN -> cachedBooleanJoinColumnValue[c] =
-                    currentRightTimeSeries.getBoolean(rightJoinColumnIndices[c])
+                    firstLeftTimeSeries.getBoolean(leftJoinColumnIndices[c])
                 TYPE_NUMERIC -> cachedNumericJoinColumnValue[c] =
-                    currentRightTimeSeries.getNumeric(rightJoinColumnIndices[c])
+                    firstLeftTimeSeries.getNumeric(leftJoinColumnIndices[c])
                 TYPE_STRING -> cachedStringJoinColumnValue[c] =
-                    currentRightTimeSeries.getString(rightJoinColumnIndices[c])
+                    firstLeftTimeSeries.getString(leftJoinColumnIndices[c])
             }
         }
         // Prepare the next joined time series
-        if (!leftCacheIterator!!.loadNext()) throw IllegalStateException("Cache iterator is empty after filling the cache")
-        leftTimeSeries = leftCacheIterator!!.currentTimeSeries
-        rightTimeSeries = currentRightTimeSeries
+        leftTimeSeries = firstLeftTimeSeries
+        rightTimeSeries = rightInput.currentTimeSeries
         return true
     }
 

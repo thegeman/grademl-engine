@@ -2,8 +2,8 @@ package science.atlarge.grademl.query.execution.operators
 
 import science.atlarge.grademl.query.execution.*
 import science.atlarge.grademl.query.execution.IntTypes.toInt
+import science.atlarge.grademl.query.execution.util.TimeSeriesCacheUtil
 import science.atlarge.grademl.query.model.TableSchema
-import science.atlarge.grademl.query.model.TimeSeries
 import science.atlarge.grademl.query.model.TimeSeriesIterator
 
 class SortOperator(
@@ -165,17 +165,16 @@ private class SortTimeSeriesIterator(
             inputCache.finalize()
             return false
         }
-        // Read the next time series and add it to the cache
-        inputCache.addTimeSeries(input.currentTimeSeries)
-        // Read more time series, check if they belong to the same pre-sorted group, and add them
-        while (input.loadNext()) {
-            // Check if the next time series matches the first time series in the cache in the pre-sorted columns
-            if (!matchesPreSortedColumns(input.currentTimeSeries)) {
-                input.pushBack()
-                break
+        // Add the next group of time series to the cache
+        TimeSeriesCacheUtil.addTimeSeriesGroupToCache(input, inputCache) { left, right ->
+            preSortedColumns.all { c ->
+                when (columnTypes[c]) {
+                    IntTypes.TYPE_BOOLEAN -> left.getBoolean(c) == right.getBoolean(c)
+                    IntTypes.TYPE_NUMERIC -> left.getNumeric(c) == right.getNumeric(c)
+                    IntTypes.TYPE_STRING -> left.getString(c) == right.getString(c)
+                    else -> throw IllegalArgumentException("Sort does not support type: ${schema.columns[c].type}")
+                }
             }
-            // Add the next time series to the cache
-            inputCache.addTimeSeries(input.currentTimeSeries)
         }
         // Sort the rows in the cache
         val sortInput = SortInput(inputCache, columnTypes, remainingSortColumns, remainingSortColumnsAscending)
@@ -183,18 +182,6 @@ private class SortTimeSeriesIterator(
         // Return the first time series in the sorted result
         firstOutRowOfTimeSeries = 0
         firstInRowOfTimeSeries = sortResult!!.inputRowAt(firstOutRowOfTimeSeries)
-        return true
-    }
-
-    private fun matchesPreSortedColumns(timeSeries: TimeSeries): Boolean {
-        // Compare pre-sorted column values against the first cached values
-        for (c in preSortedColumns) {
-            when (columnTypes[c]) {
-                0 -> if (inputCache.getBoolean(c, 0) != timeSeries.getBoolean(c)) return false
-                1 -> if (inputCache.getNumeric(c, 0) != timeSeries.getNumeric(c)) return false
-                2 -> if (inputCache.getString(c, 0) != timeSeries.getString(c)) return false
-            }
-        }
         return true
     }
 

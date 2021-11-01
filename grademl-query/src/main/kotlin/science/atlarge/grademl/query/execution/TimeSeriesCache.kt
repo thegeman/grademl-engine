@@ -39,6 +39,7 @@ class TimeSeriesCache(
 
     // Track how many time series are cached and which rows map to which time series
     private var timeSeriesIdPerRow = IntArray(INITIAL_CACHE_SIZE)
+    private var firstRowIdPerTimeSeries = IntArray(INITIAL_CACHE_SIZE)
     private var rowsPerTimeSeries = IntArray(INITIAL_CACHE_SIZE)
     private var cachedTimeSeriesCount = 0
     private var maxCachedTimeSeriesCount = INITIAL_CACHE_SIZE
@@ -48,7 +49,14 @@ class TimeSeriesCache(
     val numCachedRows: Int
         get() = cachedRowCount
 
+    val isEmpty: Boolean
+        get() = cachedRowCount == 0
+
     // Random access of rows and time series
+    fun firstRowIdOf(timeSeriesId: Int) = firstRowIdPerTimeSeries[timeSeriesId]
+    fun lastRowIdOf(timeSeriesId: Int) = firstRowIdOf(timeSeriesId) + rowCountOf(timeSeriesId) - 1
+    fun rowCountOf(timeSeriesId: Int) = rowsPerTimeSeries[timeSeriesId]
+
     fun timeSeriesIdOf(rowId: Int) = timeSeriesIdPerRow[rowId]
 
     fun getBoolean(columnId: Int, rowId: Int): Boolean {
@@ -66,7 +74,7 @@ class TimeSeriesCache(
         else cachedStringValues[columnId][rowId]!!
     }
 
-    fun addTimeSeries(timeSeries: TimeSeries) {
+    fun addTimeSeries(timeSeries: TimeSeries): Int {
         // Prepare the time series-level cache
         if (cachedTimeSeriesCount == maxCachedTimeSeriesCount) expandTimeSeriesCache()
         val timeSeriesId = cachedTimeSeriesCount
@@ -108,78 +116,39 @@ class TimeSeriesCache(
         }
 
         // Store updated counters
+        firstRowIdPerTimeSeries[timeSeriesId] = cachedRowCount
         rowsPerTimeSeries[timeSeriesId] = addedRowCount
         cachedRowCount = lCachedRowCount
         cachedTimeSeriesCount++
+
+        return timeSeriesId
+    }
+
+    fun createTimeSeriesWrapper(initialTimeSeriesId: Int = -1) = TimeSeriesWrapper().apply {
+        timeSeriesId = initialTimeSeriesId
+    }
+
+    fun createRowIterator(initialTimeSeriesId: Int = -1) = CachedRowIterator().apply {
+        reset(initialTimeSeriesId)
+    }
+
+    fun createRowWrapper(initialRowId: Int = -1) = RowWrapper().apply {
+        rowId = initialRowId
     }
 
     fun iterator(): TimeSeriesIterator = object : AbstractTimeSeriesIterator(this@TimeSeriesCache.schema) {
         private var currentTimeSeriesId = -1
-        private var currentTimeSeriesFirstRow = -1
 
-        override val currentTimeSeries: TimeSeries = object : TimeSeries {
-            override val schema: TableSchema
-                get() = this@TimeSeriesCache.schema
-
-            override fun getBoolean(columnIndex: Int): Boolean {
-                require(isKeyColumn[columnIndex])
-                return cachedBooleanValues[columnIndex][currentTimeSeriesId]
-            }
-
-            override fun getNumeric(columnIndex: Int): Double {
-                require(isKeyColumn[columnIndex])
-                return cachedNumericValues[columnIndex][currentTimeSeriesId]
-            }
-
-            override fun getString(columnIndex: Int): String {
-                require(isKeyColumn[columnIndex])
-                return cachedStringValues[columnIndex][currentTimeSeriesId]!!
-            }
-
-            override fun rowIterator(): RowIterator = object : AbstractRowIterator(this@TimeSeriesCache.schema) {
-                private val timeSeriesId = currentTimeSeriesId
-                private var currentRowId = currentTimeSeriesFirstRow - 1
-                private val lastRowId = currentTimeSeriesFirstRow + rowsPerTimeSeries[timeSeriesId] - 1
-
-                override val currentRow: Row = object : Row {
-                    override val schema: TableSchema
-                        get() = this@TimeSeriesCache.schema
-
-                    override fun getBoolean(columnIndex: Int): Boolean {
-                        return if (isKeyColumn[columnIndex]) cachedBooleanValues[columnIndex][timeSeriesId]
-                        else cachedBooleanValues[columnIndex][currentRowId]
-                    }
-
-                    override fun getNumeric(columnIndex: Int): Double {
-                        return if (isKeyColumn[columnIndex]) cachedNumericValues[columnIndex][timeSeriesId]
-                        else cachedNumericValues[columnIndex][currentRowId]
-                    }
-
-                    override fun getString(columnIndex: Int): String {
-                        return if (isKeyColumn[columnIndex]) cachedStringValues[columnIndex][timeSeriesId]!!
-                        else cachedStringValues[columnIndex][currentRowId]!!
-                    }
-                }
-
-                override fun internalLoadNext(): Boolean {
-                    if (currentRowId == lastRowId) return false
-                    currentRowId++
-                    return true
-                }
-            }
-        }
+        private val timeSeriesWrapper = TimeSeriesWrapper()
+        override val currentTimeSeries: TimeSeries
+            get() = timeSeriesWrapper
 
         override fun internalLoadNext(): Boolean {
             // Return false if all cache time series have been read
             if (currentTimeSeriesId + 1 >= cachedTimeSeriesCount) return false
-            // Move to the first row of the next time series
-            if (currentTimeSeriesId == -1) {
-                currentTimeSeriesFirstRow = 0
-            } else {
-                currentTimeSeriesFirstRow += rowsPerTimeSeries[currentTimeSeriesId]
-            }
             // Increment the current time series ID
             currentTimeSeriesId++
+            timeSeriesWrapper.timeSeriesId = currentTimeSeriesId
             return true
         }
     }
@@ -197,6 +166,7 @@ class TimeSeriesCache(
         Arrays.fill(cachedNumericValues, doubleArrayOf())
         Arrays.fill(cachedStringValues, emptyArray<String?>())
         timeSeriesIdPerRow = intArrayOf()
+        firstRowIdPerTimeSeries = intArrayOf()
         rowsPerTimeSeries = intArrayOf()
     }
 
@@ -211,7 +181,8 @@ class TimeSeriesCache(
                 IntTypes.TYPE_STRING -> cachedStringValues[c] = cachedStringValues[c].copyOf(newSize)
             }
         }
-        // Expand row count cache
+        // Expand row count and offset cache
+        firstRowIdPerTimeSeries = firstRowIdPerTimeSeries.copyOf(newSize)
         rowsPerTimeSeries = rowsPerTimeSeries.copyOf(newSize)
 
         maxCachedTimeSeriesCount = newSize
@@ -233,6 +204,89 @@ class TimeSeriesCache(
         timeSeriesIdPerRow = timeSeriesIdPerRow.copyOf(newSize)
 
         maxCachedRowCount = newSize
+    }
+
+    inner class TimeSeriesWrapper : TimeSeries {
+        override val schema: TableSchema
+            get() = this@TimeSeriesCache.schema
+
+        var timeSeriesId: Int = -1
+
+        override fun getBoolean(columnIndex: Int): Boolean {
+            require(isKeyColumn[columnIndex])
+            return cachedBooleanValues[columnIndex][timeSeriesId]
+        }
+
+        override fun getNumeric(columnIndex: Int): Double {
+            require(isKeyColumn[columnIndex])
+            return cachedNumericValues[columnIndex][timeSeriesId]
+        }
+
+        override fun getString(columnIndex: Int): String {
+            require(isKeyColumn[columnIndex])
+            return cachedStringValues[columnIndex][timeSeriesId]!!
+        }
+
+        override fun rowIterator(): RowIterator =
+            CachedRowIterator().also { it.reset(timeSeriesId) }
+    }
+
+    inner class CachedRowIterator : AbstractRowIterator(this@TimeSeriesCache.schema) {
+        private var timeSeriesId = -1
+        private var currentRowId = -1
+        private var lastRowId = -1
+
+        private val rowWrapper = RowWrapper()
+        override val currentRow: Row
+            get() = rowWrapper
+
+        fun reset(newTimeSeriesId: Int) {
+            if (newTimeSeriesId in 0 until cachedTimeSeriesCount) {
+                timeSeriesId = newTimeSeriesId
+                currentRowId = firstRowIdOf(newTimeSeriesId) - 1
+                lastRowId = currentRowId + rowCountOf(newTimeSeriesId)
+            } else {
+                timeSeriesId = -1
+                currentRowId = -1
+                lastRowId = -1
+            }
+            isCurrentRowValid = false
+            isCurrentRowPushedBack = false
+        }
+
+        override fun internalLoadNext(): Boolean {
+            if (currentRowId == lastRowId) return false
+            currentRowId++
+            rowWrapper.rowId = currentRowId
+            return true
+        }
+    }
+
+    inner class RowWrapper : Row {
+        override val schema: TableSchema
+            get() = this@TimeSeriesCache.schema
+
+        private var timeSeriesId: Int = -1
+        var rowId: Int = -1
+            set(value) {
+                timeSeriesId = if (value in 0 until numCachedRows) timeSeriesIdOf(value) else -1
+                field = value
+            }
+
+        override fun getBoolean(columnIndex: Int): Boolean {
+            return if (isKeyColumn[columnIndex]) cachedBooleanValues[columnIndex][timeSeriesId]
+            else cachedBooleanValues[columnIndex][rowId]
+        }
+
+        override fun getNumeric(columnIndex: Int): Double {
+            return if (isKeyColumn[columnIndex]) cachedNumericValues[columnIndex][timeSeriesId]
+            else cachedNumericValues[columnIndex][rowId]
+        }
+
+        override fun getString(columnIndex: Int): String {
+            return if (isKeyColumn[columnIndex]) cachedStringValues[columnIndex][timeSeriesId]!!
+            else cachedStringValues[columnIndex][rowId]!!
+        }
     }
 
     companion object {
