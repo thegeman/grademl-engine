@@ -164,6 +164,8 @@ private class SortTimeSeriesIterator(
             // If not, clean up the cache and return
             inputCache.finalize()
             return false
+        } else {
+            input.pushBack()
         }
         // Add the next group of time series to the cache
         TimeSeriesCacheUtil.addTimeSeriesGroupToCache(input, inputCache) { left, right ->
