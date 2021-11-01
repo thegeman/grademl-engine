@@ -13,6 +13,11 @@ abstract class AccountingRowIterator(
     private var isCurrentRowValid = false
     private var isCurrentRowPushedBack = false
 
+    fun resetInternal() {
+        isCurrentRowValid = false
+        isCurrentRowPushedBack = false
+    }
+
     var rowsProduced = 0L
         private set
 

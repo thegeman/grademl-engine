@@ -17,12 +17,19 @@ abstract class AccountingTimeSeriesIterator<T : AccountingRowIterator>(
     private val rowIterators = mutableListOf<T>()
     private var rowIteratorsInUse = 0
 
+    fun resetInternal() {
+        isCurrentTimeSeriesValid = false
+        isCurrentTimeSeriesPushedBack = false
+        rowIteratorsInUse = 0
+    }
+
     protected abstract fun createRowIterator(): T
     protected abstract fun resetRowIteratorWithCurrentTimeSeries(rowIterator: T)
 
     final override fun rowIterator(): RowIterator {
         if (rowIteratorsInUse == rowIterators.size) rowIterators.add(createRowIterator())
         val rowIterator = rowIterators[rowIteratorsInUse++]
+        rowIterator.resetInternal()
         resetRowIteratorWithCurrentTimeSeries(rowIterator)
         return rowIterator
     }
