@@ -32,4 +32,11 @@ object InsertIntervalMergingOptimization : OptimizationStrategy, PhysicalQueryPl
         return PhysicalQueryPlanBuilder.intervalMerging(rewrittenProject ?: projectPlan)
     }
 
+    override fun visit(sortedTemporalAggregatePlan: SortedTemporalAggregatePlan): PhysicalQueryPlan {
+        // Always merge intervals after a group-by-time aggregation
+        return PhysicalQueryPlanBuilder.intervalMerging(
+            super.visit(sortedTemporalAggregatePlan) ?: sortedTemporalAggregatePlan
+        )
+    }
+
 }

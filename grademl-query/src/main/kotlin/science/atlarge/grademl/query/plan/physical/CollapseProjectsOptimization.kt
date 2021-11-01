@@ -26,16 +26,30 @@ object CollapseProjectsOptimization : OptimizationStrategy, PhysicalQueryPlanRew
 
     private fun mergeNestedProjects(projectPlan: ProjectPlan): PhysicalQueryPlan? {
         // Find nested projections
-        if (projectPlan.input !is ProjectPlan) return null
-        // Collapse two projections by replacing column references in outer projections with inner projections
-        val innerProjections = projectPlan.input.namedColumnExpressions.associate { it.name to it.expr }
-        val rewrittenProjections = projectPlan.namedColumnExpressions.map { namedExpression ->
-            val rewrittenExpression = ColumnReplacementPass.replaceColumnLiterals(namedExpression.expr) { col ->
-                innerProjections[col.columnPath]!!
+        return when (projectPlan.input) {
+            is ProjectPlan -> {
+                // Collapse two projections by replacing column references in outer projections with inner projections
+                val innerProjections = projectPlan.input.namedColumnExpressions.associate { it.name to it.expr }
+                val rewrittenProjections = projectPlan.namedColumnExpressions.map { namedExpression ->
+                    val rewrittenExpression = ColumnReplacementPass.replaceColumnLiterals(namedExpression.expr) { col ->
+                        innerProjections[col.columnPath]!!
+                    }
+                    NamedExpression(rewrittenExpression, namedExpression.name)
+                }
+                // Create new projection
+                optimizeOrReturn(PhysicalQueryPlanBuilder.project(projectPlan.input.input, rewrittenProjections))
             }
-            NamedExpression(rewrittenExpression, namedExpression.name)
+            is SortedAggregatePlan -> {
+                // Collapse projection into aggregation if possible
+                // TODO: Support merging projection and aggregation
+                null
+            }
+            is SortedTemporalAggregatePlan -> {
+                // Collapse projection into aggregation if possible
+                // TODO: Support merging projection and aggregation
+                null
+            }
+            else -> null
         }
-        // Create new projection
-        return optimizeOrReturn(PhysicalQueryPlanBuilder.project(projectPlan.input.input, rewrittenProjections))
     }
 }

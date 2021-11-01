@@ -3,10 +3,7 @@ package science.atlarge.grademl.query.plan.physical
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.ColumnAliasingPass
 import science.atlarge.grademl.query.analysis.FilterConditionSeparation
-import science.atlarge.grademl.query.language.BinaryExpression
-import science.atlarge.grademl.query.language.BinaryOp
-import science.atlarge.grademl.query.language.ColumnLiteral
-import science.atlarge.grademl.query.language.Expression
+import science.atlarge.grademl.query.language.*
 
 object PushDownFilterOptimization : OptimizationStrategy, PhysicalQueryPlanRewriter {
 
@@ -21,6 +18,8 @@ object PushDownFilterOptimization : OptimizationStrategy, PhysicalQueryPlanRewri
             is LinearTableScanPlan -> pushIntoLinearTableScan(filterPlan.filterCondition, filterPlan.input)
             is ProjectPlan -> pushPastProject(filterPlan.filterCondition, filterPlan.input)
             is SortedAggregatePlan -> pushPastSortedAggregate(filterPlan.filterCondition, filterPlan.input)
+            is SortedTemporalAggregatePlan ->
+                pushPastSortedTemporalAggregate(filterPlan.filterCondition, filterPlan.input)
             is SortedTemporalJoinPlan -> pushPastSortedTemporalJoin(filterPlan.filterCondition, filterPlan.input)
             is SortPlan -> pushPastSort(filterPlan.filterCondition, filterPlan.input)
             else -> null
@@ -110,32 +109,14 @@ object PushDownFilterOptimization : OptimizationStrategy, PhysicalQueryPlanRewri
         filterCondition: Expression,
         sortedAggregatePlan: SortedAggregatePlan
     ): PhysicalQueryPlan? {
-        // Only filters on group-by columns can be safely pushed down
-        // Determine which output columns are aliases of input group-by columns
-        val aliasingColumns = sortedAggregatePlan.namedColumnExpressions.mapIndexedNotNull { index, namedExpression ->
-            if (namedExpression.expr is ColumnLiteral) index to namedExpression else null
-        }
-        val aliasingGroupByColumns = aliasingColumns.filter {
-            val inputColumn = (it.second.expr as ColumnLiteral).columnPath
-            inputColumn in sortedAggregatePlan.groupByColumns
-        }
-        // Split the filter condition into a part using only aliased grouped columns and a part using any column
-        val separatedFilter = FilterConditionSeparation.splitFilterConditionByColumns(
-            filterCondition, listOf(aliasingGroupByColumns.map { it.first }.toSet())
+        // Try to push down filter condition
+        val (innerFilter, remainingFilter) = createInnerAndRemainingFilterForAggregate(
+            filterCondition,
+            sortedAggregatePlan.input,
+            sortedAggregatePlan.groupByColumns,
+            sortedAggregatePlan.namedColumnExpressions
         )
-        val pushDownFilter = separatedFilter.filterExpressionPerSplit[0]
-        val remainingFilter = separatedFilter.remainingFilterExpression
-        // Return if no condition can be pushed down
-        if (pushDownFilter == null) return null
-        // Translate the filter expression to be pushed down
-        val reverseAliases = aliasingColumns.associate {
-            it.second.name to (it.second.expr as ColumnLiteral).columnPath
-        }
-        val rewrittenPushDownFilter = ColumnAliasingPass.aliasColumns(pushDownFilter, reverseAliases)
-        // Create a new filter input to the aggregation and optimize it
-        val innerFilter = optimizeOrReturn(
-            PhysicalQueryPlanBuilder.filter(sortedAggregatePlan.input, rewrittenPushDownFilter)
-        )
+        if (innerFilter == null) return null
         // Create an aggregation of the filtered input
         val newAggregate = PhysicalQueryPlanBuilder.sortedAggregate(
             innerFilter,
@@ -148,6 +129,67 @@ object PushDownFilterOptimization : OptimizationStrategy, PhysicalQueryPlanRewri
         } else {
             newAggregate
         }
+    }
+
+    private fun pushPastSortedTemporalAggregate(
+        filterCondition: Expression,
+        sortedTemporalAggregatePlan: SortedTemporalAggregatePlan
+    ): PhysicalQueryPlan? {
+        // Try to push down filter condition
+        val (innerFilter, remainingFilter) = createInnerAndRemainingFilterForAggregate(
+            filterCondition,
+            sortedTemporalAggregatePlan.input,
+            sortedTemporalAggregatePlan.groupByColumns,
+            sortedTemporalAggregatePlan.namedColumnExpressions
+        )
+        if (innerFilter == null) return null
+        // Create an aggregation of the filtered input
+        val newAggregate = PhysicalQueryPlanBuilder.sortedTemporalAggregate(
+            innerFilter,
+            sortedTemporalAggregatePlan.groupByColumns,
+            sortedTemporalAggregatePlan.namedColumnExpressions
+        )
+        // Add an outer filter operation with part of the filter condition that could not be pushed down
+        return if (remainingFilter != null) {
+            PhysicalQueryPlanBuilder.filter(newAggregate, remainingFilter)
+        } else {
+            newAggregate
+        }
+    }
+
+    private fun createInnerAndRemainingFilterForAggregate(
+        filterCondition: Expression,
+        aggregationInput: PhysicalQueryPlan,
+        groupByColumns: List<String>,
+        namedColumnExpressions: List<NamedExpression>
+    ): Pair<PhysicalQueryPlan?, Expression?> {
+        // Only filters on group-by columns can be safely pushed down
+        // Determine which output columns are aliases of input group-by columns
+        val aliasingColumns = namedColumnExpressions.mapIndexedNotNull { index, namedExpression ->
+            if (namedExpression.expr is ColumnLiteral) index to namedExpression else null
+        }
+        val aliasingGroupByColumns = aliasingColumns.filter {
+            val inputColumn = (it.second.expr as ColumnLiteral).columnPath
+            inputColumn in groupByColumns
+        }
+        // Split the filter condition into a part using only aliased grouped columns and a part using any column
+        val separatedFilter = FilterConditionSeparation.splitFilterConditionByColumns(
+            filterCondition, listOf(aliasingGroupByColumns.map { it.first }.toSet())
+        )
+        val pushDownFilter = separatedFilter.filterExpressionPerSplit[0]
+        val remainingFilter = separatedFilter.remainingFilterExpression
+        // Return if no condition can be pushed down
+        if (pushDownFilter == null) return null to null
+        // Translate the filter expression to be pushed down
+        val reverseAliases = aliasingColumns.associate {
+            it.second.name to (it.second.expr as ColumnLiteral).columnPath
+        }
+        val rewrittenPushDownFilter = ColumnAliasingPass.aliasColumns(pushDownFilter, reverseAliases)
+        // Create a new filter input to the aggregation and optimize it
+        val innerFilter = optimizeOrReturn(
+            PhysicalQueryPlanBuilder.filter(aggregationInput, rewrittenPushDownFilter)
+        )
+        return innerFilter to remainingFilter
     }
 
     private fun pushPastSortedTemporalJoin(
