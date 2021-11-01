@@ -186,7 +186,7 @@ private class TemporalJoinTimeSeriesIterator(
 
     override fun internalLoadNext(): Boolean {
         // Join the next time series from the cache with the current right input
-        if (leftCacheIterator != null && rightInputValid) {
+        if (leftCacheIterator != null) {
             if (leftCacheIterator!!.loadNext()) {
                 leftTimeSeries = leftCacheIterator!!.currentTimeSeries
                 rightTimeSeries = rightInput.currentTimeSeries
@@ -197,16 +197,19 @@ private class TemporalJoinTimeSeriesIterator(
         }
         // Check if the next right input time series can be joined with the left input cache
         if (leftTimeSeriesCache.numCachedTimeSeries > 0) {
-            if (isNextRightTimeSeriesMatching()) {
+            // Abort if no right input can be loaded
+            if (!rightInput.loadNext()) {
+                return false
+            }
+            if (isTimeSeriesMatching(rightInput.currentTimeSeries)) {
                 // Restart the left cache iterator to be joined with the new right input
                 leftCacheIterator = leftTimeSeriesCache.iterator()
                 if (!leftCacheIterator!!.loadNext()) throw IllegalStateException("Cache iterator is empty after filling the cache")
                 leftTimeSeries = leftCacheIterator!!.currentTimeSeries
                 rightTimeSeries = rightInput.currentTimeSeries
                 return true
-            } else if (!rightInputValid) {
-                // Abort if no right input was loaded
-                return false
+            } else {
+                rightInput.pushBack()
             }
         }
         // Clear the cache to load a new group of time series
@@ -215,7 +218,6 @@ private class TemporalJoinTimeSeriesIterator(
         if (!findMatchingTimeSeries()) return false
         // Load all matching time series from the left input into the cache
         leftTimeSeriesCache.addTimeSeries(leftInput.currentTimeSeries)
-        leftInputValid = false
         val currentRightTimeSeries = rightInput.currentTimeSeries
         while (true) {
             // Read a time series from the left input
@@ -225,8 +227,8 @@ private class TemporalJoinTimeSeriesIterator(
             if (comparator.compare(leftTimeSeries, currentRightTimeSeries) == 0) {
                 leftTimeSeriesCache.addTimeSeries(leftTimeSeries)
             } else {
-                // If not, mark that we have peeked at the next left input and stop
-                leftInputValid = true
+                // If not, push back the left input and stop
+                leftInput.pushBack()
                 break
             }
         }
@@ -250,23 +252,18 @@ private class TemporalJoinTimeSeriesIterator(
         return true
     }
 
-    private fun isNextRightTimeSeriesMatching(): Boolean {
-        // Read the next right time series
-        rightInputValid = false
-        if (!rightInput.loadNext()) return false
-        rightInputValid = true
+    private fun isTimeSeriesMatching(timeSeries: TimeSeries): Boolean {
         // Check if it matches the cached column values
-        val rightTimeSeries = rightInput.currentTimeSeries
         for (c in rightJoinColumnIndices.indices) {
             when (joinColumnTypes[c]) {
                 TYPE_BOOLEAN ->
-                    if (cachedBooleanJoinColumnValue[c] != rightTimeSeries.getBoolean(rightJoinColumnIndices[c]))
+                    if (cachedBooleanJoinColumnValue[c] != timeSeries.getBoolean(rightJoinColumnIndices[c]))
                         return false
                 TYPE_NUMERIC ->
-                    if (cachedNumericJoinColumnValue[c] != rightTimeSeries.getNumeric(rightJoinColumnIndices[c]))
+                    if (cachedNumericJoinColumnValue[c] != timeSeries.getNumeric(rightJoinColumnIndices[c]))
                         return false
                 TYPE_STRING ->
-                    if (cachedStringJoinColumnValue[c] != rightTimeSeries.getString(rightJoinColumnIndices[c]))
+                    if (cachedStringJoinColumnValue[c] != timeSeries.getString(rightJoinColumnIndices[c]))
                         return false
             }
         }
@@ -275,12 +272,10 @@ private class TemporalJoinTimeSeriesIterator(
 
     private fun findMatchingTimeSeries(): Boolean {
         // Get the first time series from the left input
-        if (!leftInputValid && !leftInput.loadNext()) return false
-        leftInputValid = true
+        if (!leftInput.loadNext()) return false
         var leftTimeSeries = leftInput.currentTimeSeries
         // Get the first time series from the right input
-        if (!rightInputValid && !rightInput.loadNext()) return false
-        rightInputValid = true
+        if (!rightInput.loadNext()) return false
         var rightTimeSeries = rightInput.currentTimeSeries
 
         // Compare the left and right time series until a match is found
@@ -290,15 +285,11 @@ private class TemporalJoinTimeSeriesIterator(
             // Check if left or right is "smaller"
             if (comparison < 0) {
                 // Left is smaller, so load the next time series from the left input
-                leftInputValid = false
                 if (!leftInput.loadNext()) return false
-                leftInputValid = true
                 leftTimeSeries = leftInput.currentTimeSeries
             } else {
                 // Right is smaller, so load the next time series from the right input
-                rightInputValid = false
                 if (!rightInput.loadNext()) return false
-                rightInputValid = true
                 rightTimeSeries = rightInput.currentTimeSeries
             }
         }

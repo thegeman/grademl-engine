@@ -132,9 +132,6 @@ private class SortTimeSeriesIterator(
     // Pre-compute column types needed for sorting
     private val columnTypes = schema.columns.map { it.type.toInt() }.toIntArray()
 
-    // Track the state of the input iterator
-    private var peekedNextInputRow = false
-
     // Track the result of the sorting operation
     private var sortResult: SortResult? = null
     private var firstOutRowOfTimeSeries = -1
@@ -163,19 +160,18 @@ private class SortTimeSeriesIterator(
         // Reset the row cache
         inputCache.clear()
         // Check if there are more time series to process
-        if (!peekedNextInputRow && !input.loadNext()) {
+        if (!input.loadNext()) {
             // If not, clean up the cache and return
             inputCache.finalize()
             return false
         }
         // Read the next time series and add it to the cache
         inputCache.addTimeSeries(input.currentTimeSeries)
-        peekedNextInputRow = false
         // Read more time series, check if they belong to the same pre-sorted group, and add them
         while (input.loadNext()) {
             // Check if the next time series matches the first time series in the cache in the pre-sorted columns
             if (!matchesPreSortedColumns(input.currentTimeSeries)) {
-                peekedNextInputRow = true
+                input.pushBack()
                 break
             }
             // Add the next time series to the cache

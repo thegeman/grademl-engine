@@ -53,7 +53,6 @@ private class IntervalMergingRowIterator(
 ) : AccountingRowIterator(schema) {
 
     lateinit var input: RowIterator
-    private var peekedAtRow = false
 
     private val columnTypes = schema.columns.map { it.type.toInt() }.toIntArray()
     private val nonReservedValueColumns = schema.columns.mapIndexedNotNull { index, column ->
@@ -71,8 +70,7 @@ private class IntervalMergingRowIterator(
 
     override fun internalLoadNext(): Boolean {
         // Read the next row
-        if (!peekedAtRow && !input.loadNext()) return false
-        peekedAtRow = false
+        if (!input.loadNext()) return false
         // Cache its values
         val initialRow = input.currentRow
         for (c in columnTypes.indices) {
@@ -89,7 +87,8 @@ private class IntervalMergingRowIterator(
             val nextRow = input.currentRow
             // Check if the timestamps are consecutive
             if (numericValues[Columns.INDEX_END_TIME] != nextRow.getNumeric(Columns.INDEX_START_TIME)) {
-                peekedAtRow = true
+                // If not, push back the row for next iteration
+                input.pushBack()
                 break
             }
             // Check all (regular) value columns
@@ -105,7 +104,7 @@ private class IntervalMergingRowIterator(
             }
             // If any columns are different, do not merge
             if (!isEqual) {
-                peekedAtRow = true
+                input.pushBack()
                 break
             }
             // Combine the rows by merging time intervals

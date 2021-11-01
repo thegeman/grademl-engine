@@ -34,7 +34,7 @@ class SortedAggregateOperator(
             "Input to SortedAggregateOperator must have _start_time column"
         ),
         endTimeColumn = input.schema.indexOfEndTimeColumn() ?: throw IllegalArgumentException(
-            "Input to SortedAggregateOperator must have _start_time column"
+            "Input to SortedAggregateOperator must have _end_time column"
         ),
         groupByColumns = groupByColumns,
         groupByColumnTypes = groupByColumnTypes,
@@ -85,9 +85,6 @@ private class SortedAggregateTimeSeriesIterator(
         override fun getString(columnIndex: Int) = rowStringValues[columnIndex]!!
     }
 
-    // Track if we have peeked at the next time series
-    private var inputTimeSeriesValid = false
-
     override fun getBoolean(columnIndex: Int) = booleanProjections[columnIndex]!!.evaluateAsBoolean(aggregatedRow)
     override fun getNumeric(columnIndex: Int) = numericProjections[columnIndex]!!.evaluateAsNumeric(aggregatedRow)
     override fun getString(columnIndex: Int) = stringProjections[columnIndex]!!.evaluateAsString(aggregatedRow)
@@ -106,13 +103,11 @@ private class SortedAggregateTimeSeriesIterator(
     override fun internalLoadNext(): Boolean {
         while (true) {
             // Process the next group
-            if (!inputTimeSeriesValid && !input.loadNext()) return false
-            inputTimeSeriesValid = true
+            if (!input.loadNext()) return false
             // Read the first row of the time series
             val ts = input.currentTimeSeries
             var inputRowIterator: RowIterator? = ts.rowIterator()
             if (!inputRowIterator!!.loadNext()) {
-                inputTimeSeriesValid = false
                 continue
             }
             val inputRow = inputRowIterator.currentRow
@@ -127,13 +122,18 @@ private class SortedAggregateTimeSeriesIterator(
             // Reset aggregators to prepare for aggregating this group of rows
             aggregators.forEach { it.reset() }
             // Aggregate every row in every time series matching the group-by column values just added to the cache
-            do {
+            while (true) {
                 // Add every row in the current time series to each aggregator
                 aggregateRowsInTimeSeries(inputRowIterator)
                 inputRowIterator = null
                 // Read the next time series
-                inputTimeSeriesValid = input.loadNext()
-            } while (inputTimeSeriesValid && isTimeSeriesInGroup())
+                if (!input.loadNext()) break
+                // Check if the next time series is in the same group
+                if (!isTimeSeriesInGroup(input.currentTimeSeries)) {
+                    input.pushBack()
+                    break
+                }
+            }
             // Finalize each aggregation
             for (aggregatorIndex in aggregators.indices) {
                 val aggregator = aggregators[aggregatorIndex]
@@ -170,8 +170,7 @@ private class SortedAggregateTimeSeriesIterator(
         rowNumericValues[endTimeColumn] = maxEndTime
     }
 
-    private fun isTimeSeriesInGroup(): Boolean {
-        val timeSeries = input.currentTimeSeries
+    private fun isTimeSeriesInGroup(timeSeries: TimeSeries): Boolean {
         // Compare against the cache on group-by columns
         groupByColumns.forEachIndexed { groupByIndex, columnIndex ->
             val isEqual = when (groupByColumnTypes[groupByIndex]) {

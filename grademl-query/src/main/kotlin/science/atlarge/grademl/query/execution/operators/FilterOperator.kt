@@ -36,14 +36,8 @@ private class FilterTimeSeriesIterator(
     override fun createRowIterator() = FilterRowIterator(schema, rowCondition)
 
     override fun resetRowIteratorWithCurrentTimeSeries(rowIterator: FilterRowIterator) {
-        if (peekedInputRowIterator != null) {
-            rowIterator.input = peekedInputRowIterator!!
-            rowIterator.peekedAtInput = true
-            peekedInputRowIterator = null
-        } else {
-            rowIterator.input = input.currentTimeSeries.rowIterator()
-            rowIterator.peekedAtInput = false
-        }
+        rowIterator.input = peekedInputRowIterator ?: input.currentTimeSeries.rowIterator()
+        peekedInputRowIterator = null
     }
 
     override fun internalLoadNext(): Boolean {
@@ -55,6 +49,8 @@ private class FilterTimeSeriesIterator(
                 while (rowIterator.loadNext()) {
                     // If any row matches the filter condition, return this time series
                     if (rowCondition.evaluateAsBoolean(rowIterator.currentRow)) {
+                        // Push back the first matching row
+                        rowIterator.pushBack()
                         peekedInputRowIterator = rowIterator
                         return true
                     }
@@ -72,18 +68,12 @@ private class FilterRowIterator(
 ) : AccountingRowIterator(schema) {
 
     lateinit var input: RowIterator
-    var peekedAtInput = false
 
     override fun getBoolean(columnIndex: Int) = input.currentRow.getBoolean(columnIndex)
     override fun getNumeric(columnIndex: Int) = input.currentRow.getNumeric(columnIndex)
     override fun getString(columnIndex: Int) = input.currentRow.getString(columnIndex)
 
     override fun internalLoadNext(): Boolean {
-        // If a matching row has already been loaded (to check if any matching rows exist), return it
-        if (peekedAtInput) {
-            peekedAtInput = false
-            return true
-        }
         // Find a row matching the filter condition
         while (input.loadNext()) {
             if (rowCondition.evaluateAsBoolean(input.currentRow)) return true
