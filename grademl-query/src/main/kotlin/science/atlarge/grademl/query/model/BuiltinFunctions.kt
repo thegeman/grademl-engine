@@ -130,10 +130,6 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
     }
 
     object MAX_OF : ConcreteFunctionDefinition("MAX_OF", false, true) {
-        override val functionName = "MAX_OF"
-        override val isAggregatingFunction = false
-        override val isDeterministic = true
-
         override fun checkArgumentCount(argCount: Int) {
             require(argCount >= 2) { "$functionName requires at least 2 arguments" }
         }
