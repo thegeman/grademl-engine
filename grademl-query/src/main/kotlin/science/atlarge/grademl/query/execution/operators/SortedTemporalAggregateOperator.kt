@@ -105,6 +105,7 @@ private class SortedTemporalAggregateTimeSeriesIterator(
                 }
             }
         }
+        firstRowWrapper.rowId = 0
         return !inputCache.isEmpty
     }
 
