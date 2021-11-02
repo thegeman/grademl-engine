@@ -11,6 +11,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
         FIND_OR_DEFAULT, AS_NUMERIC,
         // Helper functions for traversing hierarchical models
         IS_PARENT_OF, IS_CHILD_OF, IS_ANCESTOR_OF, IS_DESCENDANT_OF, PARENT_OF,
+        PATH_PREFIX, PATH_SUFFIX,
         // Virtual functions
         AVG_OVER_TIME
     ).iterator()
@@ -246,6 +247,40 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
 
         override fun checkArgumentTypes(argTypes: List<Type>) {
             require(argTypes[0] == Type.STRING) { "First argument of $functionName (\"path\") must be STRING" }
+        }
+
+        override fun resolveType(argTypes: List<Type>): Type {
+            return Type.STRING
+        }
+    }
+
+    object PATH_PREFIX : ConcreteFunctionDefinition("PATH_PREFIX", false, true) {
+        override fun checkArgumentCount(argCount: Int) {
+            require(argCount == 2) { "$functionName requires 2 arguments (path, number of components)" }
+        }
+
+        override fun checkArgumentTypes(argTypes: List<Type>) {
+            require(argTypes[0] == Type.STRING) { "First argument of $functionName (\"path\") must be STRING" }
+            require(argTypes[1] == Type.NUMERIC) {
+                "First argument of $functionName (\"number of components\") must be NUMERIC"
+            }
+        }
+
+        override fun resolveType(argTypes: List<Type>): Type {
+            return Type.STRING
+        }
+    }
+
+    object PATH_SUFFIX : ConcreteFunctionDefinition("PATH_SUFFIX", false, true) {
+        override fun checkArgumentCount(argCount: Int) {
+            require(argCount == 2) { "$functionName requires 2 arguments (path, number of components)" }
+        }
+
+        override fun checkArgumentTypes(argTypes: List<Type>) {
+            require(argTypes[0] == Type.STRING) { "First argument of $functionName (\"path\") must be STRING" }
+            require(argTypes[1] == Type.NUMERIC) {
+                "First argument of $functionName (\"number of components\") must be NUMERIC"
+            }
         }
 
         override fun resolveType(argTypes: List<Type>): Type {

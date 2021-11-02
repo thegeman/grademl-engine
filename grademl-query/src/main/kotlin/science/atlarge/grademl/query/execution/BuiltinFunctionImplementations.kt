@@ -11,7 +11,8 @@ object BuiltinFunctionImplementations {
         // Data reshaping functions
         FindOrDefault, AsNumeric,
         // Helper functions for traversing hierarchical models
-        IsParentOf, IsChildOf, IsAncestorOf, IsDescendantOf, ParentOf
+        IsParentOf, IsChildOf, IsAncestorOf, IsDescendantOf, ParentOf,
+        PathPrefix, PathSuffix
     ).associateBy { it.definition }
 
     fun from(definition: FunctionDefinition): FunctionImplementation {
