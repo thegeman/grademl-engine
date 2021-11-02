@@ -10,7 +10,9 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
         // Data reshaping functions
         FIND_OR_DEFAULT, AS_NUMERIC,
         // Helper functions for traversing hierarchical models
-        IS_PARENT_OF, IS_CHILD_OF, IS_ANCESTOR_OF, IS_DESCENDANT_OF, PARENT_OF
+        IS_PARENT_OF, IS_CHILD_OF, IS_ANCESTOR_OF, IS_DESCENDANT_OF, PARENT_OF,
+        // Virtual functions
+        AVG_OVER_TIME
     ).iterator()
 
     object COUNT : ConcreteFunctionDefinition("COUNT", true, true) {
@@ -248,6 +250,34 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
 
         override fun resolveType(argTypes: List<Type>): Type {
             return Type.STRING
+        }
+    }
+
+    object AVG_OVER_TIME : VirtualFunctionDefinition("AVG_OVER_TIME", true, true) {
+        override fun checkArgumentCount(argCount: Int) {
+            require(argCount == 1) { "$functionName requires 1 argument (value)" }
+        }
+
+        override fun checkArgumentTypes(argTypes: List<Type>) {
+            require(argTypes[0] == Type.NUMERIC) { "Argument of $functionName (\"value\") must be NUMERIC" }
+        }
+
+        override fun resolveType(argTypes: List<Type>): Type {
+            return Type.NUMERIC
+        }
+
+        override fun rewrite(arguments: List<Expression>): Expression {
+            return FunctionCallExpression(
+                "WEIGHTED_AVG",
+                listOf(
+                    arguments[0],
+                    BinaryExpression(
+                        ColumnLiteral(Columns.END_TIME.identifier),
+                        ColumnLiteral(Columns.START_TIME.identifier),
+                        BinaryOp.SUBTRACT
+                    )
+                )
+            )
         }
     }
 
