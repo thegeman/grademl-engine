@@ -304,7 +304,11 @@ private class PhysicalExpressionConverter : ExpressionVisitor {
         return when {
             '*' in l -> {
                 require('*' !in r) { "Approximate matching between two paths with wildcards is not supported" }
-                l.split('*').joinToString(separator = ".*") { Regex.escape(it) }.toRegex().matches(r)
+                l.split("**").joinToString(separator = ".*") { component ->
+                    component.split('*').joinToString(separator = "[^/]*") {
+                        Regex.escape(it)
+                    }
+                }.toRegex().matches(r)
             }
             '*' in r -> matchPathsWithWildcards(r, l)
             else -> r == l

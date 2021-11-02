@@ -15,7 +15,11 @@ object PatternMatchCompilationPass {
             if (e.rhs !is StringLiteral) return super.rewrite(e)
 
             val pattern = e.rhs.value
-            val regex = pattern.split('*').joinToString(".*") { Regex.escape(it) }.toRegex()
+            val regex = pattern.split("**").joinToString(separator = ".*") { component ->
+                component.split('*').joinToString(separator = "[^/]*") {
+                    Regex.escape(it)
+                }
+            }.toRegex()
             return PatternMatchExpression(
                 regex,
                 invertMatch = e.op == BinaryOp.NOT_APPROX_EQUAL,
