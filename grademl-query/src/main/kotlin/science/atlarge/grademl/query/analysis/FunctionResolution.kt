@@ -1,43 +1,40 @@
 package science.atlarge.grademl.query.analysis
 
-import science.atlarge.grademl.query.language.*
+import science.atlarge.grademl.query.language.ConcreteFunctionDefinition
+import science.atlarge.grademl.query.language.Expression
+import science.atlarge.grademl.query.language.FunctionCallExpression
+import science.atlarge.grademl.query.language.VirtualFunctionDefinition
 import science.atlarge.grademl.query.model.BuiltinFunctions
 
 object FunctionResolution {
 
-    fun resolveFunctionCalls(expression: Expression) {
-        expression.accept(Visitor)
+    fun resolveFunctionCalls(expression: Expression): Expression {
+        return Visitor.rewriteExpression(expression)
     }
 
-    private object Visitor : ExpressionVisitor {
-        override fun visit(e: BooleanLiteral) {}
-        override fun visit(e: NumericLiteral) {}
-        override fun visit(e: StringLiteral) {}
+    private object Visitor : ExpressionRewritePass() {
 
-        override fun visit(e: ColumnLiteral) {}
-
-        override fun visit(e: UnaryExpression) {
-            e.expr.accept(this)
-        }
-
-        override fun visit(e: BinaryExpression) {
-            e.lhs.accept(this)
-            e.rhs.accept(this)
-        }
-
-        override fun visit(e: FunctionCallExpression) {
-            e.arguments.forEach { it.accept(this) }
-
+        override fun rewrite(e: FunctionCallExpression): Expression {
             // Lookup the function definition
             val definition = BuiltinFunctions.find { it.functionName.uppercase() == e.functionName.uppercase().trim() }
             requireNotNull(definition) { "Function with name ${e.functionName} not found" }
             definition.checkArgumentCount(e.arguments.size)
-            e.functionDefinition = definition
+
+            return when (definition) {
+                is ConcreteFunctionDefinition -> {
+                    // Keep concrete function calls
+                    val rewrittenArgs = e.arguments.map { it.rewrite() }
+                    e.functionDefinition = definition
+                    if (e.arguments.indices.all { i -> rewrittenArgs[i] === e.arguments[i] }) e
+                    else e.copy(newArguments = rewrittenArgs)
+                }
+                is VirtualFunctionDefinition -> {
+                    // Rewrite virtual function calls
+                    rewriteExpression(definition.rewrite(e.arguments))
+                }
+            }
         }
 
-        override fun visit(e: AbstractExpression) {
-            e.arguments.forEach { it.accept(this) }
-        }
     }
 
 }

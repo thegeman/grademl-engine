@@ -6,11 +6,11 @@ import science.atlarge.grademl.query.model.Column
 object ASTAnalysis {
 
     fun analyzeExpression(expression: Expression, columns: List<Column>): Expression {
-        val clonedExpression = expression.clone()
-        ColumnResolution.resolveColumns(clonedExpression, columns)
-        FunctionResolution.resolveFunctionCalls(clonedExpression)
-        TypeChecking.analyzeTypes(clonedExpression, columns)
-        return PatternMatchCompilationPass.rewrite(clonedExpression)
+        var rewrittenExpression = expression.clone()
+        rewrittenExpression = FunctionResolution.resolveFunctionCalls(rewrittenExpression)
+        ColumnResolution.resolveColumns(rewrittenExpression, columns)
+        TypeChecking.analyzeTypes(rewrittenExpression, columns)
+        return PatternMatchCompilationPass.rewrite(rewrittenExpression)
     }
 
 }
