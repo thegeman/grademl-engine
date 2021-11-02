@@ -41,7 +41,7 @@ class QueryEngine(
                 val physicalQueryPlan = QueryPlanner.convertLogicalToPhysicalPlan(logicalPlan)
                 val optimizedQueryPlan = QueryPlanner.optimizePhysicalPlan(physicalQueryPlan)
 
-                val virtualTable = VirtualTable(optimizedQueryPlan)
+                val virtualTable = VirtualTable(logicalPlan, optimizedQueryPlan)
                 virtualTables[tableName] = virtualTable
                 tables[tableName] = virtualTable
 

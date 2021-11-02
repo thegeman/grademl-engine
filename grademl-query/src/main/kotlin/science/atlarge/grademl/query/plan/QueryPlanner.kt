@@ -3,6 +3,7 @@ package science.atlarge.grademl.query.plan
 import science.atlarge.grademl.query.analysis.ASTAnalysis
 import science.atlarge.grademl.query.analysis.ASTUtils
 import science.atlarge.grademl.query.execution.SortColumn
+import science.atlarge.grademl.query.execution.VirtualTable
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.model.Columns
 import science.atlarge.grademl.query.model.Table
@@ -41,7 +42,11 @@ object QueryPlanner {
                     val table = tables[tableName] ?: throw IllegalArgumentException(
                         "Table $tableName does not exist"
                     )
-                    builder.scan(table, tableName)
+                    if (table is VirtualTable) {
+                        table.logicalPlan
+                    } else {
+                        builder.scan(table, tableName)
+                    }
                 }
             }
         }
