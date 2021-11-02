@@ -216,7 +216,17 @@ private class TemporalJoinTimeSeriesIterator(
         // Load all matching time series from the left input into the cache
         leftInput.pushBack()
         TimeSeriesCacheUtil.addTimeSeriesGroupToCache(leftInput, leftTimeSeriesCache) { left, right ->
-            comparator.compare(left, right) == 0
+            for (i in joinColumnTypes.indices) {
+                val c = leftJoinColumnIndices[i]
+                val result = when (joinColumnTypes[i]) {
+                    TYPE_BOOLEAN -> left.getBoolean(c).compareTo(right.getBoolean(c))
+                    TYPE_NUMERIC -> left.getNumeric(c).compareTo(right.getNumeric(c))
+                    TYPE_STRING -> left.getString(c).compareTo(right.getString(c))
+                    else -> throw IllegalStateException()
+                }
+                if (result != 0) return@addTimeSeriesGroupToCache false
+            }
+            true
         }
         // Create a new iterator over the cached inputs
         leftCacheIterator = leftTimeSeriesCache.iterator()
