@@ -5,8 +5,7 @@ import com.github.h0tk3y.betterParse.parser.ErrorResult
 import com.github.h0tk3y.betterParse.parser.Parsed
 import science.atlarge.grademl.core.GradeMLEngine
 import science.atlarge.grademl.core.GradeMLJobStatusUpdate
-import science.atlarge.grademl.core.attribution.AttributedResourceData
-import science.atlarge.grademl.core.attribution.NoAttributedData
+import science.atlarge.grademl.core.attribution.ResourceAttributionSettings
 import science.atlarge.grademl.input.airflow.Airflow
 import science.atlarge.grademl.input.resource_monitor.ResourceMonitor
 import science.atlarge.grademl.input.spark.Spark
@@ -39,7 +38,13 @@ object QueryCli {
         GradeMLEngine.registerInputSource(TensorFlow)
         GradeMLEngine.registerInputSource(Airflow)
 
-        val gradeMLJob = GradeMLEngine.analyzeJob(inputPaths, outputPath) { update ->
+        val gradeMLJob = GradeMLEngine.analyzeJob(
+            inputPaths, outputPath, ResourceAttributionSettings(
+                enableTimeSeriesCompression = false,
+                enableRuleCaching = true,
+                enableAttributionResultCaching = false
+            )
+        ) { update ->
             when (update) {
                 GradeMLJobStatusUpdate.LOG_PARSING_STARTING -> {
                     println("Parsing job log files.")
