@@ -141,13 +141,17 @@ private class ResourceAttributionComputation(
             // Find the end of the current time period
             val newTime = minOf(endTime, nextMetricTime, nextExactTime, nextVariableTime)
             // Attribute metric usage for the current time period
-            val newValue = if (isPhaseDemandExact) {
+            val newValue = if (phaseDemand == 0.0) {
+                0.0
+            } else if (isPhaseDemandExact) {
                 minOf(metricIterator.currentValue * phaseDemand / exactDemandIterator.currentValue, phaseDemand)
             } else {
                 val leftOver = maxOf(metricIterator.currentValue - exactDemandIterator.currentValue, 0.0)
                 leftOver * phaseDemand / variableDemandIterator.currentValue
             }
-            val newCapacity = if (isPhaseDemandExact) {
+            val newCapacity = if (phaseDemand == 0.0) {
+                maxCapacity
+            } else if (isPhaseDemandExact) {
                 minOf(maxCapacity * phaseDemand / exactDemandIterator.currentValue, phaseDemand)
             } else {
                 val leftOver = maxOf(maxCapacity - exactDemandIterator.currentValue, 0.0)
@@ -173,9 +177,6 @@ private class ResourceAttributionComputation(
     }
 
     private fun emitDataPoint(timestamp: TimestampNs, value: Double, capacity: Double) {
-        if (value.isNaN()) {
-            println("Found NaN")
-        }
         if (enableCompression && values.size > 0 && value == values.last() && capacity == capacities.last()) {
             timestamps.replaceLast(timestamp)
         } else {
