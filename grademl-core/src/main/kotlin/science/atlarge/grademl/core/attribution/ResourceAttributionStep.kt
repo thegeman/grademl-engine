@@ -1,7 +1,6 @@
 package science.atlarge.grademl.core.attribution
 
 import science.atlarge.grademl.core.TimestampNs
-import science.atlarge.grademl.core.TimestampNsArray
 import science.atlarge.grademl.core.models.execution.ExecutionPhase
 import science.atlarge.grademl.core.models.resource.Metric
 import science.atlarge.grademl.core.models.resource.MetricData
@@ -16,7 +15,8 @@ class ResourceAttributionStep(
     private val attributionRuleProvider: ResourceAttributionRuleProvider,
     private val resourceDemandEstimates: (Metric) -> ResourceDemandEstimate,
     private val upsampledMetricData: (Metric) -> MetricData,
-    private val enableTimeSeriesCompression: Boolean
+    private val enableTimeSeriesCompression: Boolean,
+    private val enableAttributionResultCaching: Boolean
 ) {
 
     private val cachedAttributedUsage = mutableMapOf<ExecutionPhase, MutableMap<Metric, ResourceAttributionResult>>()
@@ -33,7 +33,9 @@ class ResourceAttributionStep(
         } else {
             computeAttributedUsageComposite(metric, phase)
         }
-        cachedAttributedUsage.getOrPut(phase) { mutableMapOf() }[metric] = newAttributedUsage
+        if (enableAttributionResultCaching) {
+            cachedAttributedUsage.getOrPut(phase) { mutableMapOf() }[metric] = newAttributedUsage
+        }
         return newAttributedUsage
     }
 

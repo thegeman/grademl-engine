@@ -37,7 +37,8 @@ class ResourceAttribution(
         attributionRuleProvider,
         { metric -> demandEstimationStep.estimatedDemandForMetric(metric)!! },
         { metric -> upsamplingStep.upsampleMetric(metric)!! },
-        enableTimeSeriesCompression = resourceAttributionSettings.enableTimeSeriesCompression
+        enableTimeSeriesCompression = resourceAttributionSettings.enableTimeSeriesCompression,
+        enableAttributionResultCaching = resourceAttributionSettings.enableAttributionResultCaching
     )
 
     fun attributeMetricToPhase(metric: Metric, phase: ExecutionPhase): ResourceAttributionResult {
@@ -65,5 +66,6 @@ object NoAttributedData : ResourceAttributionResult()
 
 class ResourceAttributionSettings(
     val enableTimeSeriesCompression: Boolean = true,
-    val enableRuleCaching: Boolean = true
+    val enableRuleCaching: Boolean = true,
+    val enableAttributionResultCaching: Boolean = true
 )
