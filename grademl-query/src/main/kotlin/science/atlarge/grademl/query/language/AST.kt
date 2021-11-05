@@ -23,6 +23,7 @@ interface ASTVisitor {
     fun visit(s: DropTableFromCacheStatement)
     fun visit(s: ExplainStatement)
     fun visit(s: StatisticsStatement)
+    fun visit(s: ExportStatement)
 
     // Clauses
     fun visit(c: FromClause)
@@ -42,6 +43,7 @@ interface ExpressionVisitor : ASTVisitor {
     override fun visit(s: DropTableFromCacheStatement) = throw UnsupportedOperationException()
     override fun visit(s: ExplainStatement) = throw UnsupportedOperationException()
     override fun visit(s: StatisticsStatement) = throw UnsupportedOperationException()
+    override fun visit(s: ExportStatement) = throw UnsupportedOperationException()
 
     override fun visit(c: FromClause) = throw UnsupportedOperationException()
     override fun visit(c: WhereClause) = throw UnsupportedOperationException()

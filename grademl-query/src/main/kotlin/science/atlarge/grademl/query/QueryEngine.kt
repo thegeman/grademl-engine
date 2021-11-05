@@ -2,6 +2,7 @@ package science.atlarge.grademl.query
 
 import science.atlarge.grademl.core.GradeMLJob
 import science.atlarge.grademl.query.execution.ConcreteTable
+import science.atlarge.grademl.query.execution.TableExporter
 import science.atlarge.grademl.query.execution.TablePrinter
 import science.atlarge.grademl.query.execution.VirtualTable
 import science.atlarge.grademl.query.execution.data.DefaultTables
@@ -10,9 +11,12 @@ import science.atlarge.grademl.query.plan.ExplainLogicalPlan
 import science.atlarge.grademl.query.plan.ExplainPhysicalPlan
 import science.atlarge.grademl.query.plan.QueryPlanner
 import science.atlarge.grademl.query.plan.StatisticsPhysicalPlan
+import science.atlarge.grademl.query.plan.physical.PhysicalQueryPlan
+import java.nio.file.Path
 
 class QueryEngine(
-    gradeMLJob: GradeMLJob
+    gradeMLJob: GradeMLJob,
+    private val outputDirectory: Path
 ) {
 
     private val builtinTables = DefaultTables.create(gradeMLJob)
@@ -23,9 +27,7 @@ class QueryEngine(
     fun executeStatement(statement: Statement) {
         when (statement) {
             is SelectStatement -> {
-                val logicalPlan = QueryPlanner.createLogicalPlanFromSelect(statement, tables)
-                val physicalQueryPlan = QueryPlanner.convertLogicalToPhysicalPlan(logicalPlan)
-                val optimizedQueryPlan = QueryPlanner.optimizePhysicalPlan(physicalQueryPlan)
+                val optimizedQueryPlan = planSelect(statement)
                 TablePrinter.print(
                     optimizedQueryPlan.toQueryOperator().execute(),
                     limit = statement.limit?.limitFirst
@@ -113,9 +115,7 @@ class QueryEngine(
                 println()
             }
             is StatisticsStatement -> {
-                val logicalPlan = QueryPlanner.createLogicalPlanFromSelect(statement.selectStatement, tables)
-                val physicalQueryPlan = QueryPlanner.convertLogicalToPhysicalPlan(logicalPlan)
-                val optimizedQueryPlan = QueryPlanner.optimizePhysicalPlan(physicalQueryPlan)
+                val optimizedQueryPlan = planSelect(statement.selectStatement)
                 // Read as many rows as needed for the select statement
                 var rowsRead = 0L
                 val maxRows = statement.selectStatement.limit?.limitFirst?.toLong() ?: Long.MAX_VALUE
@@ -132,7 +132,33 @@ class QueryEngine(
                 println(StatisticsPhysicalPlan.collectStatistics(optimizedQueryPlan))
                 println()
             }
+            is ExportStatement -> {
+                // Create the output directory if needed
+                val outputPath = outputDirectory.resolve(statement.filename)
+                outputPath.parent.toFile().mkdirs()
+                // Plan the query to be executed and exported
+                val optimizedQueryPlan = planSelect(statement.selectStatement)
+                // Export the query's output
+                println("Exporting query output to ${outputPath.toAbsolutePath()}.")
+                val rowsWritten = TableExporter.export(
+                    outputPath,
+                    optimizedQueryPlan.toQueryOperator().execute(),
+                    statement.selectStatement.limit?.limitFirst
+                )
+                println("Query produced $rowsWritten rows.")
+                println()
+            }
         }
     }
+
+    private fun planSelect(selectStatement: SelectStatement): PhysicalQueryPlan =
+        QueryPlanner.optimizePhysicalPlan(
+            QueryPlanner.convertLogicalToPhysicalPlan(
+                QueryPlanner.createLogicalPlanFromSelect(
+                    selectStatement,
+                    tables
+                )
+            )
+        )
 
 }

@@ -27,6 +27,7 @@ object QueryGrammar : Grammar<List<Statement>>() {
     private val descending by caseInsensitiveRegexToken("descending")
     private val drop by caseInsensitiveRegexToken("drop")
     private val explain by caseInsensitiveRegexToken("explain")
+    private val export by caseInsensitiveRegexToken("export")
     private val first by caseInsensitiveRegexToken("first")
     private val from by caseInsensitiveRegexToken("from")
     private val group by caseInsensitiveRegexToken("group")
@@ -169,9 +170,14 @@ object QueryGrammar : Grammar<List<Statement>>() {
 
     private val statisticsStatement by -statistics * selectStatement map { StatisticsStatement(it) }
 
+    private val exportStatement by -export * quotedString * -equal * selectStatement use {
+        ExportStatement(t1.text.trim('"'), t2)
+    }
+
     // Putting it all together
     private val topLevelStatement by selectStatement or createTableStatement or deleteTableStatement or
-            cacheTableStatement or dropTableFromCacheStatement or explainStatement or statisticsStatement
+            cacheTableStatement or dropTableFromCacheStatement or explainStatement or statisticsStatement or
+            exportStatement
 
     override val rootParser by oneOrMore((topLevelStatement) * -semicolon)
 

@@ -74,9 +74,9 @@ object QueryCli {
         }
 
         if (queryScript != null) {
-            runScript(QueryEngine(gradeMLJob), queryScript)
+            runScript(QueryEngine(gradeMLJob, outputPath.resolve("query-output")), queryScript)
         } else {
-            runCli(QueryEngine(gradeMLJob))
+            runCli(QueryEngine(gradeMLJob, outputPath.resolve("query-output")))
         }
     }
 

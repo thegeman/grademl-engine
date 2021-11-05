@@ -83,3 +83,9 @@ class StatisticsStatement(val selectStatement: SelectStatement) : Statement {
         visitor.visit(this)
     }
 }
+
+class ExportStatement(val filename: String, val selectStatement: SelectStatement) : Statement {
+    override fun accept(visitor: ASTVisitor) {
+        visitor.visit(this)
+    }
+}
