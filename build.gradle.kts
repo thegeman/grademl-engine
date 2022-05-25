@@ -1,5 +1,6 @@
 plugins {
     java
+    `maven-publish`
 }
 
 allprojects {
@@ -11,6 +12,19 @@ allprojects {
     }
 
     apply(plugin = "java")
-    java.sourceCompatibility = JavaVersion.VERSION_11
-    java.targetCompatibility = JavaVersion.VERSION_11
+    apply(plugin = "maven-publish")
+    java.sourceCompatibility = JavaVersion.VERSION_1_8
+    java.targetCompatibility = JavaVersion.VERSION_1_8
+
+    publishing {
+        publications {
+            create<MavenPublication>(project.name) {
+                groupId = project.group.toString()
+                artifactId = project.name
+                version = project.version.toString()
+
+                from(components["java"])
+            }
+        }
+    }
 }
