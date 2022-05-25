@@ -27,6 +27,9 @@ object ProcStatParser : FileParser<CpuUtilizationData> {
         private var currentTimestamp: Long = 0
         private lateinit var currentCpuMetrics: LongArray
 
+        var uncompressedBytesRead: Long = 0L
+            private set
+
         fun parse(): CpuUtilizationData {
             // Read first message to set initial timestamp and determine the number of CPUs
             readFirstMessage()
@@ -57,6 +60,7 @@ object ProcStatParser : FileParser<CpuUtilizationData> {
         private fun readFirstMessage() {
             // Read initial timestamp
             currentTimestamp = stream.readLELong()
+            uncompressedBytesRead += 8
             // Read number of CPUs and create data structures to read CPU metrics and store utilization
             numCpus = stream.readLEB128Int()
             currentCpuMetrics = LongArray(numCpus * 10)
@@ -64,12 +68,14 @@ object ProcStatParser : FileParser<CpuUtilizationData> {
             // Read initial CPU metric values
             for (i in 0..currentCpuMetrics.lastIndex) {
                 currentCpuMetrics[i] = stream.readLEB128Long()
+                uncompressedBytesRead += 8
             }
         }
 
         private fun readNextMessage() {
             // Read delta timestamp
             currentTimestamp = stream.readLELong()
+            uncompressedBytesRead += 8
             // Check the number of CPUs
             require(stream.readLEB128Int() == numCpus) {
                 "ProcStatParse currently does not support changing the number of CPUs"
@@ -77,6 +83,7 @@ object ProcStatParser : FileParser<CpuUtilizationData> {
             // Read the new CPU metric values
             for (i in 0..currentCpuMetrics.lastIndex) {
                 currentCpuMetrics[i] = stream.readLEB128Long()
+                uncompressedBytesRead += 8
             }
         }
 
@@ -90,7 +97,11 @@ object ProcStatParser : FileParser<CpuUtilizationData> {
                     totalJiffies += currentCpuMetrics[i]
                 }
                 val idleJiffies = currentCpuMetrics[cpuOffset + 3]
-                val utilization = (totalJiffies - idleJiffies) / totalJiffies.toDouble()
+                val utilization = if (totalJiffies > 0) {
+                    (totalJiffies - idleJiffies) / totalJiffies.toDouble()
+                } else {
+                    coreUtilization[cpuId].last()
+                }
 
                 coreUtilization[cpuId].append(utilization)
 
@@ -111,7 +122,10 @@ object ProcStatParser : FileParser<CpuUtilizationData> {
     override fun parse(hostname: String, metricFiles: Iterable<File>): CpuUtilizationData {
         // Parse each metric file individually
         val utilizationDataStructures = metricFiles.map { metricFile ->
-            ParserState(metricFile).use { it.parse() }
+            val parser = ParserState(metricFile)
+            val parseResult = parser.parse()
+//            println("[DEBUG] Read ${parser.uncompressedBytesRead} uncompressed bytes from \"${metricFile.path}\"")
+            parseResult
         }.filter { it.timestamps.size > 1 }
         require(utilizationDataStructures.isNotEmpty()) { "No metric data found for CPU utilization" }
         // Shortcut: return if there was only one file

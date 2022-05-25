@@ -10,10 +10,14 @@ import java.io.IOException
 
 object ProcDiskstatsParser : FileParser<DiskUtilizationData> {
 
+    private var uncompressedBytesRead: Long = 0L
+
     private fun parse(logFile: File): DiskUtilizationData {
+        uncompressedBytesRead = 0L
         return logFile.inputStream().buffered().use { inStream ->
             // Read first message to determine number and names of disks
             val initialTimestamp = inStream.readLELong()
+            uncompressedBytesRead += 8
             require(inStream.read() == 0) { "Expecting monitoring info to start with a DISK_LIST message" }
             val numDisks = inStream.readLEB128Int()
             val diskNames = (0 until numDisks).map { inStream.readString() }
@@ -28,6 +32,7 @@ object ProcDiskstatsParser : FileParser<DiskUtilizationData> {
             var lastTimestamp = 0L
             while (true) {
                 val timestamp = inStream.tryReadLELong() ?: break
+                uncompressedBytesRead += 8
                 timestamps.append(timestamp)
                 try {
                     require(inStream.read() == 1) { "Repeated DISK_LIST messages are currently not supported" }
@@ -41,6 +46,7 @@ object ProcDiskstatsParser : FileParser<DiskUtilizationData> {
                         val sectorsWritten = inStream.readLEB128Long()
                         val writeTimeMs = inStream.readLEB128Long()
                         val totalTimeMs = inStream.readLEB128Long()
+                        uncompressedBytesRead += 56
 
                         bytesReadMetric[i].append(sectorsRead.toDouble() * 512 * 1_000_000_000L / (timestamp - lastTimestamp))
                         readTimeFractionMetric[i].append(readTimeMs.toDouble() * 1_000_000L / (timestamp - lastTimestamp))
@@ -85,7 +91,11 @@ object ProcDiskstatsParser : FileParser<DiskUtilizationData> {
 
     override fun parse(hostname: String, metricFiles: Iterable<File>): DiskUtilizationData {
         // Parse each metric file individually
-        val utilizationDataStructures = metricFiles.map { parse(it) }.filter { it.timestamps.size > 1 }
+        val utilizationDataStructures = metricFiles.map {
+            val parseResult = parse(it)
+//            println("[DEBUG] Read $uncompressedBytesRead uncompressed bytes from \"${it.path}\"")
+            parseResult
+        }.filter { it.timestamps.size > 1 }
         require(utilizationDataStructures.isNotEmpty()) { "No metric data found for disk utilization" }
         // Shortcut: return if there was only one file
         if (utilizationDataStructures.size == 1) return utilizationDataStructures[0]

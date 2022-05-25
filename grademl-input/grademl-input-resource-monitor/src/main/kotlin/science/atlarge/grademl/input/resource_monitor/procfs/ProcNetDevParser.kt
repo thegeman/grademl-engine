@@ -9,10 +9,14 @@ import java.io.File
 
 object ProcNetDevParser : FileParser<NetworkUtilizationData> {
 
+    private var uncompressedBytesRead: Long = 0L
+
     private fun parse(logFile: File): NetworkUtilizationData {
+        uncompressedBytesRead = 0L
         return logFile.inputStream().buffered().use { inStream ->
             // Read first message to determine number and names of interfaces
             val initialTimestamp = inStream.readLELong()
+            uncompressedBytesRead += 8
             require(inStream.read() == 0) { "Expecting monitoring info to start with an IFACE_LIST message" }
             val numInterfaces = inStream.readLEB128Int()
             val interfaceNames = (0 until numInterfaces).map { inStream.readString() }
@@ -24,6 +28,7 @@ object ProcNetDevParser : FileParser<NetworkUtilizationData> {
             var lastTimestamp = 0L
             while (true) {
                 val timestamp = inStream.tryReadLELong() ?: break
+                uncompressedBytesRead += 8
                 timestamps.append(timestamp)
                 try {
                     require(inStream.read() == 1) { "Repeated IFACE_LIST messages are currently not supported" }
@@ -34,6 +39,7 @@ object ProcNetDevParser : FileParser<NetworkUtilizationData> {
                         /*val packetsReceived =*/ inStream.readLEB128Long()
                         val bytesSent = inStream.readLEB128Long()
                         /*val packetsSent =*/ inStream.readLEB128Long()
+                        uncompressedBytesRead += 32
                         receivedUtilization[i].append(bytesReceived.toDouble() * 1_000_000_000L / (timestamp - lastTimestamp))
                         sentUtilization[i].append(bytesSent.toDouble() * 1_000_000_000L / (timestamp - lastTimestamp))
                     }
@@ -63,7 +69,11 @@ object ProcNetDevParser : FileParser<NetworkUtilizationData> {
 
     override fun parse(hostname: String, metricFiles: Iterable<File>): NetworkUtilizationData {
         // Parse each metric file individually
-        val utilizationDataStructures = metricFiles.map { parse(it) }.filter { it.timestamps.size > 1 }
+        val utilizationDataStructures = metricFiles.map {
+            val parseResult = parse(it)
+//            println("[DEBUG] Read $uncompressedBytesRead uncompressed bytes from \"${it.path}\"")
+            parseResult
+        }.filter { it.timestamps.size > 1 }
         require(utilizationDataStructures.isNotEmpty()) { "No metric data found for network utilization" }
         // Shortcut: return if there was only one file
         if (utilizationDataStructures.size == 1) return utilizationDataStructures[0]
