@@ -40,7 +40,7 @@ object QueryCli {
 
         val gradeMLJob = GradeMLEngine.analyzeJob(
             inputPaths, outputPath, ResourceAttributionSettings(
-                enableTimeSeriesCompression = false,
+                enableTimeSeriesCompression = true,
                 enableRuleCaching = true,
                 enableAttributionResultCaching = false
             )
