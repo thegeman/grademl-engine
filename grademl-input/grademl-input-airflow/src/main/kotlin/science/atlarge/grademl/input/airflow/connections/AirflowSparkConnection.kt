@@ -40,13 +40,22 @@ object AirflowSparkConnection : AirflowConnection {
             }
         }
         // Move Spark application phases to be children of the correct Airflow task phases
-        for ((appId, airflowTaskTriple) in matchedSparkApps) {
+        val sparkCountPerAirflowTriple = HashMap<Triple<AirflowDagId, AirflowRunId, AirflowRunId>, Int>()
+        for ((appId, airflowTaskTriple) in matchedSparkApps.entries.sortedBy { it.key }) {
+            val index = sparkCountPerAirflowTriple.getOrDefault(airflowTaskTriple, 0) + 1
+            sparkCountPerAirflowTriple[airflowTaskTriple] = index
+
             val sparkPhase = sparkAppPhases[appId]!!
+            val updatedSparkPhase = unifiedExecutionModel.updatePhase(
+                sparkPhase,
+                tags = mapOf("id" to index.toString(), "app" to appId),
+                typeTags = setOf("id")
+            )
+
             val airflowPhase = phasesByDagRunAndTaskId[airflowTaskTriple.first]!![
                     airflowTaskTriple.second]!![airflowTaskTriple.third]!!
-            unifiedExecutionModel.setParentOfPhase(sparkPhase, airflowPhase)
+            unifiedExecutionModel.setParentOfPhase(updatedSparkPhase, airflowPhase)
         }
-        // TODO: Replace ID tag of SparkApplication phases with a deterministic counter so they share a phase type?
     }
 
 }
