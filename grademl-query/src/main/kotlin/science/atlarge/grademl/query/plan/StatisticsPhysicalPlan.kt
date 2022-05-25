@@ -108,6 +108,21 @@ object StatisticsPhysicalPlan {
             recurse(intervalMergingPlan.input, true)
         }
 
+        override fun visit(limitPlan: LimitPlan) {
+            // Append one line with top-level description
+            stringBuilder.indentSummary()
+                .append("Limit[")
+                .append(limitPlan.nodeId)
+                .append("] - ")
+                .append(limitPlan.limit)
+                .append(" rows")
+                .appendLine()
+            // Append lines with execution statistics
+            appendStatistics(limitPlan.collectLastExecutionStatisticsPerOperator(), true)
+            // Explain input node
+            recurse(limitPlan.input, true)
+        }
+
         override fun visit(linearTableScanPlan: LinearTableScanPlan) {
             // Append one line with top-level description
             stringBuilder.indentSummary()

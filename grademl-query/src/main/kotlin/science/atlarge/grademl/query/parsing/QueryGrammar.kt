@@ -28,11 +28,9 @@ object QueryGrammar : Grammar<List<Statement>>() {
     private val drop by caseInsensitiveRegexToken("drop")
     private val explain by caseInsensitiveRegexToken("explain")
     private val export by caseInsensitiveRegexToken("export")
-    private val first by caseInsensitiveRegexToken("first")
     private val from by caseInsensitiveRegexToken("from")
     private val group by caseInsensitiveRegexToken("group")
     private val join by caseInsensitiveRegexToken("join")
-    private val last by caseInsensitiveRegexToken("last")
     private val limit by caseInsensitiveRegexToken("limit")
     private val order by caseInsensitiveRegexToken("order")
     private val select by caseInsensitiveRegexToken("select")
@@ -142,11 +140,7 @@ object QueryGrammar : Grammar<List<Statement>>() {
     private val orderByClause by (-order * -by * separated(columnLit * optional(descending), comma)
             map { columns -> OrderByClause(columns.terms.map { it.t1 }, columns.terms.map { it.t2 == null }) })
 
-    private val limitClause by -limit * ((positiveInteger use { LimitClause(text.toInt(), null) }) or
-            (-first * positiveInteger * optional(-last * positiveInteger) use {
-                LimitClause(t1.text.toInt(), t2?.text?.toInt())
-            }) or
-            (-last * positiveInteger use { LimitClause(null, text.toInt()) }))
+    private val limitClause by -limit * positiveInteger use { LimitClause(text.toInt()) }
 
     // Statements
     private val selectStatement by (fromClause * optional(whereClause) * optional(groupByClause) * selectClause *

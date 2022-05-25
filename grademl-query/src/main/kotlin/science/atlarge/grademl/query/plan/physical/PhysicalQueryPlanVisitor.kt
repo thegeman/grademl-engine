@@ -4,6 +4,7 @@ interface PhysicalQueryPlanVisitor<out T> {
 
     fun visit(filterPlan: FilterPlan): T
     fun visit(intervalMergingPlan: IntervalMergingPlan): T
+    fun visit(limitPlan: LimitPlan): T
     fun visit(linearTableScanPlan: LinearTableScanPlan): T
     fun visit(projectPlan: ProjectPlan): T
     fun visit(sortedAggregatePlan: SortedAggregatePlan): T

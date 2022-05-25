@@ -101,6 +101,19 @@ object ExplainLogicalPlan {
             recurse(filterPlan.input, true)
         }
 
+        override fun visit(limitPlan: LimitPlan) {
+            // Append one line with top-level description
+            stringBuilder.indentSummary()
+                .append("Limit[")
+                .append(limitPlan.nodeId)
+                .append("] - ")
+                .append(limitPlan.limit)
+                .append(" rows")
+                .appendLine()
+            // Explain input node
+            recurse(limitPlan.input, true)
+        }
+
         override fun visit(projectPlan: ProjectPlan) {
             // Append one line with top-level description
             stringBuilder.indentSummary()

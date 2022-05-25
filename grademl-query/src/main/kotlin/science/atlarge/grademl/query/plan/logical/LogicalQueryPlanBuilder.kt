@@ -23,6 +23,11 @@ class LogicalQueryPlanBuilder {
         return FilterPlan(nodeId, input, condition)
     }
 
+    fun limit(input: LogicalQueryPlan, limit: Int): LogicalQueryPlan {
+        val nodeId = nextNodeId++
+        return LimitPlan(nodeId, input, limit)
+    }
+
     fun project(input: LogicalQueryPlan, columnExpressions: List<NamedExpression>): LogicalQueryPlan {
         val nodeId = nextNodeId++
         return ProjectPlan(nodeId, input, columnExpressions)

@@ -9,6 +9,7 @@ import science.atlarge.grademl.query.model.Columns
 import science.atlarge.grademl.query.model.Table
 import science.atlarge.grademl.query.plan.logical.*
 import science.atlarge.grademl.query.plan.logical.FilterPlan
+import science.atlarge.grademl.query.plan.logical.LimitPlan
 import science.atlarge.grademl.query.plan.logical.ProjectPlan
 import science.atlarge.grademl.query.plan.logical.SortPlan
 import science.atlarge.grademl.query.plan.physical.*
@@ -116,7 +117,9 @@ object QueryPlanner {
 
         // Check if the query has a group-by clause or any aggregating functions
         val isAggregatingSelect = groupByColumns.isNotEmpty() ||
-                resolvedSelectTerms.any { ASTUtils.findFunctionCalls(it.expr).isNotEmpty() }
+                resolvedSelectTerms.any {
+                    ASTUtils.findFunctionCalls(it.expr).any { f -> f.functionDefinition.isAggregatingFunction }
+                }
 
         // Create an AggregatePlan for an aggregating queries, or a ProjectPlan otherwise
         val projectedOutputPlan = if (isAggregatingSelect) {
@@ -125,14 +128,23 @@ object QueryPlanner {
             builder.project(filteredInputPlan, resolvedSelectTerms)
         }
 
-        // Sort if needed, then return the compiled query plan
-        return if (selectStatement.orderBy != null) {
+        // Sort if needed
+        val sortedOutputPlan = if (selectStatement.orderBy != null) {
             val sortColumns = selectStatement.orderBy.columns.zip(selectStatement.orderBy.ascending)
                 .map { (col, asc) -> SortColumn(col, asc) }
             builder.sort(projectedOutputPlan, sortColumns)
         } else {
             projectedOutputPlan
         }
+
+        // Limit the output
+        val limitedOutputPlan = if (selectStatement.limit != null) {
+            builder.limit(sortedOutputPlan, selectStatement.limit.limit)
+        } else {
+            sortedOutputPlan
+        }
+
+        return limitedOutputPlan
     }
 
     fun convertLogicalToPhysicalPlan(logicalQueryPlan: LogicalQueryPlan): PhysicalQueryPlan {
@@ -210,6 +222,11 @@ object QueryPlanner {
             override fun visit(filterPlan: FilterPlan) {
                 val input = rewrite(filterPlan.input)
                 lastResult = PhysicalQueryPlanBuilder.filter(input, filterPlan.condition)
+            }
+
+            override fun visit(limitPlan: LimitPlan) {
+                val input = rewrite(limitPlan.input)
+                lastResult = PhysicalQueryPlanBuilder.limit(input, limitPlan.limit)
             }
 
             override fun visit(projectPlan: ProjectPlan) {

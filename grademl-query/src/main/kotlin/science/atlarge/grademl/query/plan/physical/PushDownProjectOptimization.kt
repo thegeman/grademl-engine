@@ -22,6 +22,7 @@ object PushDownProjectOptimization : OptimizationStrategy, PhysicalQueryPlanRewr
         // Attempt to push down projections
         return when (projectPlan.input) {
             is FilterPlan -> pushPastFilter(projectPlan.namedColumnExpressions, projectPlan.input)
+            is LimitPlan -> pushPastLimit(projectPlan.namedColumnExpressions, projectPlan.input)
             is SortedTemporalJoinPlan -> pushPastSortedTemporalJoin(
                 projectPlan.namedColumnExpressions, projectPlan.input
             )
@@ -42,6 +43,20 @@ object PushDownProjectOptimization : OptimizationStrategy, PhysicalQueryPlanRewr
         val rewrittenFilter = PhysicalQueryPlanBuilder.filter(rewrittenFilterInput, filterPlan.filterCondition)
         // Apply final projections to ensure the output schema is identical to before the optimization
         return PhysicalQueryPlanBuilder.project(rewrittenFilter, outputProjections)
+    }
+
+    private fun pushPastLimit(projections: List<NamedExpression>, limitPlan: LimitPlan): PhysicalQueryPlan? {
+        // Determine which expressions to push down and what name to assign them
+        val (inputProjections, outputProjections) =
+            rewriteProjectionsToInputAndOutput(projections, limitPlan.input.schema)
+        // Create projection of limit's input
+        val newLimitInput = PhysicalQueryPlanBuilder.project(limitPlan.input, inputProjections)
+        // Only push projections past a limit if they can be further pushed down
+        val rewrittenLimitInput = optimize(newLimitInput) ?: return null
+        // Apply limit
+        val rewrittenLimit = PhysicalQueryPlanBuilder.limit(rewrittenLimitInput, limitPlan.limit)
+        // Apply final projections to ensure the output schema is identical to before the optimization
+        return PhysicalQueryPlanBuilder.project(rewrittenLimit, outputProjections)
     }
 
     private fun pushPastSortedTemporalJoin(

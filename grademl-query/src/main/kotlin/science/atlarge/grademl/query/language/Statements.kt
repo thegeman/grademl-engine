@@ -46,8 +46,10 @@ class OrderByClause(val columns: List<ColumnLiteral>, val ascending: List<Boolea
     override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
 }
 
-class LimitClause(val limitFirst: Int?, val limitLast: Int?) : Clause {
-    override fun accept(visitor: ASTVisitor) { visitor.visit(this) }
+class LimitClause(val limit: Int) : Clause {
+    override fun accept(visitor: ASTVisitor) {
+        visitor.visit(this)
+    }
 }
 
 class CreateTableStatement(val tableName: String, val tableDefinition: SelectStatement) : Statement {

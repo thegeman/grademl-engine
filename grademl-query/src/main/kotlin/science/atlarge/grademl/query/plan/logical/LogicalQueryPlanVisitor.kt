@@ -4,6 +4,7 @@ interface LogicalQueryPlanVisitor {
 
     fun visit(aggregatePlan: AggregatePlan)
     fun visit(filterPlan: FilterPlan)
+    fun visit(limitPlan: LimitPlan)
     fun visit(projectPlan: ProjectPlan)
     fun visit(scanTablePlan: ScanTablePlan)
     fun visit(sortPlan: SortPlan)

@@ -118,7 +118,7 @@ class QueryEngine(
                 val optimizedQueryPlan = planSelect(statement.selectStatement)
                 // Read as many rows as needed for the select statement
                 var rowsRead = 0L
-                val maxRows = statement.selectStatement.limit?.limitFirst?.toLong() ?: Long.MAX_VALUE
+                val maxRows = statement.selectStatement.limit?.limit?.toLong() ?: Long.MAX_VALUE
                 val tsIterator = optimizedQueryPlan.toQueryOperator().execute()
                 while (rowsRead < maxRows && tsIterator.loadNext()) {
                     val rowIterator = tsIterator.currentTimeSeries.rowIterator()
@@ -143,7 +143,7 @@ class QueryEngine(
                 val rowsWritten = TableExporter.export(
                     outputPath,
                     optimizedQueryPlan.toQueryOperator().execute(),
-                    statement.selectStatement.limit?.limitFirst
+                    statement.selectStatement.limit?.limit
                 )
                 println("Query produced $rowsWritten rows.")
                 println()
