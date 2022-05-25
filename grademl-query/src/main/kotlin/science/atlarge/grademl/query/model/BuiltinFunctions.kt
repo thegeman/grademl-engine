@@ -11,7 +11,7 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
         FIND_OR_DEFAULT, AS_NUMERIC,
         // Helper functions for traversing hierarchical models
         IS_PARENT_OF, IS_CHILD_OF, IS_ANCESTOR_OF, IS_DESCENDANT_OF, PARENT_OF,
-        PATH_PREFIX, PATH_SUFFIX,
+        PATH_PREFIX, PATH_SUFFIX, PATH_DEPTH,
         // Virtual functions
         AVG_OVER_TIME
     ).iterator()
@@ -281,6 +281,20 @@ object BuiltinFunctions : Iterable<FunctionDefinition> {
 
         override fun resolveType(argTypes: List<Type>): Type {
             return Type.STRING
+        }
+    }
+
+    object PATH_DEPTH : ConcreteFunctionDefinition("PATH_DEPTH", false, true) {
+        override fun checkArgumentCount(argCount: Int) {
+            require(argCount == 1) { "$functionName requires 1 argument (path)" }
+        }
+
+        override fun checkArgumentTypes(argTypes: List<Type>) {
+            require(argTypes[0] == Type.STRING) { "First argument of $functionName (\"path\") must be STRING" }
+        }
+
+        override fun resolveType(argTypes: List<Type>): Type {
+            return Type.NUMERIC
         }
     }
 

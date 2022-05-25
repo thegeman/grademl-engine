@@ -12,7 +12,7 @@ object BuiltinFunctionImplementations {
         FindOrDefault, AsNumeric,
         // Helper functions for traversing hierarchical models
         IsParentOf, IsChildOf, IsAncestorOf, IsDescendantOf, ParentOf,
-        PathPrefix, PathSuffix
+        PathPrefix, PathSuffix, PathDepth
     ).associateBy { it.definition }
 
     fun from(definition: FunctionDefinition): FunctionImplementation {
