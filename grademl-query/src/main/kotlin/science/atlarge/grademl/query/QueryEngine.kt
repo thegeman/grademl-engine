@@ -6,6 +6,7 @@ import science.atlarge.grademl.query.execution.TableExporter
 import science.atlarge.grademl.query.execution.TablePrinter
 import science.atlarge.grademl.query.execution.VirtualTable
 import science.atlarge.grademl.query.execution.data.DefaultTables
+import science.atlarge.grademl.query.execution.operators.QueryOperator
 import science.atlarge.grademl.query.language.*
 import science.atlarge.grademl.query.plan.ExplainLogicalPlan
 import science.atlarge.grademl.query.plan.ExplainPhysicalPlan
@@ -13,6 +14,7 @@ import science.atlarge.grademl.query.plan.QueryPlanner
 import science.atlarge.grademl.query.plan.StatisticsPhysicalPlan
 import science.atlarge.grademl.query.plan.physical.PhysicalQueryPlan
 import java.nio.file.Path
+import kotlin.system.measureNanoTime
 
 class QueryEngine(
     gradeMLJob: GradeMLJob,
@@ -24,15 +26,26 @@ class QueryEngine(
     private val virtualTables = mutableMapOf<String, VirtualTable>()
     private val tables = builtinTables.toMutableMap()
 
-    fun executeStatement(statement: Statement) {
+    fun prepareSelect(statement: SelectStatement): QueryOperator {
+        val optimizedQueryPlan = planSelect(statement)
+        return optimizedQueryPlan.toQueryOperator()
+    }
+
+    fun executeStatement(statement: Statement, output: StringBuilder? = null) {
+        fun localPrintln() = output?.appendLine() ?: println()
+        fun localPrintln(s: String) = output?.appendLine(s) ?: println(s)
+
         when (statement) {
             is SelectStatement -> {
-                val optimizedQueryPlan = planSelect(statement)
-                TablePrinter.print(
-                    optimizedQueryPlan.toQueryOperator().execute(),
-                    limit = statement.limit?.limitFirst
-                )
-                println()
+                val queryDurationNs = measureNanoTime {
+                    val optimizedQueryPlan = planSelect(statement)
+                    TablePrinter.print(
+                        optimizedQueryPlan.toQueryOperator().execute(),
+                        output = output
+                    )
+                }
+                localPrintln("Query completed in ${(queryDurationNs + 500000) / 1000000} ms")
+                localPrintln()
             }
             is CreateTableStatement -> {
                 val tableName = statement.tableName.trim()
@@ -47,8 +60,8 @@ class QueryEngine(
                 virtualTables[tableName] = virtualTable
                 tables[tableName] = virtualTable
 
-                println("Table \"$tableName\" created.")
-                println()
+                localPrintln("Table \"$tableName\" created.")
+                localPrintln()
             }
             is DeleteTableStatement -> {
                 val tableName = statement.tableName.trim()
@@ -59,8 +72,8 @@ class QueryEngine(
                 concreteTables.remove(tableName)
                 tables.remove(tableName)
 
-                println("Table \"$tableName\" deleted.")
-                println()
+                localPrintln("Table \"$tableName\" deleted.")
+                localPrintln()
             }
             is CacheTableStatement -> {
                 val tableName = statement.tableName.trim()
@@ -71,14 +84,14 @@ class QueryEngine(
                     val concreteTable = ConcreteTable.from(tables[tableName]!!.timeSeriesIterator())
                     concreteTables[tableName] = concreteTable
                     tables[tableName] = concreteTable
-                    println(
+                    localPrintln(
                         "Table \"$tableName\" with ${concreteTable.timeSeriesCount} time series and " +
                                 "${concreteTable.rowCount} rows added to the cache."
                     )
-                    println()
+                    localPrintln()
                 } else {
-                    println("Table \"$tableName\" was already in the cache.")
-                    println()
+                    localPrintln("Table \"$tableName\" was already in the cache.")
+                    localPrintln()
                 }
             }
             is DropTableFromCacheStatement -> {
@@ -96,23 +109,23 @@ class QueryEngine(
                     tables[tableName] = virtualTable
                 }
 
-                println("Table \"$tableName\" dropped from the cache.")
-                println()
+                localPrintln("Table \"$tableName\" dropped from the cache.")
+                localPrintln()
             }
             is ExplainStatement -> {
                 println()
                 val logicalPlan = QueryPlanner.createLogicalPlanFromSelect(statement.selectStatement, tables)
-                println("LOGICAL QUERY PLAN:")
-                println(ExplainLogicalPlan.explain(logicalPlan))
-                println()
+                localPrintln("LOGICAL QUERY PLAN:")
+                localPrintln(ExplainLogicalPlan.explain(logicalPlan))
+                localPrintln()
                 val physicalQueryPlan = QueryPlanner.convertLogicalToPhysicalPlan(logicalPlan)
-                println("PHYSICAL QUERY PLAN:")
-                println(ExplainPhysicalPlan.explain(physicalQueryPlan))
-                println()
+                localPrintln("PHYSICAL QUERY PLAN:")
+                localPrintln(ExplainPhysicalPlan.explain(physicalQueryPlan))
+                localPrintln()
                 val optimizedQueryPlan = QueryPlanner.optimizePhysicalPlan(physicalQueryPlan)
-                println("OPTIMIZED PHYSICAL QUERY PLAN:")
-                println(ExplainPhysicalPlan.explain(optimizedQueryPlan))
-                println()
+                localPrintln("OPTIMIZED PHYSICAL QUERY PLAN:")
+                localPrintln(ExplainPhysicalPlan.explain(optimizedQueryPlan))
+                localPrintln()
             }
             is StatisticsStatement -> {
                 val optimizedQueryPlan = planSelect(statement.selectStatement)
@@ -127,10 +140,10 @@ class QueryEngine(
                     }
                 }
                 // Print execution statistics
-                println()
-                println("EXECUTION STATISTICS PER PHYSICAL QUERY OPERATOR:")
-                println(StatisticsPhysicalPlan.collectStatistics(optimizedQueryPlan))
-                println()
+                localPrintln()
+                localPrintln("EXECUTION STATISTICS PER PHYSICAL QUERY OPERATOR:")
+                localPrintln(StatisticsPhysicalPlan.collectStatistics(optimizedQueryPlan))
+                localPrintln()
             }
             is ExportStatement -> {
                 // Create the output directory if needed
@@ -139,14 +152,14 @@ class QueryEngine(
                 // Plan the query to be executed and exported
                 val optimizedQueryPlan = planSelect(statement.selectStatement)
                 // Export the query's output
-                println("Exporting query output to ${outputPath.toAbsolutePath()}.")
+                localPrintln("Exporting query output to ${outputPath.toAbsolutePath()}.")
                 val rowsWritten = TableExporter.export(
                     outputPath,
                     optimizedQueryPlan.toQueryOperator().execute(),
                     statement.selectStatement.limit?.limit
                 )
-                println("Query produced $rowsWritten rows.")
-                println()
+                localPrintln("Query produced $rowsWritten rows.")
+                localPrintln()
             }
         }
     }

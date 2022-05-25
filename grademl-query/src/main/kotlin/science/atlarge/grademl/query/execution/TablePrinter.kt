@@ -5,23 +5,33 @@ import science.atlarge.grademl.query.model.TimeSeriesIterator
 
 object TablePrinter {
 
-    fun print(timeSeriesIterator: TimeSeriesIterator, limit: Int? = null) {
-        val showFirst = limit ?: 100
-        val showLast = if (limit == null) 100 else 0
-        val maxLines = limit ?: Int.MAX_VALUE
+    fun print(
+        timeSeriesIterator: TimeSeriesIterator,
+        maxLines: Int? = 200,
+        output: StringBuilder? = null
+    ) {
+        fun localPrint(s: String) = output?.append(s) ?: print(s)
+        fun localPrintln(s: String) = output?.appendLine(s) ?: println(s)
+
+        require(maxLines == null || maxLines > 0)
+
+        val showFirst = if (maxLines != null) (maxLines - 1) / 2 + 1 else Int.MAX_VALUE
+        val showLast = if (maxLines != null) maxLines / 2 else 0
         val header = listOf("ROW", "TS") + timeSeriesIterator.schema.columns.map { it.identifier }
-        val lines = Array(showFirst + showLast) { Array(timeSeriesIterator.schema.columns.size + 2) { "" } }
+        val lines = ArrayList<Array<String>>()
         var lineCount = 0
         var lineIndex = 0
         var timeSeriesCount = 0
-        while (lineCount < maxLines && timeSeriesIterator.loadNext()) {
+        while (timeSeriesIterator.loadNext()) {
             timeSeriesCount++
 
             val rowIter = timeSeriesIterator.currentTimeSeries.rowIterator()
-            while (lineCount < maxLines && rowIter.loadNext()) {
+            while (rowIter.loadNext()) {
                 val row = rowIter.currentRow
                 lineCount++
-                if (lineIndex >= lines.size) continue
+                if (lineIndex >= lines.size) {
+                    lines.add(Array(timeSeriesIterator.schema.columns.size + 2) { "" })
+                }
 
                 lines[lineIndex][0] = lineCount.toString()
                 lines[lineIndex][1] = timeSeriesCount.toString()
@@ -36,19 +46,19 @@ object TablePrinter {
                 }
 
                 lineIndex++
-                if (lineIndex == lines.size) {
+                if (lineIndex >= showFirst + showLast) {
                     lineIndex = showFirst
                 }
             }
         }
 
         val startLines = when {
-            lineCount <= lines.size -> lines.slice(0 until lineCount)
+            lineCount <= showFirst + showLast -> lines.slice(0 until lineCount)
             showFirst > 0 -> lines.slice(0 until showFirst)
             else -> null
         }
 
-        val endLines = if (lineCount > lines.size && showLast > 0) {
+        val endLines = if (lineCount > showFirst + showLast && showLast > 0) {
             lines.slice(lineIndex until lines.size) + lines.slice(showFirst until lineIndex)
         } else {
             null
@@ -60,38 +70,38 @@ object TablePrinter {
             maxOf(header[c].length, maxValueWidth)
         }
 
-        println("-".repeat(columnWidths.sum() + 3 * header.size + 1))
+        localPrintln("-".repeat(columnWidths.sum() + 3 * header.size + 1))
         for (c in header.indices) {
-            print("| ${header[c].padEnd(columnWidths[c])} ")
+            localPrint("| ${header[c].padEnd(columnWidths[c])} ")
         }
-        println("|")
+        localPrintln("|")
         if (startLines != null) {
-            println("-".repeat(columnWidths.sum() + 3 * header.size + 1))
+            localPrintln("-".repeat(columnWidths.sum() + 3 * header.size + 1))
             for (l in startLines) {
                 for (c in l.indices) {
-                    print("| ${l[c].padEnd(columnWidths[c])} ")
+                    localPrint("| ${l[c].padEnd(columnWidths[c])} ")
                 }
-                println("|")
+                localPrintln("|")
             }
         }
 
         if (lineCount > lines.size) {
-            println("~".repeat(columnWidths.sum() + 3 * header.size + 1))
+            localPrintln("~".repeat(columnWidths.sum() + 3 * header.size + 1))
         } else if (lineCount > 0) {
-            println("-".repeat(columnWidths.sum() + 3 * header.size + 1))
+            localPrintln("-".repeat(columnWidths.sum() + 3 * header.size + 1))
         }
 
         if (endLines != null) {
             for (l in endLines) {
                 for (c in l.indices) {
-                    print("| ${l[c].padEnd(columnWidths[c])} ")
+                    localPrint("| ${l[c].padEnd(columnWidths[c])} ")
                 }
-                println("|")
+                localPrintln("|")
             }
-            println("-".repeat(columnWidths.sum() + 3 * header.size + 1))
+            localPrintln("-".repeat(columnWidths.sum() + 3 * header.size + 1))
         }
 
-        println("Showing ${minOf(lineCount, lines.size)} of $lineCount rows.")
+        localPrintln("Showing ${minOf(lineCount, lines.size)} of $lineCount rows.")
     }
 
 }
